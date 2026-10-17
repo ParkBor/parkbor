@@ -231,3 +231,19 @@ def test_receipt_failures_return_nothing(http):
     assert expo_push.get_receipts(["a"]) == {}
     http.handler = lambda request: httpx.Response(200, text="nope")
     assert expo_push.get_receipts(["a"]) == {}
+
+
+@pytest.mark.parametrize("header", ["nan", "inf", "-inf", "soon"])
+def test_a_non_finite_retry_after_is_ignored(http, header):
+    http.handler = lambda request: httpx.Response(429, headers={"Retry-After": header})
+    [result] = expo_push.send([message()])
+    assert result.outcome is PushOutcome.RETRY and result.retry_after is None
+
+
+def test_remaining_batches_are_given_up_after_the_overall_deadline(http, monkeypatch):
+    http.handler = lambda request: httpx.Response(500)
+    monkeypatch.setattr(expo_push, "SEND_DEADLINE_SECONDS", -1)
+    results = expo_push.send([message() for _ in range(150)])
+    assert http.requests == []
+    assert {r.error for r in results} == {"deadline_exceeded"}
+    assert all(r.outcome is PushOutcome.RETRY for r in results)

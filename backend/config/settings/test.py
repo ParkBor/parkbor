@@ -30,6 +30,7 @@ if "postgres" in DATABASES["default"]["ENGINE"] or "postgis" in DATABASES["defau
 BOOKING_LOCK_TIMEOUT_SECONDS = 30
 QR_SIGNING_KEY = "test-only-qr-signing-key-0123456789abcdef-0123456789abcdef"
 REDIS_URL = "redis://localhost:6379/0"
+STATE_REDIS_URL = "redis://localhost:6379/3"
 CELERY_BROKER_URL = "memory://"
 CELERY_RESULT_BACKEND = "cache+memory://"
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

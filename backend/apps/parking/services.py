@@ -19,6 +19,7 @@ from django.db.models import Count, Q
 from django.db.models.deletion import ProtectedError
 from django.utils import timezone
 
+from apps.core import events
 from apps.core.exceptions import (
     Conflict,
     DomainPermissionDenied,
@@ -159,6 +160,12 @@ def recalculate_counters(lot: ParkingLot) -> ParkingLot:
     return lot
 
 
+def announce_availability(lot_id) -> None:
+    """After commit, tell the realtime layer the lot's counters changed (the bookings hook
+    ``publish_availability_changed`` is the same event; parking cannot import bookings)."""
+    transaction.on_commit(lambda: events.emit("availability_changed", lot_id=lot_id))
+
+
 @dataclass(frozen=True)
 class ReconcileResult:
     checked: int
@@ -182,7 +189,10 @@ def reconcile_counters(limit: int | None = None) -> ReconcileResult:
                 lot = _lock_lot(lot_id)
                 before = (lot.total_slots, lot.free_slots)
                 recalculate_counters(lot)
-                fixed += before != (lot.total_slots, lot.free_slots)
+                drifted = before != (lot.total_slots, lot.free_slots)
+                if drifted:  # the map showed the drifted number: correct it for watchers too
+                    announce_availability(lot.pk)
+                fixed += drifted
         except Exception:  # noqa: BLE001 - isolation is the point
             failed += 1
             logger.exception("reconcile_free_slots: lot %s failed", lot_id)
@@ -302,6 +312,7 @@ def save_slot(*, instance: Slot | None, data: dict) -> Slot:
             with _conflict_on_integrity("A slot with this code already exists in the zone."):
                 slot.save(update_fields=fields)
     recalculate_counters(lot)
+    announce_availability(lot.pk)
     return slot
 
 
@@ -310,6 +321,7 @@ def delete_slot(*, slot: Slot) -> None:
     lot = _lock_lot(slot.zone.parking_lot_id)
     _delete(slot, "This slot is still referenced (e.g. by bookings).")
     recalculate_counters(lot)
+    announce_availability(lot.pk)
 
 
 @transaction.atomic
@@ -344,6 +356,7 @@ def bulk_create_slots(
             ]
         )
     recalculate_counters(lot)
+    announce_availability(lot.pk)
     return slots
 
 

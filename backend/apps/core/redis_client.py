@@ -13,7 +13,7 @@ def get_redis() -> redis.Redis:
     global _client  # noqa: PLW0603
     if _client is None:
         _client = redis.Redis.from_url(
-            settings.REDIS_URL,
+            getattr(settings, "STATE_REDIS_URL", settings.REDIS_URL),
             decode_responses=True,
             socket_timeout=REDIS_TIMEOUT_SECONDS,
             socket_connect_timeout=REDIS_TIMEOUT_SECONDS,

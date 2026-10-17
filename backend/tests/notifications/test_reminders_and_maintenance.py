@@ -222,7 +222,7 @@ def test_tickets_are_remembered_and_dead_devices_removed(fake_redis, monkeypatch
         },
     )
     counts = receipts.check_receipts(now=1000 + receipts.RECEIPT_DELAY_SECONDS + 1)
-    assert counts == {"checked": 2, "pruned": 1, "pending": 0}
+    assert counts == {"checked": 2, "pruned": 1, "pending": 0, "expired": 0}
     assert not Device.objects.filter(user=user).exists()
     assert fake_redis.zcard(receipts.KEY) == 1  # only the young one is left
 
@@ -240,7 +240,12 @@ def test_receipt_checks_survive_redis_being_down(fake_redis, monkeypatch):
     import redis
 
     monkeypatch.setattr(fake_redis, "zrangebyscore", mock.Mock(side_effect=redis.ConnectionError))
-    assert receipts.check_receipts(now=10**9) == {"checked": 0, "pruned": 0, "pending": 0}
+    assert receipts.check_receipts(now=10**9) == {
+        "checked": 0,
+        "pruned": 0,
+        "pending": 0,
+        "expired": 0,
+    }
     monkeypatch.setattr(fake_redis, "zadd", mock.Mock(side_effect=redis.ConnectionError))
     receipts.remember("t", TOKEN)  # must not raise
 

@@ -381,7 +381,27 @@ CLICK_STATUS_REVERSED_VALUES = [
 ]
 # Redis only redelivers an unacked task after visibility_timeout (default 1 h); refund retries
 # back off up to 30 min, so give the broker twice that.
-CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 7200}
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    "visibility_timeout": 7200,
+    "socket_timeout": 5,  # a dead broker must fail a publish quickly, not hang the request
+    "socket_connect_timeout": 2,
+}
+# Publishing a task (apply_async inside a request or a hook) retries once, then raises: callers
+# catch it and fall back (realtime: send now; notifications: resend_pending picks the row up).
+CELERY_TASK_PUBLISH_RETRY_POLICY = {
+    "max_retries": 1,
+    "interval_start": 0,
+    "interval_step": 0.2,
+    "interval_max": 0.5,
+}
+# Queues: default ("celery") for the business sweeps, "realtime" for the 250 ms availability
+# flushes, "notify" for outbound Expo / Telegram calls. A slow Telegram never delays a sweep or a
+# live update (run one worker per queue, ARCHITECTURE 17). One task per worker slot at a time.
+CELERY_TASK_ROUTES = {
+    "realtime.*": {"queue": "realtime"},
+    "notifications.*": {"queue": "notify"},
+}
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 
 
 # --- realtime (WebSocket; ARCHITECTURE 12) ------------------------------------------------------
@@ -397,6 +417,12 @@ WS_MESSAGES_PER_SECOND = _ws_int("WS_MESSAGES_PER_SECOND", 10, 1, 1000)
 WS_MAX_CONNECTIONS_PER_USER = _ws_int("WS_MAX_CONNECTIONS_PER_USER", 5, 1, 100)
 WS_HEARTBEAT_SECONDS = _ws_int("WS_HEARTBEAT_SECONDS", 30, 1, 600)  # server ping interval
 WS_IDLE_TIMEOUT_SECONDS = _ws_int("WS_IDLE_TIMEOUT_SECONDS", 90, 2, 3600)
+# A socket is closed (4410) after this long so the client reconnects with a fresh ticket and
+# re-subscribes: the Redis channel layer forgets group members after 24 h anyway (redis_urls.py).
+WS_MAX_AGE_SECONDS = _ws_int("WS_MAX_AGE_SECONDS", 12 * 3600, 60, 20 * 3600)
+# A lot / operator subscription refused for an id is remembered this long per connection, so a
+# client hammering random UUIDs costs one database query per id and window, not one per message.
+WS_NEGATIVE_CACHE_SECONDS = _ws_int("WS_NEGATIVE_CACHE_SECONDS", 30, 1, 600)
 WS_AUTH_TIMEOUT_SECONDS = _ws_int("WS_AUTH_TIMEOUT_SECONDS", 10, 1, 120)  # first-message auth
 # Availability messages of one lot closer together than this are coalesced (leading + trailing).
 WS_DEBOUNCE_MILLISECONDS = _ws_int("WS_DEBOUNCE_MILLISECONDS", 200, 10, 5000)
@@ -410,4 +436,5 @@ EXPO_ACCESS_TOKEN = env("EXPO_ACCESS_TOKEN", default="")  # optional; SECRET whe
 NOTIFICATION_LOG_RETENTION_DAYS = _booking_int("NOTIFICATION_LOG_RETENTION_DAYS", 180, 7, 3650)
 PUSH_TOKEN_MAX_AGE_DAYS = _booking_int("PUSH_TOKEN_MAX_AGE_DAYS", 90, 7, 3650)
 NOTIFICATION_REMINDER_MINUTES = _booking_int("NOTIFICATION_REMINDER_MINUTES", 15, 1, 120)
+DEVICES_MAX_PER_USER = _booking_int("DEVICES_MAX_PER_USER", 5, 1, 50)  # Expo tokens kept
 NOTIFICATION_BATCH_LIMIT = _booking_int("NOTIFICATION_BATCH_LIMIT", 500, 1, 5000)

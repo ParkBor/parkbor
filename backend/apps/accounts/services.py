@@ -1,7 +1,9 @@
 """Account write operations: Telegram login, profile, devices, token lifecycle."""
 
+import logging
 from dataclasses import dataclass
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -13,6 +15,8 @@ from apps.core.exceptions import (
     InvalidRefreshTokenError,
     PhoneTakenError,
 )
+
+logger = logging.getLogger(__name__)
 
 PROFILE_FIELDS = ("first_name", "last_name", "language", "tg_notifications")
 
@@ -95,18 +99,42 @@ def update_profile(user: User, changes: dict) -> User:
 
 
 def register_device(user: User, *, platform: str, expo_push_token: str) -> tuple[Device, bool]:
-    """Attach the push token to the user (moving it from another user if needed)."""
+    """Attach the push token to the user (moving it from another user if needed).
+
+    A user keeps at most ``DEVICES_MAX_PER_USER`` devices: registering one more drops the least
+    recently seen (stale installs must not make every notification fan out to dozens of tokens).
+    A token that moves between accounts is logged (a shared or resold phone, or abuse)."""
     for attempt in (1, 2):
         try:
             with transaction.atomic():
-                return Device.objects.update_or_create(
+                owner_id = (
+                    Device.objects.filter(expo_push_token=expo_push_token)
+                    .values_list("user_id", flat=True)
+                    .first()
+                )
+                if owner_id is not None and owner_id != user.pk:
+                    logger.warning("push token moved from user %s to user %s", owner_id, user.pk)
+                result = Device.objects.update_or_create(
                     expo_push_token=expo_push_token, defaults={"user": user, "platform": platform}
                 )
+                _trim_devices(user)
+                return result
         except IntegrityError:
             # Concurrent insert of the same token; the retry takes the update path.
             if attempt == 2:
                 raise
     raise AssertionError("unreachable")  # pragma: no cover
+
+
+def _trim_devices(user: User) -> None:
+    keep = settings.DEVICES_MAX_PER_USER
+    surplus = list(
+        Device.objects.filter(user=user)
+        .order_by("-last_seen", "-created_at", "id")
+        .values_list("pk", flat=True)[keep:]
+    )
+    if surplus:
+        Device.objects.filter(pk__in=surplus).delete()
 
 
 def logout(user: User, raw_refresh: str, expo_push_token: str | None = None) -> None:

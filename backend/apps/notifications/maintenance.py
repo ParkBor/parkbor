@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timedelta
 
 from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.accounts.models import Device
@@ -43,13 +44,18 @@ def purge_logs(now: datetime | None = None) -> int:
 
 def resend_pending(now: datetime | None = None, limit: int | None = None) -> int:
     """Queue again the PENDING rows nobody is working on (the broker was down when they were
-    created, or a worker died between attempts). A row that is merely waiting for its own
-    retry is re-queued too; the claim in ``delivery`` makes a second send impossible."""
+    created, or a worker died between attempts). A row that is waiting out a backoff or a
+    Retry-After (``next_attempt_at`` in the future, or only just passed) is left alone, so this
+    never defeats the delay; the claim in ``delivery`` makes a double send impossible anyway."""
     now = now or timezone.now()
     limit = limit or settings.NOTIFICATION_BATCH_LIMIT
-    stale = NotificationLog.objects.filter(
-        status=NotificationLog.Status.PENDING, updated_at__lt=now - RESEND_AFTER
-    ).exclude(lease_until__gt=now)
+    stale = (
+        NotificationLog.objects.filter(
+            status=NotificationLog.Status.PENDING, updated_at__lt=now - RESEND_AFTER
+        )
+        .filter(Q(next_attempt_at__isnull=True) | Q(next_attempt_at__lte=now - RESEND_AFTER))
+        .exclude(lease_until__gt=now)
+    )
     queued = 0
     for log_id in stale.order_by("updated_at").values_list("pk", flat=True)[:limit]:
         queued += enqueue(log_id)

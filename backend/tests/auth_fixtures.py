@@ -26,7 +26,8 @@ class FakeTelegramClient:
 
 @pytest.fixture(autouse=True)
 def fake_redis():
-    client = fakeredis.FakeRedis(decode_responses=True)
+    # a private server per test: no key can leak from one test into the next
+    client = fakeredis.FakeRedis(server=fakeredis.FakeServer(), decode_responses=True)
     redis_client.set_redis_client(client)
     yield client
     redis_client.set_redis_client(None)

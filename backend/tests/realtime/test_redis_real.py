@@ -18,7 +18,12 @@ pytestmark = pytest.mark.redis
 
 @pytest.fixture
 def real_redis():
-    client = redis.Redis.from_url(os.environ["REDIS_TEST_URL"], decode_responses=True)
+    client = redis.Redis.from_url(
+        os.environ["REDIS_TEST_URL"], decode_responses=True, socket_timeout=5
+    )
+    # flushdb below must never hit the broker / channel / state database of a shared server
+    assert client.connection_pool.connection_kwargs["db"] != 0, "REDIS_TEST_URL must not use db 0"
+    assert client.connection_pool.connection_kwargs["socket_timeout"] == 5
     client.flushdb()
     redis_client.set_redis_client(client)
     yield client

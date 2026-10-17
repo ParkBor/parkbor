@@ -4,7 +4,8 @@ pytest-django>=4.9,<5
 # ruff is 0.x: minor releases can change lint/format output, so cap at the next minor.
 ruff>=0.6,<0.18
 pytest-cov>=5,<8
-fakeredis>=2.26,<3
+# [lua]: the connection registry runs a Lua script (EVAL), which fakeredis needs lupa for.
+fakeredis[lua]>=2.26,<3
 freezegun>=1.5,<2
 # A hung PostgreSQL test (lock wait, deadlock) must fail the run, not stall CI.
 pytest-timeout>=2.3,<3

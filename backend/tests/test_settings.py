@@ -212,16 +212,78 @@ def test_prod_public_url_loses_its_trailing_slash(monkeypatch):
     assert prod.HABI_PUBLIC_URL == "https://habi.uz"
 
 
-def test_prod_uses_the_redis_channel_layer(monkeypatch):
+def test_prod_uses_the_redis_channel_layer_with_bounded_timeouts(monkeypatch):
     prod = _import_fresh(monkeypatch, "config.settings.prod", PROD_ENV)
     layer = prod.CHANNEL_LAYERS["default"]
     assert layer["BACKEND"] == "channels_redis.core.RedisChannelLayer"
-    assert layer["CONFIG"]["hosts"] == [PROD_ENV["REDIS_URL"]]
+    config = layer["CONFIG"]
+    assert config["hosts"] == [
+        {
+            "address": "redis://redis:6379/1",
+            "socket_timeout": 10,  # above channels_redis' 5 s blocking receive
+            "socket_connect_timeout": 2,
+        }
+    ]
+    assert (config["prefix"], config["expiry"], config["capacity"]) == ("habi", 10, 1000)
+    assert config["group_expiry"] == 86400
+
+
+def test_ws_max_age_stays_below_the_group_expiry(monkeypatch):
+    prod = _import_fresh(monkeypatch, "config.settings.prod", PROD_ENV)
+    config = prod.CHANNEL_LAYERS["default"]["CONFIG"]
+    assert prod.WS_MAX_AGE_SECONDS < config["group_expiry"]
+
+
+def test_prod_keeps_broker_channels_cache_and_state_in_separate_databases(monkeypatch):
+    prod = _import_fresh(monkeypatch, "config.settings.prod", PROD_ENV)
+    assert prod.CELERY_BROKER_URL.endswith("/0")
+    assert prod.CHANNEL_REDIS_URL.endswith("/1")
+    assert prod.CACHE_REDIS_URL.endswith("/2")
+    assert prod.STATE_REDIS_URL.endswith("/3")
+    assert prod.CACHES["default"]["LOCATION"] == prod.CACHE_REDIS_URL
+
+
+def test_redis_roles_can_be_moved_to_other_servers(monkeypatch):
+    env = {**PROD_ENV, "CACHE_REDIS_URL": "redis://cache-host:6379/0"}
+    prod = _import_fresh(monkeypatch, "config.settings.prod", env)
+    assert prod.CACHES["default"]["LOCATION"] == "redis://cache-host:6379/0"
+
+
+def test_state_redis_is_what_the_application_client_uses(monkeypatch):
+    from apps.core import redis_client
+
+    redis_client.set_redis_client(None)
+    client = redis_client.get_redis()
+    assert client.connection_pool.connection_kwargs["db"] == 3
+    redis_client.set_redis_client(None)
+
+
+def test_prod_reuses_database_connections_and_health_checks_them(monkeypatch):
+    prod = _import_fresh(monkeypatch, "config.settings.prod", PROD_ENV)
+    assert prod.DATABASES["default"]["CONN_MAX_AGE"] == 60
+    assert prod.DATABASES["default"]["CONN_HEALTH_CHECKS"] is True
+
+
+def test_db_conn_max_age_is_tunable(monkeypatch):
+    prod = _import_fresh(monkeypatch, "config.settings.prod", {**PROD_ENV, "DB_CONN_MAX_AGE": "0"})
+    assert prod.DATABASES["default"]["CONN_MAX_AGE"] == 0
 
 
 def test_dev_uses_the_redis_channel_layer(monkeypatch):
     dev = _import_fresh(monkeypatch, "config.settings.dev", {})
     assert dev.CHANNEL_LAYERS["default"]["BACKEND"] == "channels_redis.core.RedisChannelLayer"
+    assert dev.CACHES["default"]["LOCATION"].endswith("/2")
+
+
+def test_celery_queues_publish_policy_and_prefetch():
+    assert settings.CELERY_TASK_ROUTES == {
+        "realtime.*": {"queue": "realtime"},
+        "notifications.*": {"queue": "notify"},
+    }
+    assert settings.CELERY_TASK_PUBLISH_RETRY_POLICY["max_retries"] == 1
+    assert settings.CELERY_WORKER_PREFETCH_MULTIPLIER == 1
+    options = settings.CELERY_BROKER_TRANSPORT_OPTIONS
+    assert options["socket_timeout"] and options["socket_connect_timeout"]
 
 
 def test_tests_use_the_in_memory_channel_layer():

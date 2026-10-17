@@ -9,12 +9,29 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
 
 # Celery Beat (ARCHITECTURE 16). Every task is idempotent and batch-limited, so an overlapping or
-# repeated run is harmless.
+# repeated run is harmless. `expires`: a run queued while the workers were down is dropped, so a
+# backlog of identical sweeps never piles up behind a recovered worker.
 CELERY_BEAT_SCHEDULE = {
-    "bookings-mark-no-shows": {"task": "bookings.mark_no_shows", "schedule": 60.0},
-    "bookings-detect-overstays": {"task": "bookings.detect_overstays", "schedule": 60.0},
-    "bookings-expire-overdue-holds": {"task": "bookings.expire_overdue_holds", "schedule": 60.0},
-    "parking-reconcile-free-slots": {"task": "parking.reconcile_free_slots", "schedule": 300.0},
+    "bookings-mark-no-shows": {
+        "task": "bookings.mark_no_shows",
+        "schedule": 60.0,
+        "options": {"expires": 55},
+    },
+    "bookings-detect-overstays": {
+        "task": "bookings.detect_overstays",
+        "schedule": 60.0,
+        "options": {"expires": 55},
+    },
+    "bookings-expire-overdue-holds": {
+        "task": "bookings.expire_overdue_holds",
+        "schedule": 60.0,
+        "options": {"expires": 55},
+    },
+    "parking-reconcile-free-slots": {
+        "task": "parking.reconcile_free_slots",
+        "schedule": 300.0,
+        "options": {"expires": 290},
+    },
     # expires: a run queued while the workers were down is dropped, not piled up
     "payments-retry-failed-webhooks": {
         "task": "payments.retry_failed_webhooks",

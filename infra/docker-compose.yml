@@ -18,7 +18,12 @@ services:
       retries: 10
 
   redis:
-    image: redis:7
+    # >= 6.2 is required (GETDEL). noeviction: this server holds the Celery broker, the WebSocket
+    # channel layer and application state (tickets, registries); evicting a key would silently
+    # lose a queued task or a ticket. A production cache belongs on a separate allkeys-lru server
+    # (CACHE_REDIS_URL, ARCHITECTURE 17).
+    image: redis:7.4-alpine
+    command: ["redis-server", "--maxmemory-policy", "noeviction"]
     ports:
       - "6379:6379"
     healthcheck:
@@ -31,7 +36,8 @@ services:
     build:
       context: ../backend
     profiles: ["backend"]
-    command: python manage.py runserver 0.0.0.0:8000
+    # One ASGI process serves HTTP and WebSocket, like production (runserver has no WebSocket).
+    command: uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload --lifespan off
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DATABASE_URL: postgis://${POSTGRES_USER:-habi}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-habi}
@@ -44,6 +50,37 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Celery: one worker per queue in production (see ARCHITECTURE 17); a single one is enough here.
+  celery:
+    build:
+      context: ../backend
+    profiles: ["backend"]
+    command: celery -A config worker -l info -Q celery,realtime,notify --prefetch-multiplier 1
+    environment: &backend_env
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DATABASE_URL: postgis://${POSTGRES_USER:-habi}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-habi}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-dev-only-insecure-placeholder}
+    volumes:
+      - ../backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-beat:
+    build:
+      context: ../backend
+    profiles: ["backend"]
+    command: celery -A config beat -l info
+    environment: *backend_env
+    volumes:
+      - ../backend:/app
+    depends_on:
       redis:
         condition: service_healthy
 

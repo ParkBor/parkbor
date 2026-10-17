@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -13,6 +14,7 @@ from apps.parking.validators import (
     MAX_BULK_SLOTS,
     MAX_DISTANCE_TO_ENTRANCE,
     MAX_SLOT_NUMBER,
+    SLOT_CODE_PATTERN,
     RulesError,
     validate_tariff_rules,
 )
@@ -193,6 +195,13 @@ class SlotSerializer(_ImmutableParentMixin, serializers.ModelSerializer):
         model = Slot
         fields = ["id", "zone", "code", "type", "status", "distance_to_entrance", "created_at"]
         read_only_fields = ["id", "created_at"]
+
+    def validate_code(self, value):
+        if not re.fullmatch(SLOT_CODE_PATTERN, value):
+            raise serializers.ValidationError(
+                "Use letters, digits, '-' and '_' only (1-20 characters)."
+            )
+        return value
 
     def validate_status(self, value):
         """Owners only toggle FREE <-> OUT_OF_SERVICE; RESERVED/OCCUPIED belong to bookings."""

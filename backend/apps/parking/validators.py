@@ -6,6 +6,9 @@ from decimal import Decimal, InvalidOperation
 MAX_BULK_SLOTS = 500
 MAX_SLOT_NUMBER = 99999
 MAX_CODE_LENGTH = 20  # Slot.code column size
+# A slot code is painted on the asphalt AND shown to drivers in push / Telegram messages: letters,
+# digits, "-" and "_" only, so a code can never carry a URL, markup or a sentence.
+SLOT_CODE_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_-]{0,19}$"
 MAX_COEFFICIENTS = 50
 MAX_COEFFICIENT = Decimal("10")
 MAX_COEFFICIENT_DECIMALS = 4

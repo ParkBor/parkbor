@@ -192,6 +192,7 @@ async def test_the_group_cap_is_enforced_per_connection(driver, settings, fake_r
 
 async def test_one_message_cannot_name_more_groups_than_the_cap(driver, settings, fake_redis):
     settings.WS_MAX_GROUPS_PER_CONNECTION = 3
+    settings.WS_MESSAGES_PER_SECOND = 1000  # this test is about the size cap, not the rate
     comm = await open_socket(driver)
     await send(comm, type="subscribe", groups=[{"kind": "geo", "id": "u0000"}] * 100)
     assert await comm.receive_json_from() == {"type": "error", "code": "invalid_groups"}

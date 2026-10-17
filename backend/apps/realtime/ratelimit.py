@@ -12,11 +12,14 @@ class TokenBucket:
         self._tokens = self.capacity
         self._last = clock()
 
-    def allow(self) -> bool:
+    def allow(self, cost: float = 1) -> bool:
+        """Take ``cost`` tokens (a message naming 50 groups costs more than a ping). The cost is
+        capped at the bucket size, so one big message needs a full bucket but can always pass."""
+        cost = min(max(cost, 1), self.capacity)
         now = self._clock()
         self._tokens = min(self.capacity, self._tokens + (now - self._last) * self.rate)
         self._last = now
-        if self._tokens < 1:
+        if self._tokens < cost:
             return False
-        self._tokens -= 1
+        self._tokens -= cost
         return True

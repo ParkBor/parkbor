@@ -150,7 +150,7 @@ Rollar `RBAC` (rolga asoslangan ruxsatlar) orqali boshqariladi (15-bo‘lim).
 Ikkala klient ham umumiy **TypeScript API klienti** (OpenAPI’dan `orval` bilan generatsiya) va umumiy tiplardan foydalanadi (monorepo, 20-bo‘lim).
 
 ### Infratuzilma
-Docker, Docker Compose (dev), Nginx (reverse proxy + statik), Gunicorn/Uvicorn, GitHub Actions (CI/CD), Sentry (xatolar), Prometheus + Grafana (monitoring).
+Docker, Docker Compose (dev), Nginx (reverse proxy + statik), Uvicorn (ASGI), GitHub Actions (CI/CD), Sentry (xatolar), Prometheus + Grafana (monitoring).
 
 ---
 
@@ -169,7 +169,7 @@ flowchart LR
     end
 
     subgraph Backend["Backend"]
-        API["Django + DRF<br/>(Gunicorn / Uvicorn)"]
+        API["Django + DRF<br/>(Uvicorn, ASGI)"]
         WS["Django Channels<br/>(WebSocket)"]
         CW["Celery worker"]
         CB["Celery beat"]
@@ -1195,30 +1195,85 @@ Google Cloud Console → Credentials → API key sozlamalari:
 ## 12. Real vaqt rejimi (WebSocket)
 
 - Endpoint: `wss://<domen>/ws/availability/?ticket=<ticket>` (HTTP ham, WebSocket ham bitta ASGI jarayonida: Uvicorn).
-- **Autentifikatsiya (Step 10a qarori; avvalgi `?token=<jwt>` varianti BEKOR QILINDI).** JWT ni URL query’da yuborish nginx/proksi/Uvicorn access loglariga tushadi (access token 15 daqiqa amal qiladi, log esa oylar saqlanadi). Shuning uchun: ilova avval `POST /api/v1/ws/ticket` (JWT bilan, 30/min) chaqiradi → `{"ticket": "<22 belgi>", "expires_in": 30}`. Ticket — bir martalik, 30 s: Redis `SET ws:ticket:<sha256(ticket)> <user_id> NX EX 30`, ulanishda `GETDEL` (ikkinchi marta ishlatib bo‘lmaydi), entropiya 128 bit (`secrets.token_urlsafe(16)`), Redis’da faqat xesh saqlanadi. Ticket loglarga tushsa ham ishlatilgan/muddati o‘tgan bo‘ladi. Ticket `?ticket=` da yoki ulanishdan keyingi birinchi xabarda `{"type":"auth","ticket":"..."}` (10 s ichida) yuboriladi. Eski `?token=` QABUL QILINMAYDI. Yaroqsiz/ishlatilgan/muddati o‘tgan ticket yoki nofaol foydalanuvchi → ulanish qabul qilinib, darhol `4401` bilan yopiladi (WebSocket handshake rad etilsa brauzer/RN yopish kodini ko‘rmaydi, shuning uchun avval `accept`, keyin `close`). Sentry/loglarda `ticket` query parametri va xabar maydoni tozalanadi.
+- **Autentifikatsiya (Step 10a qarori; avvalgi `?token=<jwt>` varianti BEKOR QILINDI).** JWT ni URL query’da yuborish nginx/proksi/Uvicorn access loglariga tushadi (access token 15 daqiqa amal qiladi, log esa oylar saqlanadi). Shuning uchun ilova avval `POST /api/v1/ws/ticket` (JWT bilan, 30/min, `Cache-Control: no-store`) chaqiradi → `{"ticket": "<22+ belgi>", "expires_in": 30}`. Ticket — bir martalik, 30 s: Redis `SET ws:ticket:<sha256(ticket)> <user_id> NX EX 30`, ulanishda `GETDEL` (ikkinchi marta ishlatib bo‘lmaydi), entropiya 128 bit (`secrets.token_urlsafe(16)`), Redis’da faqat xesh saqlanadi. Ticket loglarga tushsa ham ishlatilgan/muddati o‘tgan bo‘ladi. **Har bir ulanish (qayta ulanish ham) uchun YANGI ticket kerak** — eskisini qayta ishlatib bo‘lmaydi. Ticket `?ticket=` da yoki ulanishdan keyingi birinchi xabarda `{"type":"auth","ticket":"..."}` (10 s ichida) yuboriladi. Eski `?token=` QABUL QILINMAYDI. Yaroqsiz/ishlatilgan/muddati o‘tgan ticket yoki nofaol foydalanuvchi → ulanish qabul qilinib, darhol `4401` bilan yopiladi (WebSocket handshake rad etilsa brauzer/RN yopish kodini ko‘rmaydi, shuning uchun avval `accept`, keyin `close`). Sentry/loglarda `ticket` query parametri va xabar maydoni tozalanadi. Ticket ombori (Redis) ishlamasa — `POST /ws/ticket` 503, WebSocket `1013`.
 - **Origin:** mobil ilova `Origin` yubormaydi → ruxsat; `Origin` bor bo‘lsa `ALLOWED_HOSTS` yoki `CORS_ALLOWED_ORIGINS` ro‘yxatida bo‘lishi shart (aks holda handshake rad etiladi, 403).
-- Guruhlar (kanal nomlari faqat UUID/geohash’dan quriladi): `lot_<uuid>` (bitta ACTIVE avtoturargoh), `geo_<geohash5>` (hudud bo‘yicha, `^[0-9b-hjkmnp-z]{5}$`), `user_<uuid>` (shaxsiy `booking_status`; ulanishda avtomatik, mijoz boshqa user guruhiga qo‘shila olmaydi), `operator_lot_<uuid>` (`slot_status`; faqat `access.get_operable_lot` ruxsat bergan lot uchun, har obunada va har heartbeat’da qayta tekshiriladi).
-- Mijoz xabarlari: `{"type":"subscribe","groups":[{"kind":"lot"|"geo"|"operator_lot","id":"..."}]}`, `{"type":"unsubscribe","groups":[...]}`, `{"type":"ping"}`, `{"type":"pong"}`, `{"type":"auth","ticket":"..."}`. Mijoz xabarlari 4 KB gacha, 10 xabar/s (token bucket), ulanish boshiga 50 guruh, foydalanuvchi boshiga 5 ta bir vaqtdagi ulanish (ortiqchasi eng eskisini `4409` bilan yopadi). Server har 30 s `{"type":"ping"}` yuboradi; 90 s davomida mijozdan hech narsa kelmasa `4408`.
-- Yopish kodlari: `4400` noto‘g‘ri JSON/shakl, `4401` autentifikatsiya, `1009` xabar katta, `4408` bo‘sh turish (idle), `4409` yangi ulanish bilan almashtirildi, `4429` tezlik chegarasi.
+- Guruhlar (kanal nomlari faqat UUID/geohash’dan quriladi): `lot_<uuid>` (bitta ACTIVE avtoturargoh), `geo_<geohash5>` (hudud bo‘yicha, `^[0-9b-hjkmnp-z]{5}$`), `user_<uuid>` (shaxsiy `booking_status`; ulanishda avtomatik, mijoz boshqa user guruhiga qo‘shila olmaydi), `operator_lot_<uuid>` (`slot_status`; faqat `access.operable_lots` ruxsat bergan lot uchun, har obunada va har heartbeat’da qayta tekshiriladi).
+
+### 12.0 Protokol shartnomasi (mobil 10b uchun)
+
+Barcha kadrlar — JSON matn (binary kadr = `4400`).
+
+**Mijoz → server**
+
+| Xabar | Izoh |
+|---|---|
+| `{"type":"auth","ticket":"..."}` | faqat URL’da `?ticket=` bo‘lmasa; 10 s ichida |
+| `{"type":"subscribe","groups":[{"kind":"lot"\|"geo"\|"operator_lot","id":"..."}]}` | `lot`/`operator_lot` — UUID, `geo` — geohash5 (kichik harf). Bir xabarda ko‘pi bilan 50 ta |
+| `{"type":"unsubscribe","groups":[...]}` | bir xil shakl |
+| `{"type":"ping"}` | javob `{"type":"pong"}` |
+| `{"type":"pong"}` | serverning `ping` iga javob (istalgan xabar “tirik”ligini bildiradi) |
+
+**Server → mijoz**
+
+| Xabar | Izoh |
+|---|---|
+| `{"type":"ready"}` | autentifikatsiya o‘tdi; shundan keyingina `subscribe` yuboring |
+| `{"type":"subscribed","groups":[{kind,id}],"rejected":[{kind,id,code}]}` | `groups` — qabul qilinganlar (oldin obuna bo‘lgan bo‘lsa ham), `rejected` — rad etilganlar |
+| `{"type":"unsubscribed","groups":[{kind,id}]}` | javob; shuningdek operator ruxsati bekor qilinsa server o‘zi yuboradi |
+| `{"type":"availability","lot_id","free_slots","total_slots","ts"}` | `lot` ga obuna bo‘lganda DARHOL joriy holat (snapshot) keladi, keyin o‘zgarganda. `geo` ga obuna bo‘lganda snapshot **kelmaydi** (mijoz o‘zi `GET /parkings/nearby` dan oladi) |
+| `{"type":"slot_status","lot_id","slot_id","status"}` | `operator_lot` guruhi |
+| `{"type":"booking_status","booking_id","status"}` | shaxsiy guruh, avtomatik |
+| `{"type":"ping"}` | har 30 s; istalgan xabar (masalan `pong`) bilan javob bering, aks holda 90 s dan keyin `4408` |
+| `{"type":"pong"}` | `ping` ga javob |
+| `{"type":"error","code":"unknown_type"\|"invalid_groups"}` | ulanish yopilmaydi |
+
+`rejected[].code`: `invalid_kind` (noma’lum `kind`, masalan `user`), `invalid_group` (UUID/geohash noto‘g‘ri), `not_found` (lot yo‘q, ACTIVE emas yoki operator huquqi yo‘q — uchalasi bir xil javob, id bilan “zondlash” mumkin emas), `too_many_groups` (ulanish boshiga 50 ta). `error.code`: `invalid_groups` (`groups` ro‘yxat emas yoki 50 dan uzun), `unknown_type`.
+
+`ts` — UTC ISO-8601, **millisekund** bilan (`2026-10-15T13:05:00.123Z`), belgilar soni qat’iy, shuning uchun satr sifatida solishtirish to‘g‘ri: snapshot’dan eski `availability` ni tashlab yuboring.
+
+**Chegaralar:** xabar ≤ 4 KB; ulanish boshiga 50 guruh; tezlik 10 token/s (token bucket), **har element uchun alohida hisoblanadi** (50 guruhli `subscribe` ~10 token = butun chelak, `ping` — 1 token); foydalanuvchi boshiga 5 ta bir vaqtdagi ulanish (ortiqchasi eng eskisini `4409` bilan yopadi); noto‘g‘ri lot id’lar ulanish ichida 30 s eslab qolinadi (qayta so‘rash DB’ga bormaydi). `geo` obunalarida lot ID tekshiruvi yo‘q — ularni cheklash faqat tezlik chelagi va 50 guruh chegarasi orqali (alohida geo-churn limiti yo‘q).
+
+**Yopish kodlari va qayta ulanish**
+
+| Kod | Ma’nosi | Mijoz nima qiladi |
+|---|---|---|
+| `4400` | noto‘g‘ri JSON/shakl, binary kadr | **qayta ulanmang** — ilova xatosi |
+| `4401` | autentifikatsiya (ticket yaroqsiz/ishlatilgan, 10 s ichida `auth` yo‘q, akkaunt o‘chirilgan) | yangi ticket oling; u ham `401/403` bersa — sessiyani tugating |
+| `1009` | xabar katta | **qayta ulanmang** |
+| `4408` | 90 s jim turdi (idle) | yangi ticket bilan ulaning |
+| `4409` | yangi ulanish bilan almashtirildi (5 tadan oshdi) | **qayta ulanmang** — aks holda ikki qurilma bir-birini abadiy siqib chiqaradi |
+| `4410` | maksimal yosh (12 soat) | darhol yangi ticket bilan ulaning va qayta obuna bo‘ling |
+| `4429` | tezlik chegarasi | **qayta ulanmang** (sekinlashtiring; kamida 30 s kuting) |
+| `1011` | server ichki xatosi (heartbeat tekshiruvi bajarilmadi; ulanish “fail closed” yopildi) | exponential backoff bilan qayta ulaning |
+| `1013` | ticket ombori vaqtincha yo‘q | exponential backoff bilan qayta ulaning |
+| `1006` / tarmoq uzilishi | | exponential backoff bilan qayta ulaning |
+
+Backoff tavsiyasi: 1 s dan boshlab ×2 (tavan 60 s) + ±30% tasodifiy og‘ish (jitter); muvaffaqiyatli `ready` dan keyin qayta boshlanadi. Har urinishdan oldin `POST /ws/ticket` (u 30/min bilan cheklangan, `429` bo‘lsa `Retry-After` ni kuting). Ilova fonga o‘tganda ulanishni yoping, oldingi planga qaytganda yangi ticket bilan ulaning, so‘ng barcha guruhlarga qayta obuna bo‘ling (server obunalarni ulanish bilan birga unutadi). Server har bir ulanishni 12 soatdan keyin `4410` bilan yopadi: Redis channel layer guruh a’zoligini 24 soatdan keyin unutadi (`group_expiry`), shuning uchun ulanish bundan uzoq yashamasligi kerak.
+
 - Xabar formati (hech qachon PII: davlat raqami, telefon, ism yuborilmaydi):
 
 ```json
-{"type": "availability", "lot_id": "b2f...", "free_slots": 7, "total_slots": 50, "ts": "2026-10-15T13:05:00Z"}
+{"type": "availability", "lot_id": "b2f...", "free_slots": 7, "total_slots": 50, "ts": "2026-10-15T13:05:00.123Z"}
 {"type": "slot_status", "lot_id": "b2f...", "slot_id": "...", "status": "OCCUPIED"}
 {"type": "booking_status", "booking_id": "e4d...", "status": "CONFIRMED"}
 ```
 
-- Channel layer: Redis (`channels_redis`); testlarda `InMemoryChannelLayer`. Xabarlar faqat `transaction.on_commit` dan keyin yuboriladi (hooklar allaqachon `on_commit` orqali chaqiriladi; bekor qilingan tranzaksiya haqida noto‘g‘ri xabar ketmaydi). Nashr qilish **fail-open**: channel layer/Redis yiqilsa asosiy oqim buzilmaydi (log yoziladi).
-- **Debounce:** bir lot uchun `availability` 200 ms ichida birlashtiriladi (Redis `SET NX PX 200`: birinchi chaqiruv darhol, qolganlari bitta kechiktirilgan `realtime.flush_availability` vazifasiga; qiymat DB’dan yuborish paytida o‘qiladi, shuning uchun oxirgi holat yo‘qolmaydi).
+- Channel layer: Redis (`channels_redis`, prefiks `habi`, `expiry=10`, `capacity=1000`); testlarda `InMemoryChannelLayer`. Xabarlar faqat `transaction.on_commit` dan keyin yuboriladi (hooklar allaqachon `on_commit` orqali chaqiriladi; bekor qilingan tranzaksiya haqida noto‘g‘ri xabar ketmaydi). Nashr qilish **fail-open** va vaqt bilan cheklangan (2 s): channel layer/Redis yiqilsa asosiy oqim buzilmaydi (log yoziladi). Channel layer ulanishi: `socket_connect_timeout=2`, `socket_timeout=10` (`channels_redis` qabul qilish tomoni 5 s gacha bloklanadi, shuning uchun o‘qish timeouti undan katta bo‘lishi shart).
+- **Heartbeat fail-closed:** har 30 s server akkaunt faolligini va barcha `operator_lot` huquqlarini BITTA so‘rov bilan qayta tekshiradi. Tekshiruv xato bersa (DB, Redis) ulanish `1011` bilan yopiladi: huquqi tekshirilmagan ulanish ochiq qolmaydi. Har qanday xato (handler, heartbeat, bekor qilingan task) da ham ulanishning Redis yozuvi, guruhlari va fon tasklari `finally` da tozalanadi.
+- **Debounce:** bir lot uchun `availability` 200 ms ichida birlashtiriladi (Redis `SET NX PX 200`: birinchi chaqiruv darhol, qolganlari bitta kechiktirilgan `realtime.flush_availability` vazifasiga (`expires=30`); qiymat DB’dan yuborish paytida o‘qiladi, shuning uchun oxirgi holat yo‘qolmaydi).
+- `availability` qachon yuboriladi: bron/check-in/check-out/walk-in/slot holati, shuningdek slot qo‘shish/o‘chirish/ommaviy yaratish va `reconcile_free_slots` hisob-kitobni TUZATGANDA (xaritadagi eski son ham tuzatiladi).
+- DB yuki: `subscribe` ko‘p lot uchun BITTA so‘rov (ruxsat va snapshot birga); operator ruxsati bitta so‘rovda; heartbeat oddiy foydalanuvchi uchun `EXISTS`. Prodda `CONN_MAX_AGE=60` + `CONN_HEALTH_CHECKS` (`DB_CONN_MAX_AGE`).
 - Operator panelida slotlar setkasi shu kanal (`operator_lot_<uuid>`) orqali jonli yangilanadi.
 
 ### 12.1 Bildirishnomalar (Step 10a)
 
-- `apps.notifications.dispatcher.notify(user_id, event, context, dedupe_key=...)` → `NotificationLog` (UNIQUE `user, event, dedupe_key`: bir hodisa bir marta) + Celery `send_notification(log_id)`. Hodisalar `transaction.on_commit` dan keyin chaqiriladi; Celery enqueue xatosi asosiy oqimni buzmaydi (log `PENDING` qoladi; `notifications.resend_pending` har 5 daqiqada 2 daqiqadan eski `PENDING` larni qayta navbatga qo‘yadi).
-- **Kanal qoidasi (qaror):** *kritik* hodisalar (`overstay_detected`, `overstay_conflict`, `refund_manual`, `refund_failed`) — push VA Telegram (ikkalasi yoqilgan bo‘lsa). Qolganlari — **push birinchi**; foydalanuvchida faol `Device` bo‘lmasa, yoki push yetkazilmasa (barcha tokenlar yaroqsiz), Telegram **zaxira** (`tg_notifications=true` va `telegram_id` bo‘lsa). Telegram botni bloklagan foydalanuvchi (403) → `tg_notifications=False`.
+- `apps.notifications.dispatcher.notify(user_id, event, context, dedupe_key=...)` → `NotificationLog` (UNIQUE `user, event, dedupe_key`: bir hodisa bir marta) + Celery `send_notification(log_id)`. Hodisalar `transaction.on_commit` dan keyin chaqiriladi; Celery enqueue xatosi asosiy oqimni buzmaydi (publish 1 marta qayta uriniladi; log `PENDING` qoladi). `notifications.resend_pending` har 5 daqiqada 2 daqiqadan eski `PENDING` larni qayta navbatga qo‘yadi, lekin `next_attempt_at` (backoff / `Retry-After`) hali kelmagan qatorlarga TEGMAYDI. Qator `lease_until` bilan band qilinadi (ikki worker bir xabarni ikki marta yubormaydi); har yetkazilgan kanal darhol `delivered` ga yoziladi, shuning uchun keyingi xatoda push qayta yuborilmaydi.
+- **Kanal qoidasi (qaror):** *kritik* hodisalar (`overstay_detected`, `overstay_conflict`, `refund_manual`, `refund_failed`) — push VA Telegram (ikkalasi yoqilgan bo‘lsa). Qolganlari — **push birinchi**; foydalanuvchida faol `Device` bo‘lmasa, yoki push yetkazilmasa (barcha tokenlar yaroqsiz), Telegram **zaxira** (`tg_notifications=true` va `telegram_id` bo‘lsa). Telegram botni bloklagan foydalanuvchi (403) → `tg_notifications=False`. Qayta urinish: 5 martagacha, 30 s dan exponential (tavan 30 daq.); kanalning `Retry-After` qiymati 1 s .. 30 daq. oralig‘iga qisqartiriladi (nan/inf e’tiborsiz). Kutilmagan xato ("poison message") ham 5 urinishdan keyin `FAILED` bo‘ladi, abadiy `PENDING` qolmaydi. Foydalanuvchida ko‘pi bilan 5 ta `Device` (eng eskisi o‘chiriladi); Expo yuborish umumiy muddati 40 s.
 - Til: `user.language` (uz/ru/en). Matnlar `apps/notifications/messages.py`; **PII yo‘q** (davlat raqami, telefon, ism ishlatilmaydi); summa faqat qaytarish xabarlarida, slot kodi faqat ko‘chirishda.
 - Deep link: push `data.url = habi://booking/<id>`; Telegram inline tugma `https://<HABI_PUBLIC_URL>/b/<id>` (universal link; Telegram faqat http(s) qabul qiladi). `HABI_PUBLIC_URL` prod’da majburiy va `https://` bo‘lishi shart.
-- Hodisalar: `booking_confirmed`, `booking_expired`, `booking_cancelled`, `refund_done`, `refund_manual` (“qo‘lda qaytariladi, 1–3 ish kuni”), `refund_failed`, `reminder_15m_left` (CONFIRMED/ACTIVE bron tugashiga 15 daq), `overstay_detected` (walk-in `user=None` → o‘tkazib yuboriladi), `slot_reassigned`, `overstay_conflict` (faqat bron egasiga), `no_show`.
+- Hodisalar: `booking_confirmed`, `booking_expired`, `booking_cancelled`, `refund_done`, `refund_manual` (“qo‘lda qaytariladi, 1–3 ish kuni”), `refund_failed`, `reminder_15m_left` (CONFIRMED/ACTIVE bron tugashiga `NOTIFICATION_REMINDER_MINUTES`=15 daq; matn shu sozlamadan oladi), `overstay_detected` (walk-in `user=None` → o‘tkazib yuboriladi), `slot_reassigned`, `overstay_conflict` (faqat bron egasiga), `no_show`.
+- Slot kodi (`Slot.code`) haydovchiga ko‘rsatiladi, shuning uchun admin API’da faqat `[A-Za-z0-9][A-Za-z0-9_-]{0,19}` ruxsat etiladi (havola/markup yuborib bo‘lmaydi).
+- Expo receipt’lari: `ok` ticket Redis’da saqlanadi, `notifications.check_push_receipts` (har 15 daq) `DeviceNotRegistered` qurilmalarni o‘chiradi.
 - Sozlamalar: faqat mavjud `PATCH /me {tg_notifications}` va `DELETE /me/devices` (YAGNI: alohida `push_enabled` va quiet hours yo‘q).
 
 ---
@@ -1475,15 +1530,19 @@ Izohlar: `'unsafe-eval'` faqat `data-onauth` varianti uchun va sababi yuqorida; 
 | `mark_no_shows` | har 1 daq | 10.7 |
 | `detect_overstays` | har 1 daq | 10.7 |
 | `send_reminders` | har 1 daq | “15 daqiqa qoldi” — Telegram bot + Expo push (bron + tur bo‘yicha bir marta, 12.1) |
-| `send_notification(log_id)` | hodisa bo‘yicha | Kanal tanlash 12.1 dagi qoida bo‘yicha; idempotent, 5 martagacha exponential retry |
-| `prune_push_tokens` | har kuni | 90 kundan eski (`last_seen`) qurilmalarni o‘chirish va 180 kundan eski `NotificationLog` ni tozalash (Expo `DeviceNotRegistered` yuborish paytida darhol o‘chiriladi) |
+| `notifications.send(log_id)` | hodisa bo‘yicha | Kanal tanlash 12.1 dagi qoida bo‘yicha: **kritik hodisalar — push VA Telegram, qolganlari — push birinchi, Telegram faqat zaxira**; idempotent, 5 martagacha exponential retry |
+| `notifications.prune_push_tokens` | har kuni | 90 kundan eski (`last_seen`) qurilmalarni o‘chirish (Expo `DeviceNotRegistered` yuborish paytida darhol o‘chiriladi) |
+| `notifications.purge_notification_log` | har kuni | 180 kundan eski `NotificationLog` qatorlarini bo‘laklab o‘chirish |
+| `notifications.check_push_receipts` | har 15 daq | Expo receipt’larini o‘qib, `DeviceNotRegistered` qurilmalarni o‘chirish |
 | `notifications.resend_pending` | har 5 daq | Enqueue yo‘qolgan `PENDING` bildirishnomalarni qayta navbatga qo‘yish |
 | `realtime.flush_availability(lot_id)` | `availability` debounce’idan keyin (~250 ms) | Kechiktirilgan oxirgi `availability` xabari |
-| `reconcile_free_slots` | har 5 daq | `free_slots` ni haqiqiy hisob bilan tuzatish |
+| `reconcile_free_slots` | har 5 daq | `free_slots` ni haqiqiy hisob bilan tuzatish (tuzatilgan lot uchun `availability` ham yuboriladi) |
 | `snapshot_occupancy` | har 15 daq | Bashorat uchun tarix |
 | `daily_reports` | har kuni 00:30 | Owner’larga kunlik hisobot |
 | `retry_failed_webhooks` | har 5 daq | Yetim PENDING to‘lovlarni yopish, «o‘lgan bron + PAID» uchun avtomatik refund, yo‘qolgan refund tasklarini qayta navbatga (8.4) |
 | `payments.send_refund(refund_id)` | `cancel_booking`/kech to‘lovdan keyin (`on_commit`) | Refundni provayderga bir marta yuborish, backoff bilan qayta urinish |
+
+**Navbatlar va worker’lar (Step 10a).** `realtime.*` → `realtime`, `notifications.*` → `notify`, qolganlari → `celery`. Har navbatga alohida worker, `--prefetch-multiplier 1`: sekin Telegram/Expo hech qachon sweeplarni va jonli yangilanishni kechiktirmaydi. Natijalar saqlanmaydi (`ignore_result`) — barcha yangi vazifalar uchun. Beat yozuvlarida `expires` bor: worker o‘chiq turganda to‘planib qolgan bir xil sweeplar tashlab yuboriladi. `rate_limit="25/s"` — har bir *worker instance* (jarayon emas) uchun; Telegram butun bot uchun ~30 xabar/s ruxsat beradi, shuning uchun `notify` navbatida BITTA worker ishlating.
 
 ---
 
@@ -1493,19 +1552,44 @@ Izohlar: `'unsafe-eval'` faqat `data-onauth` varianti uchun va sababi yuqorida; 
 flowchart TB
     U["Foydalanuvchilar"] --> CDN["CDN / Nginx<br/>React statik fayllar"]
     U --> LB["Nginx (SSL, load balancer)"]
-    LB --> A1["API #1 (Gunicorn)"] & A2["API #2"]
-    LB --> W1["ASGI / Channels (Uvicorn)"]
-    A1 & A2 & W1 --> PG[("PostgreSQL + PostGIS<br/>primary + read replica")]
-    A1 & A2 & W1 --> RD[("Redis")]
+    LB --> A1["ASGI #1 (Uvicorn:<br/>API + WebSocket)"] & A2["ASGI #2"]
+    A1 & A2 --> PG[("PostgreSQL + PostGIS<br/>primary + read replica")]
+    A1 & A2 --> RD[("Redis<br/>broker / channels / state")]
+    A1 & A2 --> RC[("Redis cache<br/>allkeys-lru")]
     CW["Celery workers"] --> PG & RD
     A1 & A2 --> OSRM["OSRM konteyner<br/>(uzbekistan.osm.pbf)"]
 ```
 
 **Docker Compose xizmatlari (dev):** `db` (postgis/postgis:16-3.4), `redis`, `backend`, `asgi`, `celery`, `celery-beat`, `osrm`, `minio`, `admin` (Vite dev server), `nginx`. Mobil ilova Docker’da emas: `npx expo start` bilan ishlab chiqiladi, telefonda Expo Go / development build orqali ochiladi.
 
+**ASGI, WebSocket va Redis (Step 10a, majburiy).**
+
+- **Server:** HTTP ham, WebSocket ham bitta ASGI jarayonida: `uvicorn config.asgi:application --workers $WEB_CONCURRENCY --lifespan off --ws-max-size 16384 --proxy-headers` (Dockerfile CMD). Gunicorn faqat WSGI (management buyruqlari) uchun qoladi; API ham Uvicorn ostida ishlaydi.
+- **nginx WebSocket proksisi:**
+
+```nginx
+location /ws/ {
+    proxy_pass http://asgi;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_read_timeout 120s;   # server ping 30 s, idle chegarasi 90 s: undan KATTA bo‘lishi shart
+    proxy_send_timeout 120s;
+    limit_conn ws_per_ip 20;   # limit_conn_zone $binary_remote_addr zone=ws_per_ip:10m;
+    client_max_body_size 8k;
+}
+```
+
+  `Upgrade`/`Connection` sarlavhalarisiz WebSocket ishlamaydi; `proxy_read_timeout` standart 60 s bo‘lsa jim ulanishlar 60 s da uziladi. Access log’da `?ticket=` bor (ticket bir martalik, 30 s, shuning uchun xavfsiz), lekin baribir `/ws/` uchun query’ni log formatidan olib tashlash tavsiya etiladi (`$uri` ishlating, `$request_uri` emas).
+- **Redis rollari** (alohida database raqami, `*_REDIS_URL` bilan alohida serverga ko‘chiriladi): broker + Celery natijalari `REDIS_URL` (db 0), channel layer `CHANNEL_REDIS_URL` (db 1), Django kesh/throttling `CACHE_REDIS_URL` (db 2), ilova holati — ticketlar, ulanishlar reyestri, debounce, Expo ticketlari, idempotency, urinishlar — `STATE_REDIS_URL` (db 3). **Eviction serverga tegishli, database raqamiga emas:** broker, channel layer va holat `maxmemory-policy noeviction` serverida bo‘lishi shart (kalit chiqarib tashlansa — yo‘qolgan vazifa yoki ticket); kesh `allkeys-lru` serverida bo‘lishi mumkin, shuning uchun prodda `CACHE_REDIS_URL` ni alohida instansiyaga yo‘naltiring. **Redis >= 6.2** (ticket uchun `GETDEL`), CI va dev’da `redis:7.4-alpine` qadalgan. `redis-cli FLUSHDB` ni boshqa database’ga ta’sir qilmasligi uchun testlar db 0 dan boshqasini ishlatadi.
+- **Celery worker’lar** (har navbatga bittadan): `celery -A config worker -Q celery`, `... -Q realtime`, `... -Q notify` (hammasida `--prefetch-multiplier 1`), bitta `celery -A config beat`.
+- **PostgreSQL ulanishlari:** prodda `CONN_MAX_AGE=60` (`DB_CONN_MAX_AGE`) va `CONN_HEALTH_CHECKS=True`.
+- **Muhit:** `HABI_PUBLIC_URL` (majburiy, https), `EXPO_ACCESS_TOKEN` (ixtiyoriy), `CHANNEL_REDIS_URL`, `CACHE_REDIS_URL`, `STATE_REDIS_URL` (ixtiyoriy; standart — `REDIS_URL` dagi db 1/2/3), `WS_*`, `DB_CONN_MAX_AGE`.
+
 **Telegram webhook (lokal ishlab chiqishda):** Telegram faqat ochiq HTTPS manzilga yuboradi, shuning uchun `cloudflared tunnel` yoki `ngrok` ishlatiladi, keyin `python manage.py set_telegram_webhook https://<tunnel>/api/v1/telegram/webhook`. Muqobil: dev rejimida `python manage.py run_bot_polling` (getUpdates) buyrug‘i — webhook kerak emas.
 
-**To‘lov webhooklari uchun nginx / gunicorn (majburiy):** gunicorn faqat nginx ko‘radigan interfeysda tinglaydi (to‘g‘ridan-to‘g‘ri internetdan emas), shunda `X-Forwarded-For` ni faqat nginx yozadi; nginx uni `proxy_set_header X-Forwarded-For $remote_addr;` bilan QAYTA YOZADI (mijoz yuborganini qo‘shmaydi) — `NUM_PROXIES=1` shu taxminga tayanadi, IP allowlist va throttle ham. `client_max_body_size 64k;` webhook yo‘llarida (ilova o‘zi 16 KB dan oshganini 413 bilan rad etadi). Prod da `PAYMENTS_PAYME_IPS` standarti — Payme e’lon qilgan 185.234.113.1–15; Click manzillari CLICK dan olinib `PAYMENTS_CLICK_IPS` ga yoziladi (bo‘sh qolsa `check --deploy` `payments.W001` beradi). Ilova (gunicorn) porti faqat nginx ga ochiq (firewall / `127.0.0.1` yoki ichki tarmoq), internetga emas. Redis broker `visibility_timeout=7200` (refund qayta urinishlari 30 daq. gacha).
+**To‘lov webhooklari uchun nginx / ilova serveri (majburiy):** Uvicorn faqat nginx ko‘radigan interfeysda tinglaydi (to‘g‘ridan-to‘g‘ri internetdan emas), shunda `X-Forwarded-For` ni faqat nginx yozadi; nginx uni `proxy_set_header X-Forwarded-For $remote_addr;` bilan QAYTA YOZADI (mijoz yuborganini qo‘shmaydi) — `NUM_PROXIES=1` shu taxminga tayanadi, IP allowlist va throttle ham. `client_max_body_size 64k;` webhook yo‘llarida (ilova o‘zi 16 KB dan oshganini 413 bilan rad etadi). Prod da `PAYMENTS_PAYME_IPS` standarti — Payme e’lon qilgan 185.234.113.1–15; Click manzillari CLICK dan olinib `PAYMENTS_CLICK_IPS` ga yoziladi (bo‘sh qolsa `check --deploy` `payments.W001` beradi). Ilova (Uvicorn) porti faqat nginx ga ochiq (firewall / `127.0.0.1` yoki ichki tarmoq), internetga emas. Redis broker `visibility_timeout=7200` (refund qayta urinishlari 30 daq. gacha).
 
 **Mobil reliz:** EAS Build (`eas build -p android --profile production` → Google Play AAB; iOS → App Store). Kichik JS o‘zgarishlari EAS Update (OTA) bilan do‘konni kutmasdan yetkaziladi.
 
@@ -1521,7 +1605,7 @@ docker run -p 5000:5000 -v $PWD:/data osrm/osrm-backend osrm-routed --algorithm 
 
 **CI/CD (GitHub Actions):** lint (ruff, eslint) → testlar (pytest, vitest) → Docker image build → staging’ga deploy → qo‘lda tasdiq → production.
 
-**Muhit o‘zgaruvchilari:** `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`, `JWT_SIGNING_KEY`, `OSRM_URL`, `PAYME_*`, `CLICK_*`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_WEBHOOK_SECRET`, `EXPO_ACCESS_TOKEN`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`.
+**Muhit o‘zgaruvchilari:** `DATABASE_URL`, `REDIS_URL`, `CHANNEL_REDIS_URL`, `CACHE_REDIS_URL`, `STATE_REDIS_URL`, `HABI_PUBLIC_URL`, `SECRET_KEY`, `JWT_SIGNING_KEY`, `OSRM_URL`, `PAYME_*`, `CLICK_*`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_WEBHOOK_SECRET`, `EXPO_ACCESS_TOKEN`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`.
 
 ---
 

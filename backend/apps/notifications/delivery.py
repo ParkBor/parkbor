@@ -17,6 +17,7 @@ Safety properties:
 """
 
 import logging
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
@@ -71,6 +72,17 @@ def _backoff(attempts: int) -> float:
     return min(BACKOFF_BASE_SECONDS * 2 ** max(attempts - 1, 0), BACKOFF_CAP_SECONDS)
 
 
+def _wait(requested, attempts: int) -> float:
+    """Seconds to wait before the next attempt: the channel's Retry-After when it is a sane number
+    (clamped to 1 s .. BACKOFF_CAP_SECONDS, so a hostile or buggy answer can neither spin the
+    worker nor park the row for days), otherwise the exponential backoff."""
+    if isinstance(requested, bool) or not isinstance(requested, int | float):
+        return _backoff(attempts)
+    if not math.isfinite(requested):
+        return _backoff(attempts)
+    return min(max(float(requested), 1.0), BACKOFF_CAP_SECONDS)
+
+
 def _claim(log_id, now: datetime) -> NotificationLog | None:
     free = Q(lease_until__isnull=True) | Q(lease_until__lt=now)
     claimed = NotificationLog.objects.filter(free, pk=log_id, status=Status.PENDING).update(
@@ -88,24 +100,26 @@ def deliver(log_id, *, now: datetime | None = None) -> Delivery:
     log = _claim(log_id, now)
     if log is None:
         return Delivery()
+    outcome = _Round()  # filled in as channels finish: a crash later keeps what was delivered
     try:
-        outcome = _attempt(log)
-    except Exception:  # noqa: BLE001 - never lose the row: treat it as a retryable failure
+        _attempt(log, outcome)
+    except Exception:  # noqa: BLE001 - never lose the row
         logger.exception("notification %s: unexpected error", log.pk)
-        outcome = _Round()
-        outcome.need_retry(_backoff(log.attempts), "internal_error")
+        if log.attempts >= MAX_ATTEMPTS:
+            outcome.retry_in, outcome.failed = None, "internal_error"  # a poison message ends
+        else:
+            outcome.need_retry(_backoff(log.attempts), "internal_error")
     return _finish(log, outcome, now)
 
 
 # --- one attempt --------------------------------------------------------------------------------
 
 
-def _attempt(log: NotificationLog) -> _Round:
-    outcome = _Round()
+def _attempt(log: NotificationLog, outcome: _Round) -> None:
     user = log.user
     if not user.is_active:
         outcome.skipped = "user_inactive"
-        return outcome
+        return
     message = messages.render(log.event, user.language, log.context)
     already = {name for name in log.delivered.split("+") if name}
     final = log.attempts >= MAX_ATTEMPTS
@@ -120,7 +134,6 @@ def _attempt(log: NotificationLog) -> _Round:
     wants_telegram = telegram_enabled and TELEGRAM not in already
     if wants_telegram and (critical or not (push_done or push_waiting)):
         _telegram(log, user, message, outcome, final=final)
-    return outcome
 
 
 def _push(log, message, tokens, outcome: _Round, *, final: bool) -> None:
@@ -147,12 +160,12 @@ def _push(log, message, tokens, outcome: _Round, *, final: bool) -> None:
     if dead:
         Device.objects.filter(user_id=log.user_id, expo_push_token__in=dead).delete()
     if any(r.outcome is PushOutcome.OK for r in results):
-        outcome.delivered.add(PUSH)
+        _mark_delivered(log, outcome, PUSH)
         return
     retries = [r for r in results if r.outcome is PushOutcome.RETRY]
     failures = [r for r in results if r.outcome is PushOutcome.FAILED]
     if retries and not final:
-        wait = max((r.retry_after or _backoff(log.attempts)) for r in retries)
+        wait = max(_wait(r.retry_after, log.attempts) for r in retries)
         outcome.need_retry(wait, retries[0].error)
     elif retries or failures:
         outcome.failed = (retries or failures)[0].error
@@ -169,14 +182,22 @@ def _telegram(log, user: User, message, outcome: _Round, *, final: bool) -> None
         button_url=url,
     )
     if result.outcome is TelegramOutcome.OK:
-        outcome.delivered.add(TELEGRAM)
+        _mark_delivered(log, outcome, TELEGRAM)
     elif result.outcome is TelegramOutcome.BLOCKED:
         User.objects.filter(pk=user.pk).update(tg_notifications=False)
         outcome.blocked = True
     elif result.outcome is TelegramOutcome.RETRY and not final:
-        outcome.need_retry(result.retry_after or _backoff(log.attempts), result.error)
+        outcome.need_retry(_wait(result.retry_after, log.attempts), result.error)
     else:
         outcome.failed = result.error or "telegram_error"
+
+
+def _mark_delivered(log: NotificationLog, outcome: _Round, channel: str) -> None:
+    """Remember a delivery the moment it happens, before anything else can fail: whatever goes
+    wrong afterwards, a retry must not send this channel's message again."""
+    outcome.delivered.add(channel)
+    already = {name for name in log.delivered.split("+") if name}
+    NotificationLog.objects.filter(pk=log.pk).update(delivered=_join(already | outcome.delivered))
 
 
 def _safe(builder, booking_id):
@@ -205,8 +226,13 @@ def _finish(log: NotificationLog, outcome: _Round, now: datetime) -> Delivery:
         "updated_at": now,
     }
     retry_in = outcome.retry_in
+    values["next_attempt_at"] = None
     if retry_in is not None:
-        values.update(status=Status.PENDING, last_error=outcome.error[:120])
+        values.update(
+            status=Status.PENDING,
+            last_error=outcome.error[:120],
+            next_attempt_at=now + timedelta(seconds=retry_in),
+        )
     elif delivered:
         values.update(status=Status.SENT, sent_at=now, last_error="")
     elif outcome.failed:

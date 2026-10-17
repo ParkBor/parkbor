@@ -7,6 +7,7 @@ Redis / channel layer is logged and swallowed, never raised into the booking flo
 Messages carry ids, counters and statuses only: never a plate, phone or name.
 """
 
+import asyncio
 import logging
 
 import redis
@@ -26,14 +27,20 @@ _LAST_KEY = "rt:avail:last:"  # leading-edge window of one lot
 _TRAIL_KEY = "rt:avail:trail:"  # a trailing flush is already scheduled for this lot
 _TRAIL_TTL_FACTOR = 5
 _FLUSH_MARGIN_SECONDS = 0.05
+SEND_TIMEOUT_SECONDS = 2
+FLUSH_EXPIRES_SECONDS = 30  # a flush older than this is pointless: a newer state went out
 
 
 # --- low level --------------------------------------------------------------------------------
 
 
 async def _group_send_many(layer, items: list[tuple[str, dict]]) -> None:
-    for group, payload in items:
-        await layer.group_send(group, {"type": EVENT_TYPE, "payload": payload})
+    # A Redis that accepts the connection but answers slowly must not hold a request, a sweep or
+    # a Celery worker: the whole send is bounded (the layer's own timeouts are longer, because
+    # its receive side blocks on purpose).
+    async with asyncio.timeout(SEND_TIMEOUT_SECONDS):
+        for group, payload in items:
+            await layer.group_send(group, {"type": EVENT_TYPE, "payload": payload})
 
 
 def _send(items: list[tuple[str, dict]]) -> bool:
@@ -58,13 +65,7 @@ def broadcast_availability(lot_id) -> bool:
     snapshot = queries.availability_snapshot(lot_id)
     if snapshot is None:
         return False
-    payload = {
-        "type": "availability",
-        "lot_id": snapshot["lot_id"],
-        "free_slots": snapshot["free_slots"],
-        "total_slots": snapshot["total_slots"],
-        "ts": queries.timestamp(),
-    }
+    payload = queries.availability_payload(snapshot)
     items = [(groups.lot_group(snapshot["lot_id"]), payload)]
     if snapshot["lng_lat"] is not None:
         lng, lat = snapshot["lng_lat"]
@@ -116,7 +117,9 @@ def on_availability_changed(*, lot_id) -> None:
         return
     try:
         flush_availability.apply_async(
-            args=[str(lot_id)], countdown=_debounce_ms() / 1000 + _FLUSH_MARGIN_SECONDS
+            args=[str(lot_id)],
+            countdown=_debounce_ms() / 1000 + _FLUSH_MARGIN_SECONDS,
+            expires=FLUSH_EXPIRES_SECONDS,
         )
     except Exception:  # noqa: BLE001 - broker down: send now instead of losing the update
         logger.exception("could not schedule the availability flush for lot %s", lot_id)
@@ -131,7 +134,9 @@ def _flush_is_scheduled(lot_id) -> bool:
         return False
 
 
-@shared_task(name="realtime.flush_availability", soft_time_limit=20, time_limit=30)
+@shared_task(
+    name="realtime.flush_availability", ignore_result=True, soft_time_limit=20, time_limit=30
+)
 def flush_availability(lot_id: str) -> bool:
     """The trailing edge of a debounced burst: send the latest state, reopen the window."""
     _release_trailing_flush(lot_id)

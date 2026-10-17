@@ -6,7 +6,9 @@ come back aligned with the input. Tokens, the access token and response bodies a
 
 import json
 import logging
+import math
 import re
+import time
 from dataclasses import dataclass, field
 from enum import StrEnum
 
@@ -20,6 +22,7 @@ MAX_BATCH = 100
 MAX_RECEIPT_IDS = 300
 MAX_PAYLOAD_BYTES = 4096
 TIMEOUT_SECONDS = 10.0
+SEND_DEADLINE_SECONDS = 40.0  # all batches of one send() call together
 _TOKEN_RE = re.compile(r"(?:Expo|Exponent)PushToken\[[A-Za-z0-9_\-]+\]")
 _PERMANENT_ERRORS = frozenset({"MessageTooBig", "InvalidCredentials", "MismatchSenderId"})
 
@@ -97,9 +100,13 @@ def send(messages: list[PushMessage]) -> list[PushResult]:
     """Send ``messages``; the result list has one entry per message, in the same order."""
     results: list[PushResult | None] = [_precheck(m) for m in messages]
     pending = [i for i, result in enumerate(results) if result is None]
+    deadline = time.monotonic() + SEND_DEADLINE_SECONDS
     for start in range(0, len(pending), MAX_BATCH):
         indexes = pending[start : start + MAX_BATCH]
-        batch = _send_batch([messages[i] for i in indexes])
+        if time.monotonic() > deadline:  # a slow Expo must not pin a worker for minutes
+            batch = [PushResult(PushOutcome.RETRY, "deadline_exceeded")] * len(indexes)
+        else:
+            batch = _send_batch([messages[i] for i in indexes])
         for index, result in zip(indexes, batch, strict=True):
             results[index] = result
     return [r for r in results if r is not None]
@@ -136,9 +143,10 @@ def _http_failure(response: httpx.Response) -> PushResult | None:
 
 def _retry_after(response: httpx.Response) -> float | None:
     try:
-        return float(response.headers["Retry-After"])
+        value = float(response.headers["Retry-After"])
     except (KeyError, ValueError):
         return None
+    return value if math.isfinite(value) else None
 
 
 def _json(response: httpx.Response, key: str):

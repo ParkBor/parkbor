@@ -9,6 +9,8 @@ import string
 from dataclasses import dataclass
 from decimal import Decimal
 
+from django.conf import settings
+
 from . import events as ev
 
 DEFAULT_LANGUAGE = "uz"
@@ -66,16 +68,16 @@ TEMPLATES: dict[str, dict[str, dict[str, str]]] = {
     },
     ev.REMINDER_15M_LEFT: {
         "uz": {
-            "title": "15 daqiqa qoldi",
-            "body": "Bron tugashiga 15 daqiqa qoldi. Joyni bo'shatishga tayyorlaning.",
+            "title": "Bron tugashiga oz qoldi",
+            "body": "Bron tugashiga {minutes} daqiqa qoldi. Joyni bo'shatishga tayyorlaning.",
         },
         "ru": {
-            "title": "Осталось 15 минут",
-            "body": "До конца брони осталось 15 минут. Подготовьтесь освободить место.",
+            "title": "Скоро конец брони",
+            "body": "До конца брони осталось {minutes} мин. Подготовьтесь освободить место.",
         },
         "en": {
-            "title": "15 minutes left",
-            "body": "Your booking ends in 15 minutes. Get ready to leave the spot.",
+            "title": "Your booking ends soon",
+            "body": "Your booking ends in {minutes} min. Get ready to leave the spot.",
         },
     },
     ev.OVERSTAY_DETECTED: {
@@ -202,6 +204,7 @@ def pick_language(language: str | None) -> str:
 def render(event: str, language: str | None, context: dict) -> Message:
     entry = TEMPLATES[event][pick_language(language)]
     values = _Context(
+        minutes=settings.NOTIFICATION_REMINDER_MINUTES,
         slot=str(context.get("slot", ""))[:20],
         amount=format_amount(context["amount"]) if context.get("amount") is not None else "",
     )

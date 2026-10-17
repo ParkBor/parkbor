@@ -2,6 +2,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F403
 from .base import env
+from .redis_urls import DB_CACHE, DB_CHANNELS, DB_STATE, channel_layers, with_db
 
 # Everything below is required from the environment: no defaults, startup fails if missing.
 DEBUG = False
@@ -19,7 +20,15 @@ DATABASES["default"]["OPTIONS"] = {
     **DATABASES["default"].get("OPTIONS", {}),
     "options": "-c lock_timeout=10s -c statement_timeout=30s",
 }
-REDIS_URL = env("REDIS_URL")
+REDIS_URL = env("REDIS_URL")  # broker + Celery results (database 0)
+# Separate keyspaces (and, for the cache, ideally a separate allkeys-lru server): see redis_urls.
+CHANNEL_REDIS_URL = env("CHANNEL_REDIS_URL", default=with_db(REDIS_URL, DB_CHANNELS))
+CACHE_REDIS_URL = env("CACHE_REDIS_URL", default=with_db(REDIS_URL, DB_CACHE))
+STATE_REDIS_URL = env("STATE_REDIS_URL", default=with_db(REDIS_URL, DB_STATE))
+# Reuse database connections (a WebSocket consumer or a busy worker would otherwise open one per
+# call); a connection is health-checked before reuse so a restarted PostgreSQL does not 500.
+DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 
@@ -74,14 +83,12 @@ _validate_payments(
     }
 )
 CACHES = {
-    "default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": REDIS_URL}
-}
-CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {"hosts": [REDIS_URL]},
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": CACHE_REDIS_URL,
     }
 }
+CHANNEL_LAYERS = channel_layers(CHANNEL_REDIS_URL)
 # Universal links in Telegram buttons: mandatory, https only (see apps.notifications.links).
 from apps.notifications.links import validate_public_url  # noqa: E402
 

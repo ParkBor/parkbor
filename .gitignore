@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+.expo/
+*.log
+.DS_Store
+coverage/
+staticfiles/
+
+.coverage
+htmlcov/
+*.tsbuildinfo
+ARCHITECTURE (1).md

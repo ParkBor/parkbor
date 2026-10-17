@@ -1,0 +1,4 @@
+{
+  "NSLocationWhenInUseUsageDescription": "Habi uses your location to show nearby parking lots.",
+  "NSCameraUsageDescription": "Habi uses the camera only to read QR codes at entry and exit. Images are not stored."
+}

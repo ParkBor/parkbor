@@ -1,0 +1,28 @@
+name: admin
+permissions:
+  contents: read
+concurrency:
+  group: admin-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  push:
+    paths: ["admin/**", "packages/**", "pnpm-workspace.yaml", "pnpm-lock.yaml", "package.json", ".npmrc", ".nvmrc", ".github/workflows/admin.yml"]
+  pull_request:
+    paths: ["admin/**", "packages/**", "pnpm-workspace.yaml", "pnpm-lock.yaml", "package.json", ".npmrc", ".nvmrc", ".github/workflows/admin.yml"]
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # pnpm version comes from "packageManager" in the root package.json.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter admin lint
+      - run: pnpm --filter admin typecheck
+      - run: pnpm --filter admin test
+      - run: pnpm --filter admin build
+      - run: pnpm --filter "./packages/*" typecheck

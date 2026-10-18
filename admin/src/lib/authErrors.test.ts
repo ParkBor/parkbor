@@ -85,5 +85,5 @@ describe('safeRedirectTarget', () => {
     { pathname: '/ok', hash: 'frag' },
     { pathname: '/ok', search: '?a\nb' },
     { pathname: 42 },
-  ])('falls back to /parkings for %j', (from) => expect(safeRedirectTarget(from)).toBe('/parkings'))
+  ])('falls back to /dashboard for %j', (from) => expect(safeRedirectTarget(from)).toBe('/dashboard'))
 })

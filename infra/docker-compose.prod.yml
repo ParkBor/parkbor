@@ -1,0 +1,306 @@
+# Habi production stack (single host). Architecture: docs/ARCHITECTURE.md 16, 17; runbook: docs/DEPLOY.md.
+#
+#   cd infra
+#   cp prod.env.example .env.prod     # fill in (NEVER commit .env.prod; .gitignore covers .env.*)
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml config -q     # validate
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d db redis redis-cache
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm migrate
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+#
+# No secret lives in this file: every credential comes from .env.prod (compose interpolation for
+# the data services, env_file for the application containers).
+name: habi
+
+x-backend: &backend
+  image: ${HABI_BACKEND_IMAGE:-habi-backend:local}
+  build:
+    context: ../backend
+    args:
+      RELEASE: ${SENTRY_RELEASE:-}
+  env_file: .env.prod
+  environment: &backend_env
+    DJANGO_SETTINGS_MODULE: config.settings.prod
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: ["ALL"]
+  networks: [public, data]   # public = outbound internet (Telegram, Expo, payment providers)
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    redis-cache:
+      condition: service_healthy
+  logging: &logging
+    driver: json-file
+    options: {max-size: "20m", max-file: "5"}
+
+x-worker-health: &worker_health
+  interval: 30s
+  timeout: 15s
+  retries: 3
+  start_period: 40s
+
+services:
+  # ---------------------------------------------------------------- data services (data network only)
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    command:
+      - postgres
+      - -c
+      - max_connections=${PG_MAX_CONNECTIONS:-200}
+      - -c
+      - shared_buffers=${PG_SHARED_BUFFERS:-512MB}
+      - -c
+      - effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-1536MB}
+      - -c
+      - log_min_duration_statement=500
+      - -c
+      - log_lock_waits=on
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - pgbackups:/backups          # target of the pg_dump cron in docs/DEPLOY.md
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits: {cpus: "2.0", memory: 2g}
+    stop_grace_period: 60s
+    shm_size: 256m
+    logging: *logging
+
+  # noeviction server: Celery broker (db 0), Channels layer (db 1), application state (db 3).
+  # Losing a key here means a lost task or ticket, so it must never evict. AOF keeps queued tasks
+  # across a restart.
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    command:
+      - sh
+      - -c
+      - >-
+        exec redis-server --requirepass "$$REDIS_PASSWORD"
+        --maxmemory ${REDIS_MAXMEMORY:-512mb} --maxmemory-policy noeviction
+        --appendonly yes --appendfsync everysec --save 900 1 --save 300 100
+    volumes:
+      - redisdata:/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 768m}
+    logging: *logging
+
+  # allkeys-lru server: Django cache and throttling counters only (CACHE_REDIS_URL). Disposable.
+  redis-cache:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    environment:
+      CACHE_REDIS_PASSWORD: ${CACHE_REDIS_PASSWORD:?set CACHE_REDIS_PASSWORD}
+      REDISCLI_AUTH: ${CACHE_REDIS_PASSWORD}
+    command:
+      - sh
+      - -c
+      - >-
+        exec redis-server --requirepass "$$CACHE_REDIS_PASSWORD"
+        --maxmemory ${CACHE_REDIS_MAXMEMORY:-256mb} --maxmemory-policy allkeys-lru
+        --appendonly no --save ""
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 384m}
+    logging: *logging
+
+  # Routing engine. Data is prepared once (docs/DEPLOY.md, "OSRM data") into the osrmdata volume
+  # and mounted read-only. Runs as the unprivileged `nobody` user (data files must be readable).
+  osrm:
+    image: osrm/osrm-backend:v5.27.1
+    restart: unless-stopped
+    user: "65534:65534"
+    command: ["osrm-routed", "--algorithm", "mld", "--max-table-size", "1000", "/data/uzbekistan-latest.osrm"]
+    volumes:
+      - osrmdata:/data:ro
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/5000'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits: {cpus: "2.0", memory: 2g}
+    logging: *logging
+
+  # ---------------------------------------------------------------- application
+  # One-shot operations: `docker compose run --rm migrate` (never started by `up`).
+  migrate:
+    <<: *backend
+    profiles: ["ops"]
+    restart: "no"
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 512m}
+
+  api:
+    <<: *backend
+    # HTTP and WebSocket in one ASGI process (ARCHITECTURE 17). The access log is OFF here: nginx
+    # logs requests without the query string, so a ?ticket= never reaches a log file. The port is
+    # exposed to the compose network only (not published): only nginx can reach it.
+    command:
+      - sh
+      - -c
+      - >-
+        exec uvicorn config.asgi:application --host 0.0.0.0 --port 8000
+        --workers $${WEB_CONCURRENCY:-3} --lifespan off --ws-max-size 16384
+        --timeout-graceful-shutdown 30 --proxy-headers --no-access-log
+    environment:
+      <<: *backend_env
+      # Trust X-Forwarded-* from any peer: the app port is reachable from nginx only (network
+      # isolation) and nginx overwrites X-Forwarded-For with $remote_addr.
+      FORWARDED_ALLOW_IPS: "*"
+    expose: ["8000"]
+    volumes:
+      - ./healthcheck/api.py:/healthcheck/api.py:ro
+    healthcheck:
+      test: ["CMD", "python", "/healthcheck/api.py"]
+      interval: 15s
+      timeout: 6s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 40s
+    deploy:
+      resources:
+        limits: {cpus: "2.0", memory: 1g}
+
+  # Celery: one worker per queue, prefetch 1 (ARCHITECTURE 16): a slow Telegram/Expo call must
+  # never delay sweeps or live updates. -n names the node so the healthcheck can ping it.
+  worker-default:
+    <<: *backend
+    command: ["celery", "-A", "config", "worker", "-l", "info", "-Q", "celery", "-n", "default@%h", "--prefetch-multiplier", "1", "--concurrency", "2", "--max-tasks-per-child", "1000"]
+    healthcheck:
+      <<: *worker_health
+      test: ["CMD-SHELL", "celery -A config inspect ping -d default@$$(hostname) --timeout 10"]
+    stop_grace_period: 60s
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 768m}
+
+  worker-realtime:
+    <<: *backend
+    command: ["celery", "-A", "config", "worker", "-l", "info", "-Q", "realtime", "-n", "realtime@%h", "--prefetch-multiplier", "1", "--concurrency", "2", "--max-tasks-per-child", "1000"]
+    healthcheck:
+      <<: *worker_health
+      test: ["CMD-SHELL", "celery -A config inspect ping -d realtime@$$(hostname) --timeout 10"]
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 512m}
+
+  # notify: keep EXACTLY ONE replica. rate_limit="25/s" is per worker instance and Telegram allows
+  # ~30 messages/s for the whole bot (ARCHITECTURE 16).
+  worker-notify:
+    <<: *backend
+    command: ["celery", "-A", "config", "worker", "-l", "info", "-Q", "notify", "-n", "notify@%h", "--prefetch-multiplier", "1", "--concurrency", "2", "--max-tasks-per-child", "1000"]
+    healthcheck:
+      <<: *worker_health
+      test: ["CMD-SHELL", "celery -A config inspect ping -d notify@$$(hostname) --timeout 10"]
+    stop_grace_period: 60s
+    deploy:
+      replicas: 1
+      resources:
+        limits: {cpus: "0.5", memory: 512m}
+
+  # beat: exactly ONE instance, never scale it. The schedule file lives in /tmp (container-local);
+  # every beat entry is idempotent and carries `expires`, so a restart loses nothing.
+  beat:
+    <<: *backend
+    command: ["celery", "-A", "config", "beat", "-l", "info", "--pidfile", "/tmp/celerybeat.pid", "-s", "/tmp/celerybeat-schedule"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; os.kill(int(open('/tmp/celerybeat.pid').read()), 0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 1
+      resources:
+        limits: {cpus: "0.25", memory: 256m}
+
+  # ---------------------------------------------------------------- edge
+  # Image = nginx + the built admin SPA (infra/nginx/Dockerfile). Unprivileged image: runs as the
+  # non-root `nginx` user and therefore listens on 8080/8443 inside; the host maps 80/443.
+  nginx:
+    image: ${HABI_NGINX_IMAGE:-habi-nginx:local}
+    build:
+      context: ..
+      dockerfile: infra/nginx/Dockerfile
+      args:
+        VITE_API_URL: ${ADMIN_VITE_API_URL:-/api/v1}
+        VITE_TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:?set TELEGRAM_BOT_USERNAME}
+        VITE_TILE_URL: ${ADMIN_VITE_TILE_URL:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    ports:
+      - "80:8080"
+      - "443:8443"
+    volumes:
+      # <TLS_DIR>/<domain>/fullchain.pem and privkey.pem for API_DOMAIN and ADMIN_DOMAIN, readable
+      # by uid 101 (nginx). See docs/DEPLOY.md "TLS certificates".
+      - ${TLS_DIR:-/opt/habi/certs}:/etc/nginx/certs:ro
+      # Let's Encrypt HTTP-01 challenge files (certbot --webroot on the host).
+      - ${ACME_WEBROOT:-/var/www/acme}:/var/www/acme:ro
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:?set ADMIN_DOMAIN}
+      # Only substitute our two variables in the template; nginx's own $variables stay intact.
+      NGINX_ENVSUBST_FILTER: "^(API|ADMIN)_DOMAIN$$"
+    networks: [public]
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/nginx-health || exit 1"]
+      interval: 15s
+      timeout: 4s
+      retries: 3
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 256m}
+    logging: *logging
+
+networks:
+  public: {}
+  # internal: no route to the internet. db / redis / redis-cache / osrm live on this network only.
+  data:
+    internal: true
+
+volumes:
+  pgdata:
+  pgbackups:
+  redisdata:
+  osrmdata:

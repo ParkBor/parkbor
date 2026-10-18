@@ -1,3 +1,4 @@
+import { currentPushToken } from '@/features/push/logoutToken';
 import { authApi } from '@/lib/authApi';
 import { getApiUrl } from '@/lib/config';
 import { createHttp } from '@/lib/http';
@@ -19,8 +20,9 @@ export const authStore = createAuthStore({
   refreshCall: authApi.refresh,
   fetchMe: authApi.me,
   // Plain client with an explicit access token: logout may run after the local session is gone
-  // (TODO(push): also send expo_push_token once /me/devices registration exists).
-  serverLogout: (refresh, access) => authApi.logout(access, refresh),
+  // The device push token rides with the revocation (queued with it, so retries keep it).
+  serverLogout: (refresh, access, pushToken) => authApi.logout(access, refresh, pushToken ?? null),
+  getPushToken: () => currentPushToken.get(),
 });
 
 export const api = createHttp({

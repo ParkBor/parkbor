@@ -1,6 +1,6 @@
 import { ApiError } from '@habi/api-client'
 import { describe, expect, it } from 'vitest'
-import { describeError, parseApiError } from './errors'
+import { apiErrorCode, describeError, isEndpointMissing, isPageOutOfRange, parseApiError } from './errors'
 
 const http = (body: unknown, status = 400) => new ApiError(status, body, 'http')
 
@@ -74,5 +74,53 @@ describe('prototype-pollution-like keys', () => {
   it('describeError mentions such keys without throwing', () => {
     const body = JSON.parse('{"__proto__": ["bad"]}') as unknown
     expect(describeError(http(body), 'fallback')).toBe('__proto__: bad')
+  })
+})
+
+describe('apiErrorCode / isEndpointMissing', () => {
+  it('reads a well-formed machine code only', () => {
+    expect(apiErrorCode(http({ detail: 'x', code: 'reservation_mismatch' }, 409))).toBe(
+      'reservation_mismatch',
+    )
+    expect(apiErrorCode(http({ code: '<script>' }, 409))).toBeNull()
+    expect(apiErrorCode(http({ code: 5 }, 409))).toBeNull()
+    expect(apiErrorCode(http(['code'], 409))).toBeNull()
+    expect(apiErrorCode(new Error('x'))).toBeNull()
+    expect(apiErrorCode(new ApiError(0, null, 'network'))).toBeNull()
+  })
+
+  it('recognises a missing endpoint', () => {
+    expect(isEndpointMissing(http(null, 404))).toBe(true)
+    expect(isEndpointMissing(http(null, 405))).toBe(true)
+    expect(isEndpointMissing(http(null, 501))).toBe(true)
+    expect(isEndpointMissing(http(null, 500))).toBe(false)
+    expect(isEndpointMissing(new ApiError(0, null, 'network'))).toBe(false)
+  })
+})
+
+describe('404 classification', () => {
+  it('treats a DRF JSON 404 as an answer from the API, not a missing route', () => {
+    expect(isEndpointMissing(http({ detail: 'Not found.', code: 'not_found' }, 404))).toBe(false)
+    expect(isEndpointMissing(http({ detail: 'Invalid page.' }, 404))).toBe(false)
+  })
+
+  it('treats a bodyless or HTML 404 as a missing route', () => {
+    expect(isEndpointMissing(http(null, 404))).toBe(true)
+    expect(isEndpointMissing(http({}, 404))).toBe(true)
+    expect(isEndpointMissing(http('<html>', 404))).toBe(true)
+  })
+
+  it('recognises an out-of-range page', () => {
+    expect(isPageOutOfRange(http({ detail: 'Invalid page.' }, 404))).toBe(true)
+    expect(isPageOutOfRange(http({ detail: 'x', code: 'invalid_page' }, 404))).toBe(true)
+    expect(isPageOutOfRange(http({ detail: 'Not found.' }, 404))).toBe(false)
+    expect(isPageOutOfRange(http({ detail: 'Invalid page.' }, 400))).toBe(false)
+    expect(isPageOutOfRange(http(null, 404))).toBe(false)
+  })
+
+  it('cleans and bounds the server text shown for a 400', () => {
+    const text = describeError(http({ detail: `bad‮${'x'.repeat(1000)}` }), 'fallback')
+    expect(text).not.toContain('‮')
+    expect(text.length).toBeLessThanOrEqual(301)
   })
 })

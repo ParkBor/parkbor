@@ -12,6 +12,7 @@ import { useLanguage } from '@/features/map/useLanguage';
 import { findCachedParking, isValidParkingId } from '@/features/parking/parkingView';
 import { SlotRows } from '@/features/parking/SlotRows';
 import { useSlotAvailability } from '@/features/parking/useSlotAvailability';
+import { useRealtimeGroups } from '@/features/realtime/useRealtime';
 import { firstParam, formatCoordParam } from '@/features/route/lotParams';
 import { usePalette } from '@/theme/theme';
 
@@ -45,6 +46,8 @@ function ParkingDetail({ lotId }: { lotId: string }) {
     lotId,
   );
   const slots = useSlotAvailability(lotId, true);
+  // lot_<id>: a snapshot on subscribe, then changes; the cache bridge refetches the per-type rows.
+  useRealtimeGroups([{ kind: 'lot', id: lotId }]);
 
   const startRoute = (): void => {
     if (!lot) return;

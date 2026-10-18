@@ -57,6 +57,35 @@ def test_init_sentry_registers_scrubbers_and_disables_pii(monkeypatch):
     assert captured["send_default_pii"] is False
 
 
+def test_init_sentry_wires_environment_release_and_never_sends_bodies(monkeypatch):
+    captured = {}
+    fake = types.SimpleNamespace(init=lambda **kw: captured.update(kw))
+    monkeypatch.setitem(sys.modules, "sentry_sdk", fake)
+    monkeypatch.setenv("SENTRY_ENVIRONMENT", "staging")
+    monkeypatch.setenv("SENTRY_RELEASE", "habi-backend@abc123")
+    monkeypatch.setenv("SENTRY_TRACES_SAMPLE_RATE", "0.25")
+    sentry.init_sentry("https://k@o.ingest.sentry.io/1")
+    assert captured["environment"] == "staging"
+    assert captured["release"] == "habi-backend@abc123"
+    assert captured["traces_sample_rate"] == 0.25
+    assert captured["max_request_body_size"] == "never"
+
+
+@pytest.mark.parametrize("raw", ["", "abc", "-1", "7"])
+def test_init_sentry_ignores_a_bad_trace_rate(monkeypatch, raw):
+    captured = {}
+    fake = types.SimpleNamespace(init=lambda **kw: captured.update(kw))
+    monkeypatch.setitem(sys.modules, "sentry_sdk", fake)
+    monkeypatch.setenv("SENTRY_TRACES_SAMPLE_RATE", raw)
+    sentry.init_sentry("https://k@o.ingest.sentry.io/1")
+    assert captured["traces_sample_rate"] == 0.0
+    assert captured["release"] is None
+
+
+def test_a_bare_query_string_ticket_is_masked():
+    assert "abc123" not in sentry.scrub("ticket=abc123&x=1")
+
+
 def test_scan_request_bodies_and_qr_tokens_never_leave():
     event = {
         "request": {

@@ -35,6 +35,27 @@ export default defineConfig({
         'src/features/operator/slotView.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/features/operator/tabVisibility.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/features/operator/walkInForm.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        // Step 10b (realtime + push): one floor per logic file.
+        'src/features/realtime/appState.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/frameLimiter.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/rejectPolicy.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/backoff.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/batcher.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/cacheBridge.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/cacheUpdates.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/closePolicy.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/geohash.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/lifecycle.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/pollFallback.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/protocol.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/rateLimit.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/realtimeClient.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/staleFilter.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/realtime/ticket.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/push/deviceRegistrar.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/push/logoutToken.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/push/notificationLink.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/push/permissionPolicy.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
       },
       // Logic modules only (incl. thin native wrappers tested with mocks). NOT covered: UI
       // (app/**, src/components, *.tsx hooks/components) - there are no render tests yet.
@@ -72,6 +93,13 @@ export default defineConfig({
         // feedback (expo-haptics) and slotColors (palette lookup), app/operator/** and (tabs)/operator;
         // there are no render tests. The camera, haptics and the real backend are not exercised here.
         'src/features/operator/{cardLifecycle,checkoutFlow,gateErrors,gateResult,inviteCode,lotPolicy,money,operatorApi,operatorSchemas,operatorStore,plateText,pollingPolicy,scanPolicy,slotView,tabVisibility,walkInForm}.ts',
+        // Step 10b: realtime protocol/reconnect logic and push logic - "logic coverage, NOT UI". NOT covered:
+        // realtimeSession (WebSocket/AppState/expo-network wiring), useRealtime (hooks), pushRuntime
+        // (expo-notifications / expo-device glue), usePushSetup / usePushPrompt / PushSetup (hooks),
+        // NotificationSettingsScreen (UI). A real
+        // server and a real device are needed to exercise those.
+        'src/features/realtime/{appState,backoff,batcher,cacheBridge,cacheUpdates,closePolicy,frameLimiter,geohash,lifecycle,pollFallback,protocol,rateLimit,realtimeClient,rejectPolicy,staleFilter,ticket}.ts',
+        'src/features/push/{deviceRegistrar,logoutToken,notificationLink,permissionPolicy}.ts',
         'config/{mapsKey,paymentSandbox}.js',
         'src/i18n/{resolveLanguage,languagePreference}.ts',
         'src/theme/palette.ts',

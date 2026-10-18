@@ -69,6 +69,16 @@
     "finish": "Done",
     "later": "Later"
   },
+  "push": {
+    "promptTitle": "Stay informed about your booking",
+    "promptText": "Allow notifications to get a reminder before your time runs out and to hear about any changes to your booking.",
+    "notNow": "Not now",
+    "enable": "Allow",
+    "settingsTitle": "Notifications",
+    "settingsHint": "Reminders before your booking ends and changes to it.",
+    "settingsOn": "Notifications are on",
+    "settingsOff": "Notifications are off on this device"
+  },
   "tabs": {
     "map": "Map",
     "bookings": "Bookings",

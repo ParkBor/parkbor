@@ -1,23 +1,22 @@
+import { Suspense } from 'react'
 import { Button, Layout, Menu, Space, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { navItemsFor, selectedNavPath } from '../lib/navigation'
+import { ErrorBoundary } from './ErrorBoundary'
 import { LanguageSelect } from './LanguageSelect'
+import { PageSpinner } from './PageSpinner'
 
 const { Sider, Header, Content } = Layout
-
-const MENU = [
-  { key: '/parkings', labelKey: 'nav.parkings' },
-  { key: '/zones-slots', labelKey: 'nav.zonesSlots' },
-  { key: '/tariffs', labelKey: 'nav.tariffs' },
-] as const
 
 export function AppLayout() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { user, logout } = useAuth()
-  const selected = MENU.find((item) => pathname.startsWith(item.key))?.key ?? '/parkings'
+  const items = navItemsFor(user?.role)
+  const selected = selectedNavPath(pathname)
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -28,9 +27,9 @@ export function AppLayout() {
         <Menu
           theme="dark"
           mode="inline"
-          selectedKeys={[selected]}
+          selectedKeys={selected ? [selected] : []}
           onClick={({ key }) => navigate(key)}
-          items={MENU.map((item) => ({ key: item.key, label: t(item.labelKey) }))}
+          items={items.map((item) => ({ key: item.path, label: t(item.labelKey) }))}
         />
       </Sider>
       <Layout>
@@ -42,7 +41,11 @@ export function AppLayout() {
           </Space>
         </Header>
         <Content style={{ padding: 24 }}>
-          <Outlet />
+          <ErrorBoundary resetKey={pathname}>
+            <Suspense fallback={<PageSpinner />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </Content>
       </Layout>
     </Layout>

@@ -1,0 +1,5 @@
+# seed output holds live JWTs and provider test secrets: never commit
+.secrets/
+tokens*.json
+results/
+*.summary.json

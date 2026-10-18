@@ -19,6 +19,10 @@ OWNER_PATHS: dict[str, tuple[str, ...]] = {
     "parking.zone": ("parking_lot", "owner_id"),
     "parking.slot": ("zone", "parking_lot", "owner_id"),
     "parking.tariff": ("parking_lot", "owner_id"),
+    "bookings.booking": ("slot", "zone", "parking_lot", "owner_id"),
+    "payments.payment": ("booking", "slot", "zone", "parking_lot", "owner_id"),
+    "payments.refund": ("booking", "slot", "zone", "parking_lot", "owner_id"),
+    "reviews.review": ("parking_lot", "owner_id"),
 }
 
 
@@ -39,7 +43,7 @@ def is_owner(user) -> bool:
 
 
 def lot_owner_id(obj):
-    """Owning user id of a lot / zone / slot / tariff (None for anything else)."""
+    """Owning user id of a lot / zone / slot / tariff / booking / payment / refund / review."""
     meta = getattr(obj, "_meta", None)
     path = OWNER_PATHS.get(getattr(meta, "label_lower", ""))
     if path is None:

@@ -4,11 +4,11 @@ import pytest
 from asgiref.sync import sync_to_async
 
 from apps.parking.models import OperatorAssignment
-from apps.realtime import consumers, queries
+from apps.realtime import consumers, queries, tickets
 from apps.realtime.consumers import AvailabilityConsumer
 from tests.bookings.factories import make_world
 from tests.helpers import make_user
-from tests.realtime.ws_helpers import drain, expect_close, open_socket, send
+from tests.realtime.ws_helpers import drain, expect_close, new_communicator, open_socket, send
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.asyncio]
 
@@ -328,3 +328,54 @@ async def test_timestamps_have_milliseconds(world, driver, fake_redis):
     snapshot = await comm.receive_json_from()
     assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z", snapshot["ts"])
     await comm.disconnect()
+
+
+# --- regression: a full-size subscribe from a full bucket -----------------------------------------
+
+ALPHABET = "0123456789bcdefghjkmnpqrstuvwxyz"
+
+
+def cells(count):
+    return [
+        {"kind": "geo", "id": f"u00{ALPHABET[i // 32]}{ALPHABET[i % 32]}x"[:5]}
+        for i in range(count)
+    ]
+
+
+async def test_fifty_groups_in_one_frame_pass_from_a_full_bucket(driver, settings, fake_redis):
+    settings.WS_MESSAGES_PER_SECOND = 10
+    comm = await open_socket(driver)
+    await send(comm, type="subscribe", groups=cells(50))
+    reply = await comm.receive_json_from()
+    assert (len(reply["groups"]), reply["rejected"]) == (50, [])
+    await comm.disconnect()
+
+
+async def test_the_fifty_first_group_is_rejected_as_too_many(driver, settings, fake_redis):
+    settings.WS_MESSAGES_PER_SECOND = 10
+    comm = await open_socket(driver)
+    await send(comm, type="subscribe", groups=cells(51))
+    reply = await comm.receive_json_from()
+    assert len(reply["groups"]) == 50
+    assert [r["code"] for r in reply["rejected"]] == ["too_many_groups"]
+    await comm.disconnect()
+
+
+async def test_a_second_big_frame_right_after_the_first_is_rate_limited(
+    driver, settings, fake_redis
+):
+    settings.WS_MESSAGES_PER_SECOND = 10
+    comm = await open_socket(driver)
+    await send(comm, type="subscribe", groups=cells(50))
+    assert (await comm.receive_json_from())["type"] == "subscribed"
+    await send(comm, type="unsubscribe", groups=cells(50))
+    await expect_close(comm, 4429)
+
+
+async def test_a_connection_chosen_as_its_own_victim_closes_itself(driver, fake_redis, monkeypatch):
+    from apps.realtime import connections
+
+    monkeypatch.setattr(connections, "register", lambda user_id, channel: [channel])
+    comm = new_communicator(ticket=tickets.issue_ticket(str(driver.pk)))
+    assert (await comm.connect())[0]
+    await expect_close_eventually(comm, 4409)

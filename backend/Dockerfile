@@ -5,6 +5,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DJANGO_SETTINGS_MODULE=config.settings.prod \
     WEB_CONCURRENCY=3
 
+# Build with --build-arg RELEASE=<git sha>: becomes the Sentry release (override at runtime with
+# SENTRY_RELEASE if needed).
+ARG RELEASE=""
+ENV SENTRY_RELEASE=${RELEASE}
+LABEL org.opencontainers.image.title="habi-backend" org.opencontainers.image.revision="${RELEASE}"
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gdal-bin libgdal-dev libgeos-dev libproj-dev \
     && apt-get clean \

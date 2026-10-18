@@ -12,7 +12,7 @@ export function QueryError({ error, onRetry }: QueryErrorProps) {
   const { t } = useTranslation()
   const message = isNotFound(error)
     ? t('common.notFound')
-    : describeError(error, t('common.error'))
+    : errorText(error, t)
   return (
     <Alert
       type="error"

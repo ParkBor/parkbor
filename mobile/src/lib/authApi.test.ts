@@ -85,6 +85,19 @@ describe('createAuthApi', () => {
     });
   });
 
+  it('logout also sends this device push token when there is one', async () => {
+    const { api, seen } = setup(204);
+    await api.logout('access-1', 'refresh-1', 'ExponentPushToken[abc]');
+    expect(seen[0]).toMatchObject({ data: { refresh: 'refresh-1', expo_push_token: 'ExponentPushToken[abc]' } });
+  });
+
+  it('logout omits the push token field when it is null', async () => {
+    const { api, seen } = setup(204);
+    await api.logout('access-1', 'refresh-1', null);
+    expect(seen[0]).toMatchObject({ data: { refresh: 'refresh-1' } });
+    expect(JSON.stringify(seen[0]?.data)).not.toContain('expo_push_token');
+  });
+
   it('logout failures carry neither token', async () => {
     const { api } = setup(401);
     const error = (await api.logout('access-secret', 'refresh-secret').catch((e: unknown) => e)) as AxiosError;

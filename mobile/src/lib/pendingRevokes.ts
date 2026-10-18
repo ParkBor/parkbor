@@ -3,6 +3,17 @@ export interface PendingRevoke {
   token: string;
   /** Owner when known (logout); null when unknown (left from the offline screen). */
   userId: number | string | null;
+  /**
+   * Expo push token of this device while the account was signed in. It travels with the logout so
+   * the server unregisters the device; it lives in the same secure storage as the refresh token.
+   */
+  pushToken?: string;
+}
+
+const MAX_PUSH_TOKEN_LENGTH = 200;
+
+function validPushToken(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_PUSH_TOKEN_LENGTH;
 }
 
 /** Bounded: SecureStore values should stay under ~2 KB (a refresh JWT is ~350 bytes). */
@@ -28,7 +39,12 @@ export function parsePending(raw: string | null): PendingRevoke[] {
   if (!raw) return [];
   try {
     const data: unknown = JSON.parse(raw);
-    return Array.isArray(data) ? data.filter(isEntry).map(({ token, userId }) => ({ token, userId })) : [];
+    if (!Array.isArray(data)) return [];
+    return data.filter(isEntry).map((entry) => {
+      const { token, userId } = entry;
+      const pushToken: unknown = (entry as { pushToken?: unknown }).pushToken;
+      return validPushToken(pushToken) ? { token, userId, pushToken } : { token, userId };
+    });
   } catch {
     return [];
   }

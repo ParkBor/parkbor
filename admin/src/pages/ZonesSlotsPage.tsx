@@ -8,7 +8,7 @@ import { ParkingSelect } from '../components/ParkingSelect'
 import { QueryError } from '../components/QueryError'
 import { ZoneForm } from '../components/ZoneForm'
 import { adminApi } from '../lib/api'
-import { describeError } from '../lib/errors'
+import { errorText } from '../lib/errorText'
 import { fetchAll } from '../lib/fetchAll'
 import type { BulkSlotsFormValues, ZoneFormValues } from '../schemas'
 
@@ -38,7 +38,7 @@ export default function ZonesSlotsPage() {
       queryClient.invalidateQueries({ queryKey: ['parkings'] }),
     ])
   }
-  const onError = (error: unknown) => void message.error(describeError(error, t('common.error')))
+  const onError = (error: unknown) => void message.error(errorText(error, t))
 
   const addZone = useMutation({
     mutationFn: ({ lot, values }: { lot: string; values: ZoneFormValues }) =>

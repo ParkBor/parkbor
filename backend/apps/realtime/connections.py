@@ -19,9 +19,17 @@ logger = logging.getLogger(__name__)
 KEY_TTL_SECONDS = 3600  # refreshed by every heartbeat; a crashed worker's leftovers expire
 STALE_HEARTBEATS = 3  # an entry silent for this many heartbeat periods is dead
 
-# KEYS[1] zset; ARGV: member, now, limit, key ttl, stale-before score
+# KEYS[1] zset; ARGV: member, now, limit, key ttl, stale-before score.
+# The newcomer's score is never below the newest existing one (worker clock skew, a thread delayed
+# between time.time() and EVAL): a newcomer must not be the oldest and so evict ITSELF while its
+# socket stays open and unregistered.
 _REGISTER = """
-redis.call('ZADD', KEYS[1], ARGV[2], ARGV[1])
+local score = tonumber(ARGV[2])
+local top = redis.call('ZRANGE', KEYS[1], -1, -1, 'WITHSCORES')
+if top[2] and tonumber(top[2]) >= score then
+  score = tonumber(top[2]) + 0.001
+end
+redis.call('ZADD', KEYS[1], score, ARGV[1])
 redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[5])
 redis.call('EXPIRE', KEYS[1], ARGV[4])
 local count = redis.call('ZCARD', KEYS[1])
@@ -44,7 +52,8 @@ def _stale_after() -> float:
 
 
 def register(user_id, channel_name: str, now: float | None = None) -> list[str]:
-    """Record a connection; return the channel names that must be closed to stay within the cap."""
+    """Record a connection; return the channel names that must be closed to stay within the cap
+    (the caller's own name included, should it ever be chosen)."""
     now = time.time() if now is None else now
     try:
         victims = get_redis().eval(
@@ -60,7 +69,9 @@ def register(user_id, channel_name: str, now: float | None = None) -> list[str]:
     except redis.RedisError:
         logger.warning("ws connection cap not enforced: the store is unavailable")
         return []
-    return [name for name in victims if name != channel_name]
+    # Normally never the newcomer itself (see _REGISTER); if it ever is, it is returned too, so the
+    # consumer tells its own channel to close rather than staying open and unregistered.
+    return list(victims)
 
 
 def unregister(user_id, channel_name: str) -> None:

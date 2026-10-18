@@ -366,3 +366,13 @@ def test_errors_never_contain_tokens_or_chat_ids(expo, tg):
     error = fresh(log).last_error
     assert error == "http_500"
     assert TOKEN not in error and str(user.telegram_id) not in error
+
+
+def test_push_data_holds_only_event_url_and_booking_id(expo):
+    user = make_driver(devices=[TOKEN])
+    log = make_log(user, events.SLOT_REASSIGNED, slot="B-7", plate="01A777BC", phone="+998901")
+    delivery.deliver(log.pk)
+    [message] = expo.messages
+    assert set(message.data) == {"event", "url", "booking_id"}
+    assert message.data["url"] == f"habi://booking/{log.context['booking_id']}"
+    assert "01A777BC" not in repr(message) and "+998" not in repr(message)

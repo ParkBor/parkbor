@@ -21,9 +21,35 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: pnpm audit (production dependencies, high and above)
+        run: pnpm audit --prod --audit-level high
       - run: pnpm --filter mobile lint
       # Generates .expo/types (typed routes) and expo-env.d.ts that tsconfig includes.
       - run: pnpm --filter mobile exec expo customize tsconfig.json
       - run: pnpm --filter mobile typecheck
       - run: pnpm --filter mobile test
       - run: pnpm --filter "./packages/*" typecheck
+      # Production config resolves: the real-domain env, a fake maps key, no sandbox.
+      - name: Expo production config resolves
+        env:
+          APP_ENV: production
+          EXPO_PUBLIC_API_URL: https://api.example.com/api/v1
+          EXPO_PUBLIC_WS_URL: wss://api.example.com/ws
+          EXPO_PUBLIC_TELEGRAM_BOT: ci_bot
+          EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ci-throwaway-maps-key
+        run: pnpm --filter mobile exec expo config --type public --json > /dev/null
+      - name: Production build refuses the payment sandbox
+        env:
+          APP_ENV: production
+          EXPO_PUBLIC_API_URL: https://api.example.com/api/v1
+          EXPO_PUBLIC_WS_URL: wss://api.example.com/ws
+          EXPO_PUBLIC_TELEGRAM_BOT: ci_bot
+          EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ci-throwaway-maps-key
+          EXPO_PUBLIC_PAYMENT_SANDBOX: "true"
+        run: |
+          if pnpm --filter mobile exec expo config --type public --json > /dev/null 2>&1; then
+            echo "production config accepted EXPO_PUBLIC_PAYMENT_SANDBOX=true"; exit 1
+          fi
+      # Bundle check (Metro + all routes compile) for Android.
+      - name: Expo export (Android bundle)
+        run: pnpm --filter mobile exec expo export --platform android --output-dir /tmp/expo-dist

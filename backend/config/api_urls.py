@@ -7,6 +7,7 @@ urlpatterns = [
     path("", include("apps.routing.urls")),
     path("", include("apps.vehicles.urls")),
     path("", include("apps.bookings.urls")),
+    path("", include("apps.reviews.urls")),
     path("", include("apps.payments.urls")),
     path("", include("apps.realtime.urls")),
     path("me/", include("apps.operators.me_urls")),

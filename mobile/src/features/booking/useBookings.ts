@@ -7,6 +7,8 @@ import { isLiveStatus } from '@/features/booking/statusView';
 import { bookingKeys } from '@/features/booking/queryKeys';
 import { useIsAuthenticated } from '@/features/booking/useAuthenticated';
 import { shouldRetry } from '@/features/map/mapError';
+import { bookingPollInterval } from '@/features/realtime/pollFallback';
+import { useRealtimeLive } from '@/features/realtime/useRealtime';
 
 const PAGE_SIZE = 20;
 const LIST_STALE_MS = 15_000;
@@ -48,8 +50,11 @@ export function useBookingsList(scope: BookingScope) {
  * A single booking; polled while its status can still change. Memory cache only. `pollMs` lets the
  * payment screen follow the extended hold more closely than the default 15 s.
  */
-export function useBooking(id: string | null, pollMs: number = LIVE_POLL_MS) {
+export function useBooking(id: string | null, explicitPollMs?: number) {
+  const pollMs = explicitPollMs ?? LIVE_POLL_MS;
   const isAuthenticated = useIsAuthenticated();
+  // booking_status arrives over the socket; polling is only the fallback (and a slow safety net).
+  const isLive = useRealtimeLive();
   return useQuery({
     queryKey: bookingKeys.detail(id ?? 'none'),
     queryFn: ({ signal }) => bookingApi.get(id ?? '', signal),
@@ -58,7 +63,14 @@ export function useBooking(id: string | null, pollMs: number = LIVE_POLL_MS) {
     networkMode: 'offlineFirst',
     staleTime: DETAIL_STALE_MS,
     retry: shouldRetry,
-    refetchInterval: (query) => (query.state.data && isLiveStatus(query.state.data.status) ? pollMs : false),
+    refetchInterval: (query) =>
+      bookingPollInterval({
+        isChangeable: query.state.data !== undefined && isLiveStatus(query.state.data.status),
+        status: query.state.data?.status ?? '',
+        pollMs,
+        isExplicit: explicitPollMs !== undefined,
+        isRealtimeLive: isLive,
+      }),
   });
 }
 

@@ -13,12 +13,24 @@ export function validateApiUrl(url: string, isDev: boolean): string {
   return trimSlashes(url);
 }
 
-/** WebSocket URL: wss only in release builds; ws(s) in dev. */
+const WS_URL_PATTERN = /^(wss?):\/\/((?:[A-Za-z0-9-]+\.)*[A-Za-z0-9-]+|\[[0-9A-Fa-f:.]+\])(?::(\d{1,5}))?((?:\/[A-Za-z0-9._~-]*)*)$/i;
+
+/**
+ * WebSocket base URL: wss only in release builds; ws(s) in dev. Strictly `scheme://host[:port][/path]`:
+ * no userinfo, query, fragment, whitespace or dot segments (the ticket is appended as the only
+ * query parameter, and a credential in the base URL would end up in every connection log).
+ * Parsed by hand: React Native's URL polyfill does not implement every accessor.
+ */
 export function validateWsUrl(url: string, isDev: boolean): string {
-  const allowed = isDev ? /^wss?:\/\//i : /^wss:\/\//i;
-  if (!allowed.test(url)) {
+  const match = WS_URL_PATTERN.exec(url);
+  const scheme = match?.[1]?.toLowerCase();
+  if (!match || (scheme !== 'wss' && scheme !== 'ws')) {
     throw new Error(isDev ? 'wsUrl must be a ws(s) URL' : 'wsUrl must use wss in release builds');
   }
+  if (!isDev && scheme !== 'wss') throw new Error('wsUrl must use wss in release builds');
+  const port = match[3];
+  if (port !== undefined && Number(port) > 65_535) throw new Error('wsUrl has an invalid port');
+  if (/(^|\/)\.\.?(\/|$)/.test(match[4] ?? '')) throw new Error('wsUrl must not contain dot segments');
   return trimSlashes(url);
 }
 

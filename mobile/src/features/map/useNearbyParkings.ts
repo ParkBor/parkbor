@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useIsFocused } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { createDebouncer } from '@/features/map/debounce';
@@ -8,6 +9,8 @@ import { resolveCenter } from '@/features/map/locationModel';
 import { mapErrorKey, shouldRetry, type MapErrorKind } from '@/features/map/mapError';
 import { parkingsApi } from '@/features/map/parkingsApi';
 import type { Parking } from '@/features/map/schemas';
+import { geoCellsAround } from '@/features/realtime/geohash';
+import { useRealtimeGroups } from '@/features/realtime/useRealtime';
 import {
   DEBOUNCE_MS,
   buildSearchParams,
@@ -77,6 +80,14 @@ export function useNearbyParkings(
     staleTime: STALE_TIME_MS,
     retry: shouldRetry,
   });
+
+  // Live free-spot counts: geo_<cell> for the cells of the searched area (patched into the cache).
+  const isFocused = useIsFocused();
+  const cells = geoCellsAround({ lat: params.lat, lng: params.lng }, params.radiusM); // a few dozen cells at most
+  useRealtimeGroups(
+    cells.map((id) => ({ kind: 'geo' as const, id })),
+    isReady && isFocused,
+  );
 
   const onRegionChangeComplete = useCallback(
     (region: Region) => {

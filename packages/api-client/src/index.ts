@@ -4,6 +4,7 @@
 // fetch client covers the admin and auth endpoints. Replace these exports with the generated
 // ones; keep the exported names stable so the apps need no changes.
 export * from './admin'
+export * from './adminOps'
 export * from './auth'
 export {
   ApiError,

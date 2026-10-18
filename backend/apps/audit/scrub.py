@@ -25,7 +25,10 @@ STRUCTURE_KEYS = frozenset({"before", "after"})
 # already restrict it).
 ALLOWED_KEYS = frozenset(
     {
-        # ids
+        # ids and admin-panel actions (Step 11b): account state, review moderation, settings
+        "user", "role", "is_active", "review", "rating",
+        "hold_minutes", "no_show_grace_minutes", "cancel_full_refund_minutes",
+        "cancel_full_percent", "cancel_late_percent", "cancel_after_start_percent",
         "lot", "slot", "booking", "operator", "refund", "payment", "actor", "from", "to",
         # states and outcomes
         "status", "outcome", "provider", "orphan", "collected", "collect", "force", "override",

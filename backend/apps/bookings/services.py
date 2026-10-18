@@ -566,6 +566,45 @@ def cancel_booking(*, booking_id, user, now: datetime | None = None) -> Booking:
     return cancelled
 
 
+@_retrying
+@transaction.atomic
+def admin_cancel_booking(
+    *, booking_id, actor, note: str = "", now: datetime | None = None
+) -> Booking:
+    """An ADMIN (any lot) or an OWNER (own lots) cancels a PENDING_PAYMENT or CONFIRMED booking
+    by hand (admin panel). A booking cancelled by the lot is not the driver's fault, so
+    everything actually PAID is refunded (``refund_amount = paid_amount``, no policy percent);
+    the Refund row is created in this transaction like in ``cancel_booking``. Repeating the call
+    on a CANCELLED booking is a no-op. ``note`` is already validated by the caller (<= 200
+    characters, no phone / card number) and lands in the booking history only.
+    """
+    now = now or timezone.now()
+    _lot, booking = _lock_lot_and_booking(booking_id)
+    is_admin = getattr(actor, "role", None) == "ADMIN"
+    if not is_admin and _lot.owner_id != actor.pk:
+        raise NotFoundError("Booking not found.")  # a foreign lot is indistinguishable
+    if booking.status == BookingStatus.CANCELLED:
+        return booking
+    assert_transition(booking.status, BookingStatus.CANCELLED)
+    refund = (
+        _money(booking.paid_amount)
+        if booking.status == BookingStatus.CONFIRMED
+        else Decimal("0.00")
+    )
+    cancelled = _apply_transition(
+        booking,
+        BookingStatus.CANCELLED,
+        actor=actor,
+        reason="admin_cancelled",
+        audit_action="booking.admin_cancel",
+        fields={"cancelled_at": now, "refund_amount": refund},
+        meta={"refund_amount": str(refund), "note": note},
+    )
+    if refund > 0:
+        hooks.create_refund(cancelled, refund)
+    return cancelled
+
+
 # --- extend -----------------------------------------------------------------------------------
 
 

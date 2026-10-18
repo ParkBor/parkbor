@@ -1,5 +1,8 @@
 {
-  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "development": {
       "developmentClient": true,
@@ -10,18 +13,22 @@
         "EXPO_PUBLIC_WS_URL": "ws://localhost:8000/ws",
         "EXPO_PUBLIC_TELEGRAM_BOT": "habi_dev_bot",
         "EXPO_PUBLIC_PAYMENT_SANDBOX": "true"
-      }
+      },
+      "environment": "development"
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
-      "android": { "buildType": "apk" },
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://staging-api.habi.uz/api/v1",
         "EXPO_PUBLIC_WS_URL": "wss://staging-api.habi.uz/ws",
         "EXPO_PUBLIC_TELEGRAM_BOT": "habi_staging_bot",
         "EXPO_PUBLIC_PAYMENT_SANDBOX": "true"
-      }
+      },
+      "environment": "preview"
     },
     "production": {
       "autoIncrement": true,
@@ -29,9 +36,22 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.habi.uz/api/v1",
         "EXPO_PUBLIC_WS_URL": "wss://api.habi.uz/ws",
-        "EXPO_PUBLIC_TELEGRAM_BOT": "habi_bot"
+        "EXPO_PUBLIC_TELEGRAM_BOT": "habi_bot",
+        "EXPO_PUBLIC_PAYMENT_SANDBOX": "false"
+      },
+      "environment": "production",
+      "android": {
+        "buildType": "app-bundle"
       }
     }
   },
-  "submit": { "production": {} }
+  "submit": {
+    "production": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      },
+      "ios": {}
+    }
+  }
 }

@@ -6,6 +6,8 @@ import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
+import { syncDevice } from '@/features/push/pushRuntime';
+import { authStore } from '@/store/auth';
 import { useOnboardingStore } from '@/store/onboarding';
 import { usePalette } from '@/theme/theme';
 
@@ -59,6 +61,9 @@ export default function PermissionsScreen() {
     }
     const res = await Notifications.requestPermissionsAsync();
     setNotifications(res.granted ? 'granted' : 'denied');
+    // Allowed right now: register this phone for push without waiting for the next app start.
+    const { user } = authStore.getState();
+    if (res.granted && user) void syncDevice(String(user.id));
   };
   // Clearing the step lets the auth guard route to (tabs).
   const finish = () => useOnboardingStore.getState().setStep(null);

@@ -1,7 +1,7 @@
 import { ApiError } from '@habi/api-client'
 import { SessionSupersededError } from './auth'
 
-export const DEFAULT_REDIRECT = '/parkings'
+export const DEFAULT_REDIRECT = '/dashboard'
 
 /** Every i18n key a failed sign-in can show (checked against uz/ru/en in the tests). */
 export const AUTH_ERROR_KEYS = [

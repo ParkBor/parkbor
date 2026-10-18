@@ -1,3 +1,7 @@
+import { opsEn } from './ops.en'
+import { opsRu } from './ops.ru'
+import { opsUz } from './ops.uz'
+
 // uz is the primary language; ru and en must keep the same keys (checked in i18n.test.ts).
 export const uz = {
   app: { title: 'Habi Admin' },
@@ -5,6 +9,17 @@ export const uz = {
     parkings: 'Avtoturargohlar',
     zonesSlots: 'Zona va slotlar',
     tariffs: 'Tariflar',
+    dashboard: 'Boshqaruv paneli',
+    bookings: 'Bronlar',
+    overstay: 'Ortiqcha vaqt',
+    payments: 'To‘lovlar',
+    refunds: 'Qaytarishlar',
+    operators: 'Operatorlar',
+    users: 'Foydalanuvchilar',
+    moderation: 'Moderatsiya',
+    reviews: 'Sharhlar',
+    settings: 'Sozlamalar',
+    audit: 'Audit jurnali',
   },
   auth: {
     subtitle: 'Telegram hisobingiz orqali kiring',
@@ -17,6 +32,7 @@ export const uz = {
     forbidden: {
       title: 'Ruxsat yo‘q',
       description: 'Sizning rolingiz admin panelga kirishga ruxsat bermaydi.',
+      section: 'Sizning rolingiz bu bo‘limga kirishga ruxsat bermaydi.',
     },
     errors: {
       botNotConfigured: 'Telegram bot sozlanmagan (VITE_TELEGRAM_BOT_USERNAME)',
@@ -49,6 +65,10 @@ export const uz = {
     notFound: 'Topilmadi',
     back: 'Orqaga',
     language: 'Til',
+    confirm: 'Tasdiqlash',
+    endpointUnavailable: 'Bu bo‘lim serverda hali mavjud emas (endpoint topilmadi).',
+    minutesShort: 'daq.',
+    period: 'Davr',
   },
   forms: {
     parking: 'Avtoturargoh shakli',
@@ -71,6 +91,8 @@ export const uz = {
     prefixFormat: 'Faqat harf va raqam (1–10 belgi)',
     priceFormat: 'Narx musbat son, ko‘pi bilan 2 ta kasr raqami',
     nonNegative: 'Manfiy bo‘lmasin',
+    range: 'Qiymat ruxsat etilgan oraliqdan tashqarida',
+    percentRange: 'Foiz 0 dan 100 gacha bo‘lsin',
   },
   parkings: {
     title: 'Avtoturargohlar',
@@ -130,6 +152,7 @@ export const uz = {
     price: 'Soatlik narx (so‘m)',
     add: 'Tarif qo‘shish',
   },
+  ...opsUz,
 }
 
 export type Translation = typeof uz
@@ -140,6 +163,17 @@ export const ru: Translation = {
     parkings: 'Парковки',
     zonesSlots: 'Зоны и места',
     tariffs: 'Тарифы',
+    dashboard: 'Панель',
+    bookings: 'Брони',
+    overstay: 'Превышение времени',
+    payments: 'Платежи',
+    refunds: 'Возвраты',
+    operators: 'Операторы',
+    users: 'Пользователи',
+    moderation: 'Модерация',
+    reviews: 'Отзывы',
+    settings: 'Настройки',
+    audit: 'Журнал аудита',
   },
   auth: {
     subtitle: 'Войдите через свой аккаунт Telegram',
@@ -152,6 +186,7 @@ export const ru: Translation = {
     forbidden: {
       title: 'Нет доступа',
       description: 'Ваша роль не позволяет входить в админ-панель.',
+      section: 'Ваша роль не даёт доступа к этому разделу.',
     },
     errors: {
       botNotConfigured: 'Telegram-бот не настроен (VITE_TELEGRAM_BOT_USERNAME)',
@@ -184,6 +219,10 @@ export const ru: Translation = {
     notFound: 'Не найдено',
     back: 'Назад',
     language: 'Язык',
+    confirm: 'Подтвердить',
+    endpointUnavailable: 'Этот раздел на сервере пока недоступен (endpoint не найден).',
+    minutesShort: 'мин',
+    period: 'Период',
   },
   forms: {
     parking: 'Форма парковки',
@@ -206,6 +245,8 @@ export const ru: Translation = {
     prefixFormat: 'Только буквы и цифры (1–10 символов)',
     priceFormat: 'Цена — положительное число, не более 2 знаков после запятой',
     nonNegative: 'Не может быть отрицательным',
+    range: 'Значение вне допустимого диапазона',
+    percentRange: 'Процент от 0 до 100',
   },
   parkings: {
     title: 'Парковки',
@@ -260,11 +301,24 @@ export const ru: Translation = {
     price: 'Цена за час (сум)',
     add: 'Добавить тариф',
   },
+  ...opsRu,
 }
 
 export const en: Translation = {
   app: { title: 'Habi Admin' },
-  nav: { parkings: 'Parking lots', zonesSlots: 'Zones & slots', tariffs: 'Tariffs' },
+  nav: { parkings: 'Parking lots', zonesSlots: 'Zones & slots', tariffs: 'Tariffs',
+    dashboard: 'Dashboard',
+    bookings: 'Bookings',
+    overstay: 'Overstay',
+    payments: 'Payments',
+    refunds: 'Refunds',
+    operators: 'Operators',
+    users: 'Users',
+    moderation: 'Moderation',
+    reviews: 'Reviews',
+    settings: 'Settings',
+    audit: 'Audit log',
+  },
   auth: {
     subtitle: 'Sign in with your Telegram account',
     signingIn: 'Signing in…',
@@ -276,6 +330,7 @@ export const en: Translation = {
     forbidden: {
       title: 'Access denied',
       description: 'Your role does not allow access to the admin panel.',
+      section: 'Your role does not allow access to this section.',
     },
     errors: {
       botNotConfigured: 'Telegram bot is not configured (VITE_TELEGRAM_BOT_USERNAME)',
@@ -308,6 +363,10 @@ export const en: Translation = {
     notFound: 'Not found',
     back: 'Back',
     language: 'Language',
+    confirm: 'Confirm',
+    endpointUnavailable: 'This section is not available on the server yet (endpoint not found).',
+    minutesShort: 'min',
+    period: 'Period',
   },
   forms: {
     parking: 'Parking lot form',
@@ -330,6 +389,8 @@ export const en: Translation = {
     prefixFormat: 'Letters and digits only (1–10 chars)',
     priceFormat: 'Price must be a positive number with at most 2 decimals',
     nonNegative: 'Must not be negative',
+    range: 'Value is outside the allowed range',
+    percentRange: 'Percent must be between 0 and 100',
   },
   parkings: {
     title: 'Parking lots',
@@ -384,4 +445,5 @@ export const en: Translation = {
     price: 'Price per hour (UZS)',
     add: 'Add tariff',
   },
+  ...opsEn,
 }

@@ -314,3 +314,25 @@ class BookingEvent(BaseModel):
 
     def __str__(self) -> str:
         return f"{self.from_status or '-'} -> {self.to_status} ({self.reason})"
+
+
+class BookingSetting(models.Model):
+    """A runtime override of one admin-editable booking setting (ARCHITECTURE 9.3.1 ``settings``).
+
+    The environment (``BOOKING_*``) stays the default; a row here wins over it. Only the keys in
+    ``apps.bookings.conf.EDITABLE_SETTINGS`` are ever written, always through
+    ``apps.adminpanel.services.update_settings`` (validation + audit)."""
+
+    key = models.CharField(max_length=40, primary_key=True)
+    value = models.PositiveIntegerField()
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+
+    def __str__(self) -> str:
+        return f"{self.key}={self.value}"

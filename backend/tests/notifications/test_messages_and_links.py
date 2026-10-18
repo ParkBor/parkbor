@@ -152,3 +152,34 @@ def test_production_url_accepts_https(good):
 def test_production_url_rejects_everything_else(bad):
     with pytest.raises(ImproperlyConfigured):
         links.validate_public_url(bad)
+
+
+# --- lock-screen audit: what a push shows without unlocking the phone ----------------------------
+
+SENTINELS = {
+    "slot": "SLOT-X9",
+    "amount": Decimal("123456"),
+    "plate": "01A777BC",
+    "phone": "+998901234567",
+}
+# The ONLY events whose visible text carries a value; everything else is generic text.
+SHOWS_SLOT = {ev_name for ev_name in EVENTS if "{slot}" in str(messages.TEMPLATES[ev_name]["en"])}
+SHOWS_AMOUNT = {
+    ev_name for ev_name in EVENTS if "{amount}" in str(messages.TEMPLATES[ev_name]["en"])
+}
+
+
+def test_only_the_expected_events_show_a_slot_or_an_amount():
+    assert SHOWS_SLOT == {"slot_reassigned"}
+    assert SHOWS_AMOUNT == {"refund_done", "refund_manual", "refund_failed"}
+
+
+@pytest.mark.parametrize("event", sorted(EVENTS))
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_visible_text_never_contains_plate_phone_or_address(event, language):
+    message = messages.render(event, language, {**SENTINELS, "address": "1 Amir Temur street"})
+    text = message.title + " " + message.body
+    for secret in ("01A777BC", "+998", "901234567", "Amir Temur", "street"):
+        assert secret not in text
+    assert ("SLOT-X9" in text) == (event in SHOWS_SLOT)
+    assert ("123 456" in text) == (event in SHOWS_AMOUNT)

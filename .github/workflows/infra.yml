@@ -1,0 +1,52 @@
+name: infra
+permissions:
+  contents: read
+concurrency:
+  group: infra-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  push:
+    paths: ["infra/**", "admin/**", "packages/**", "pnpm-lock.yaml", ".github/workflows/infra.yml"]
+  pull_request:
+    paths: ["infra/**", "admin/**", "packages/**", "pnpm-lock.yaml", ".github/workflows/infra.yml"]
+jobs:
+  compose-and-nginx:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Production compose file is valid with the template env
+        working-directory: infra
+        run: |
+          cp prod.env.example .env.prod
+          docker compose --env-file .env.prod -f docker-compose.prod.yml config -q
+          docker compose --env-file .env.prod -f docker-compose.prod.yml --profile ops config --services
+      - name: No literal secrets in the compose file
+        run: "! grep -nE '^ *[A-Z_]*(PASSWORD|SECRET|TOKEN|KEY)[A-Z_]*: *[^$\"{ ]' infra/docker-compose.prod.yml"
+      - uses: docker/setup-buildx-action@v3
+      # Builds the admin SPA inside the image too (pnpm install + vite build).
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/nginx/Dockerfile
+          load: true
+          push: false
+          tags: habi-nginx:ci
+          build-args: |
+            VITE_TELEGRAM_BOT_USERNAME=ci_bot
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: nginx -t with throwaway certificates
+        run: |
+          set -e
+          for d in api.ci.test admin.ci.test; do
+            mkdir -p "$RUNNER_TEMP/certs/$d"
+            openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj "/CN=$d" \
+              -keyout "$RUNNER_TEMP/certs/$d/privkey.pem" -out "$RUNNER_TEMP/certs/$d/fullchain.pem"
+          done
+          chmod -R a+rX "$RUNNER_TEMP/certs"
+          docker run --rm --add-host api:127.0.0.1 \
+            -e API_DOMAIN=api.ci.test -e ADMIN_DOMAIN=admin.ci.test \
+            -e 'NGINX_ENVSUBST_FILTER=^(API|ADMIN)_DOMAIN$' \
+            -v "$RUNNER_TEMP/certs:/etc/nginx/certs:ro" \
+            habi-nginx:ci nginx -t

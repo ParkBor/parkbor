@@ -102,6 +102,8 @@ const config: ExpoConfig = {
     apiUrl: envOrDevDefault('EXPO_PUBLIC_API_URL', 'http://localhost:8000/api/v1'),
     wsUrl: envOrDevDefault('EXPO_PUBLIC_WS_URL', 'ws://localhost:8000/ws'),
     telegramBot: envOrDevDefault('EXPO_PUBLIC_TELEGRAM_BOT', 'habi_dev_bot'),
+    // EAS project id: getExpoPushTokenAsync needs it. Without it the app simply does not register for push.
+    ...(process.env.EXPO_PUBLIC_EAS_PROJECT_ID ? { eas: { projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID } } : {}),
     // Payme test checkout (test.paycom.uz) is accepted only when this is true. Never in production:
     // resolvePaymentSandbox throws if EXPO_PUBLIC_PAYMENT_SANDBOX=true meets a production build.
     paymentSandbox: resolvePaymentSandbox(process.env.EXPO_PUBLIC_PAYMENT_SANDBOX, isProduction),

@@ -174,17 +174,15 @@ class AvailabilityConsumer(AsyncWebsocketConsumer):
         if len(text_data) > limit or len(text_data.encode("utf-8")) > limit:
             await self.close(code=CLOSE_TOO_BIG)
             return
-        if not self.bucket.allow():
-            await self.close(code=CLOSE_RATE_LIMITED)
-            return
         message = self._parse(text_data)
-        if message is None:
+        if message is None:  # cheap (<= 4 KB) and ends the connection: nothing to charge
             await self.close(code=CLOSE_BAD_FRAME)
             return
-        # Work is charged per ELEMENT: a message naming 50 groups costs 50 tokens (capped at the
-        # bucket size), not one, or ten messages a second would be 500 database lookups a second.
-        extra = self._element_count(message) - 1
-        if extra > 0 and not self.bucket.allow(extra):
+        # Work is charged per ELEMENT, in ONE call: a frame naming 50 groups costs 50 tokens
+        # (capped at the bucket size, so it passes from a full bucket and empties it), a ping
+        # costs 1. Charging a base token first and the elements after would make every frame with
+        # more than a bucket-full minus one elements fail even from a full bucket.
+        if not self.bucket.allow(self._element_count(message)):
             await self.close(code=CLOSE_RATE_LIMITED)
             return
         await self._dispatch(message)
@@ -238,9 +236,10 @@ class AvailabilityConsumer(AsyncWebsocketConsumer):
 
     def _requested_items(self, message) -> list | None:
         items = message.get("groups")
-        if not isinstance(items, list) or len(items) > settings.WS_MAX_GROUPS_PER_CONNECTION:
-            return None
-        return items
+        # No per-frame length cap: the 4 KB frame limit bounds the list, the cost above is charged
+        # per element, and what does not fit under the per-connection cap is rejected one by one
+        # ("too_many_groups").
+        return items if isinstance(items, list) else None
 
     @staticmethod
     def _resolve(item) -> tuple[str, str, str] | str:

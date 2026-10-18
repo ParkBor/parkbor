@@ -29,6 +29,15 @@ export default function ProfileTab() {
       </Pressable>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={t('push.settingsTitle')}
+        onPress={() => router.push('/settings/notifications')}
+        style={[styles.row, { backgroundColor: p.surface, borderColor: p.border }]}
+      >
+        <Text style={[styles.rowTitle, { color: p.text }]}>{t('push.settingsTitle')}</Text>
+        <Text style={{ color: p.textMuted }}>{t('push.settingsHint')}</Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
         accessibilityLabel={t('operator.join.link')}
         onPress={() => router.push('/operator/join')}
         style={[styles.row, { backgroundColor: p.surface, borderColor: p.border }]}

@@ -12,6 +12,7 @@ import { parsePaymentResultParams } from '@/features/payment/paymentResult';
 import { holdHasLapsed, type PollPhase } from '@/features/payment/paymentPolling';
 import { RefundNote } from '@/features/payment/RefundNote';
 import { usePaymentCheck } from '@/features/payment/usePaymentCheck';
+import { useNotificationPrompt } from '@/features/push/usePushPrompt';
 import { usePalette } from '@/theme/theme';
 
 const AUTO_OPEN_DELAY_MS = 2000;
@@ -47,6 +48,9 @@ function PaymentResult({ id }: { id: string }) {
   const isAuthenticated = useIsAuthenticated();
   const { state, booking, recheck } = usePaymentCheck(id, isAuthenticated);
   const { phase } = state;
+  // Right after the payment was confirmed is the moment notifications are worth asking for
+  // (reminder before the time ends, changes). An old CONFIRMED booking opened later is not.
+  useNotificationPrompt(phase === 'paid');
 
   const openBooking = (): void => router.dismissTo({ pathname: '/booking/[id]', params: { id } });
   const openList = (): void => router.replace('/(tabs)/bookings');

@@ -34,10 +34,11 @@ export function createAuthApi(client: AxiosInstance) {
       return res.data;
     },
     /** Revokes a refresh token. Authenticated; sent with an explicit access token (no interceptors). */
-    async logout(accessToken: string, refreshToken: string): Promise<void> {
+    async logout(accessToken: string, refreshToken: string, expoPushToken?: string | null): Promise<void> {
+      // The push token (when this device had one) lets the server unregister exactly this device.
       await client.post(
         '/auth/logout',
-        { refresh: refreshToken },
+        expoPushToken ? { refresh: refreshToken, expo_push_token: expoPushToken } : { refresh: refreshToken },
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
     },

@@ -1,4 +1,6 @@
+import { createOpsApi } from './adminOps'
 import type { HttpClient } from './http'
+import { seg } from './paths'
 
 export type LotStatus = 'PENDING_REVIEW' | 'ACTIVE' | 'SUSPENDED'
 export type SlotType = 'STANDARD' | 'EV' | 'DISABLED' | 'LARGE'
@@ -114,15 +116,10 @@ export interface SlotListParams extends PageParams {
   status?: SlotStatus
 }
 
-/** Percent-encode an id for use as ONE path segment ('.'/'..' would still traverse). */
-function seg(id: string): string {
-  if (!id || id === '.' || id === '..') throw new TypeError('Invalid resource id')
-  return encodeURIComponent(id)
-}
-
 export function createAdminApi(http: HttpClient) {
   const base = '/admin'
   return {
+    ...createOpsApi(http),
     parkings: {
       list: (params: ParkingListParams = {}) =>
         http.request<Paginated<ParkingLot>>('GET', `${base}/parkings`, { query: { ...params } }),

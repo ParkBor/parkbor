@@ -487,6 +487,63 @@ describe('auth store', () => {
     });
   });
 
+  describe('push token travels with the revocation', () => {
+    const PUSH = 'ExponentPushToken[abc_DEF-123]';
+
+    it('logout queues the token with the refresh token and sends it to the server', async () => {
+      const { store, serverLogout, pendingRevoke } = setup('refresh-1', { getPushToken: () => PUSH });
+      serverLogout.mockReturnValue(new Promise(() => undefined));
+      await store.getState().bootstrap();
+      await store.getState().logout();
+      expect(pendingRevoke.list).toEqual([{ token: 'refresh-2', userId: 1, pushToken: PUSH }]);
+      await vi.waitFor(() => expect(serverLogout).toHaveBeenCalledWith('refresh-2', 'access-2', PUSH));
+    });
+
+    it('an offline logout keeps the push token queued and the next sign-in retries with it', async () => {
+      const { store, serverLogout, pendingRevoke } = setup('refresh-1', { getPushToken: () => PUSH });
+      serverLogout.mockRejectedValueOnce(networkError());
+      await store.getState().bootstrap();
+      await store.getState().logout();
+      await vi.waitFor(() => expect(serverLogout).toHaveBeenCalledTimes(1));
+      await flushMicrotasks();
+      expect(pendingRevoke.list).toEqual([{ token: 'refresh-2', userId: 1, pushToken: PUSH }]);
+
+      serverLogout.mockResolvedValue(undefined);
+      await store.getState().setSession({ access: 'a', refresh: 'r', user: USER });
+      await vi.waitFor(() => expect(pendingRevoke.list).toEqual([]));
+      expect(serverLogout).toHaveBeenLastCalledWith('refresh-2', 'a', PUSH);
+    });
+
+    it('a forced wipe (session expired) queues a revocation carrying the token as well', async () => {
+      const { store, storage, pendingRevoke } = setup('refresh-1', { getPushToken: () => PUSH });
+      await store.getState().bootstrap();
+      await store.getState().clearSession();
+      expect(storage.value).toBeNull();
+      expect(pendingRevoke.list).toEqual([{ token: 'refresh-2', userId: 1, pushToken: PUSH }]);
+    });
+
+    it('a forced wipe queues nothing when this device has no push token', async () => {
+      const { store, pendingRevoke } = setup('refresh-1', { getPushToken: () => null });
+      await store.getState().bootstrap();
+      await store.getState().clearSession();
+      expect(pendingRevoke.list).toEqual([]);
+    });
+
+    it('a forced wipe without a stored refresh token queues nothing', async () => {
+      const { store, pendingRevoke } = setup(null, { getPushToken: () => PUSH });
+      await store.getState().clearSession();
+      expect(pendingRevoke.list).toEqual([]);
+    });
+
+    it('logout followed by the wipe leaves ONE entry, not two', async () => {
+      const { store, serverLogout, pendingRevoke } = setup('refresh-1', { getPushToken: () => PUSH });
+      serverLogout.mockReturnValue(new Promise(() => undefined));
+      await store.getState().bootstrap();
+      await store.getState().logout();
+      expect(pendingRevoke.list).toHaveLength(1);
+    });
+  });
+
   describe('logout', () => {
     it('clears the local session immediately, even if the server never answers', async () => {
       const { store, storage, serverLogout, pendingRevoke } = setup();

@@ -54,7 +54,10 @@ export interface AuthStoreDeps {
   pendingRevoke: PendingRevokeStore;
   refreshCall: (refreshToken: string) => Promise<RefreshResponse>;
   fetchMe: (accessToken: string) => Promise<User>;
-  serverLogout: (refreshToken: string, accessToken: string) => Promise<void>;
+  /** `pushToken` (when this device had one) lets the server unregister it together with the logout. */
+  serverLogout: (refreshToken: string, accessToken: string, pushToken?: string) => Promise<void>;
+  /** This device's Expo push token right now (registered or being registered), if any. */
+  getPushToken?: () => string | null;
   /** Security-relevant events only; never receives token material. */
   logger?: { warn: (message: string) => void };
   bootstrapTimeoutMs?: number;
@@ -124,6 +127,7 @@ export function createAuthStore(deps: AuthStoreDeps): StoreApi<AuthState> {
 
     /** Runs inside the lock. Never throws, never hangs. */
     async function wipeLocal(): Promise<void> {
+      await queuePushRevoke();
       try {
         await bounded(deps.storage.clear());
         await bounded(deps.pendingClear.clear()).catch(noop);
@@ -132,6 +136,21 @@ export function createAuthStore(deps: AuthStoreDeps): StoreApi<AuthState> {
         await bounded(deps.pendingClear.set('1')).catch(noop);
       } finally {
         set(ANONYMOUS);
+      }
+    }
+
+    /**
+     * Every wipe (forced ones too: expiry, unreadable storage) that loses a refresh token while this
+     * device has a push token queues a revocation carrying it, so the device is not left behind.
+     */
+    async function queuePushRevoke(): Promise<void> {
+      const pushToken = deps.getPushToken?.() ?? null;
+      if (!pushToken) return;
+      try {
+        const token = await bounded(deps.storage.get());
+        if (token) await addPendingUnlocked({ token, userId: get().user?.id ?? null, pushToken });
+      } catch {
+        // best effort: the wipe itself must go on
       }
     }
 
@@ -155,7 +174,8 @@ export function createAuthStore(deps: AuthStoreDeps): StoreApi<AuthState> {
     /** Tries one revocation. Keeps the entry queued unless the server gave a definitive answer. */
     async function revoke(entry: PendingRevoke, accessToken: string): Promise<void> {
       try {
-        await deps.serverLogout(entry.token, accessToken);
+        if (entry.pushToken) await deps.serverLogout(entry.token, accessToken, entry.pushToken);
+        else await deps.serverLogout(entry.token, accessToken);
         await dequeue(entry.token);
       } catch (error: unknown) {
         // Network, 5xx and an expired access token (401) say nothing about the old refresh
@@ -326,7 +346,8 @@ export function createAuthStore(deps: AuthStoreDeps): StoreApi<AuthState> {
           access = get().accessToken;
           const token = await bounded(deps.storage.get());
           if (token) {
-            entry = { token, userId: get().user?.id ?? null };
+            const pushToken = deps.getPushToken?.() ?? null;
+            entry = { token, userId: get().user?.id ?? null, ...(pushToken ? { pushToken } : {}) };
             const queued = entry;
             // Queue BEFORE wiping: if the app dies mid-revoke the obligation survives.
             await lock.run(() => addPendingUnlocked(queued)).catch(noop);

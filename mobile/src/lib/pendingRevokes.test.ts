@@ -31,6 +31,23 @@ describe('parsePending', () => {
   });
 });
 
+describe('push token on an entry', () => {
+  it('survives the round trip and the dedupe', () => {
+    const entry: PendingRevoke = { token: 'a', userId: 1, pushToken: 'ExponentPushToken[abc]' };
+    expect(parsePending(serializePending([entry]))).toEqual([entry]);
+    expect(addPending([{ token: 'a', userId: 1 }], entry)).toEqual([entry]);
+  });
+
+  it('is dropped when malformed or oversized, keeping the revocation itself', () => {
+    const raw = JSON.stringify([
+      { token: 'a', userId: 1, pushToken: 5 },
+      { token: 'b', userId: 1, pushToken: '' },
+      { token: 'c', userId: 1, pushToken: 'x'.repeat(201) },
+    ]);
+    expect(parsePending(raw)).toEqual([e('a'), e('b'), e('c')]);
+  });
+});
+
 describe('addPending', () => {
   it('appends new tokens', () => {
     expect(addPending([e('a')], e('b'))).toEqual([e('a'), e('b')]);

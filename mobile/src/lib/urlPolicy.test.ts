@@ -34,6 +34,37 @@ describe('validateWsUrl', () => {
   it('rejects other schemes in dev', () => {
     expect(() => validateWsUrl('http://localhost:8000/ws', true)).toThrow();
   });
+
+  it('trims trailing slashes and accepts host:port, IPv6 and nested paths', () => {
+    expect(validateWsUrl('wss://api.habi.uz/ws///', false)).toBe('wss://api.habi.uz/ws');
+    expect(validateWsUrl('wss://api.habi.uz:8443/v1/ws', false)).toBe('wss://api.habi.uz:8443/v1/ws');
+    expect(validateWsUrl('ws://[::1]:8000/ws', true)).toBe('ws://[::1]:8000/ws');
+    expect(validateWsUrl('wss://api.habi.uz', false)).toBe('wss://api.habi.uz');
+  });
+
+  it.each([
+    ['userinfo', 'wss://user:pass@api.habi.uz/ws'],
+    ['userinfo without password', 'wss://user@api.habi.uz/ws'],
+    ['query', 'wss://api.habi.uz/ws?ticket=x'],
+    ['fragment', 'wss://api.habi.uz/ws#x'],
+    ['whitespace', 'wss://api.habi.uz/ws '],
+    ['newline', 'wss://api.habi.uz/ws\n'],
+    ['space in host', 'wss://api habi.uz/ws'],
+    ['backslash', 'wss://api.habi.uz\\evil.com/ws'],
+    ['dot segments', 'wss://api.habi.uz/ws/../admin'],
+    ['port out of range', 'wss://api.habi.uz:99999/ws'],
+    ['empty host', 'wss:///ws'],
+    ['empty', ''],
+    ['scheme only', 'wss://'],
+  ])('rejects %s', (_name, url) => {
+    expect(() => validateWsUrl(url, true)).toThrow();
+    expect(() => validateWsUrl(url, false)).toThrow();
+  });
+
+  it('release builds reject plain ws even when it is otherwise valid', () => {
+    expect(() => validateWsUrl('ws://api.habi.uz/ws', false)).toThrow(/wss/);
+    expect(() => validateWsUrl('WS://api.habi.uz/ws', false)).toThrow(/wss/);
+  });
 });
 
 describe('validateBotName', () => {

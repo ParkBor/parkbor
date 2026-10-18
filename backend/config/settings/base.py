@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "apps.payments",
     "apps.audit",
     "apps.operators",
+    "apps.reviews",
     "apps.adminpanel",
     "apps.realtime",
     "apps.notifications",
@@ -49,6 +50,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.adminpanel.middleware.AdminNoStoreMiddleware",
 ]
 X_FRAME_OPTIONS = "DENY"
 
@@ -100,6 +102,10 @@ REST_FRAMEWORK = {
         # Provider callbacks, per client IP: wide, because Payme/Click call from a few addresses
         # and retry; it only stops floods (the signature/auth check is the real gate).
         "payment_webhook": "600/min",
+        "review_write": "10/hour",  # POST /parkings/{id}/reviews, per user
+        "review_read": "120/min",  # GET /parkings/{id}/reviews, per user
+        "admin_read": "120/min",  # GET /admin/* operations lists and stats, per user
+        "admin_write": "30/min",  # admin mutations (users, cancel, resolve, moderation, settings)
         "ws_ticket": "30/min",  # POST /ws/ticket, per user (one per (re)connect)
     },
     # Number of trusted reverse proxies in front of the app (X-Forwarded-For). 0 = ignore the

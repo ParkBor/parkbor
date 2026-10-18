@@ -33,6 +33,19 @@ def test_a_new_connection_is_never_its_own_victim(fake_redis):
     assert "c" not in connections.register("u", "c", now=100)
 
 
+def test_a_clock_skewed_newcomer_is_scored_above_the_newest_entry(fake_redis):
+    connections.register("u", "a", now=1000)
+    connections.register("u", "b", now=1001)
+    assert connections.register("u", "late", now=10) == ["a"]  # the oldest goes, not the newcomer
+    assert set(fake_redis.zrange("ws:conns:u", 0, -1)) == {"b", "late"}
+    assert fake_redis.zscore("ws:conns:u", "late") > fake_redis.zscore("ws:conns:u", "b")
+
+
+def test_if_the_newcomer_is_ever_chosen_it_is_returned_to_be_closed(fake_redis, monkeypatch):
+    monkeypatch.setattr(fake_redis, "eval", lambda *args: ["me", "other"])
+    assert connections.register("u", "me") == ["me", "other"]
+
+
 def test_dead_entries_are_dropped_without_evicting_live_ones(fake_redis):
     connections.register("u", "dead1", now=100)
     connections.register("u", "dead2", now=101)

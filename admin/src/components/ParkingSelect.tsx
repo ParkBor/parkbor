@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { adminApi } from '../lib/api'
+import { safeText } from '../lib/format'
 import { QueryError } from './QueryError'
 
 interface ParkingSelectProps {
@@ -42,6 +43,8 @@ export function ParkingSelect({ value, onChange }: ParkingSelectProps) {
       {error ? <QueryError error={error} onRetry={() => void refetch()} /> : null}
       <Select<{ value: string; label: string } | undefined>
         showSearch
+        allowClear
+        aria-label={t('bookings.lot')}
         labelInValue
         filterOption={false}
         onSearch={setText}
@@ -53,7 +56,7 @@ export function ParkingSelect({ value, onChange }: ParkingSelectProps) {
           setSelectedLabel(option ? String(option.label) : null)
           onChange(option?.value)
         }}
-        options={(data?.results ?? []).map((lot) => ({ value: lot.id, label: lot.name }))}
+        options={(data?.results ?? []).map((lot) => ({ value: lot.id, label: safeText(lot.name, 80) }))}
       />
     </>
   )

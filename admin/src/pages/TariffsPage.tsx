@@ -7,7 +7,7 @@ import { ParkingSelect } from '../components/ParkingSelect'
 import { QueryError } from '../components/QueryError'
 import { TariffForm } from '../components/TariffForm'
 import { adminApi } from '../lib/api'
-import { describeError } from '../lib/errors'
+import { errorText } from '../lib/errorText'
 import { fetchAll } from '../lib/fetchAll'
 import type { TariffFormValues } from '../schemas'
 
@@ -22,7 +22,7 @@ export default function TariffsPage() {
     enabled: Boolean(lotId),
   })
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['tariffs'] })
-  const onError = (error: unknown) => void message.error(describeError(error, t('common.error')))
+  const onError = (error: unknown) => void message.error(errorText(error, t))
 
   const create = useMutation({
     mutationFn: ({ lot, values }: { lot: string; values: TariffFormValues }) =>

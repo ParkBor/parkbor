@@ -1,5 +1,6 @@
 """Sentry setup with scrubbing: Bot API URLs contain the bot token (`/bot<token>/method`)."""
 
+import os
 import re
 from urllib.parse import urlparse
 
@@ -8,7 +9,8 @@ from django.conf import settings
 _BOT_URL_TOKEN = re.compile(r"/bot\d+:[A-Za-z0-9_-]+")
 # A WebSocket ticket is a short-lived bearer credential (usually in `?ticket=`); an Expo push token
 # identifies a device. Neither belongs in an error report.
-_WS_TICKET = re.compile(r"([?&]ticket=)[^&\s\"']+")
+# `(^|[?&])`: a bare `query_string` ("ticket=abc") has no leading separator.
+_WS_TICKET = re.compile(r"((?:^|[?&])ticket=)[^&\s\"']+")
 _EXPO_TOKEN = re.compile(r"Expo(?:nent)?PushToken\[[^\]]*\]")
 REDACTED = "/bot<redacted>"
 SECRET_SETTINGS = ("TELEGRAM_BOT_TOKEN", "PAYME_KEY", "CLICK_SECRET_KEY", "EXPO_ACCESS_TOKEN")
@@ -86,15 +88,32 @@ def before_breadcrumb(crumb, hint):
     return _scrub_any(crumb)
 
 
+def _traces_sample_rate() -> float:
+    """SENTRY_TRACES_SAMPLE_RATE in [0, 1]; anything else (unset, junk) means tracing off."""
+    try:
+        rate = float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0"))
+    except ValueError:
+        return 0.0
+    return rate if 0.0 <= rate <= 1.0 else 0.0
+
+
 def init_sentry(dsn: str) -> bool:
-    """Initialise Sentry only when a DSN is configured; returns whether it was initialised."""
+    """Initialise Sentry only when a DSN is configured; returns whether it was initialised.
+
+    Optional env: SENTRY_ENVIRONMENT (default "production"), SENTRY_RELEASE (the deployed image
+    tag / git SHA; empty = let the SDK guess), SENTRY_TRACES_SAMPLE_RATE (default 0 = off).
+    """
     if not dsn:
         return False
     import sentry_sdk
 
     sentry_sdk.init(
         dsn=dsn,
+        environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
+        release=os.environ.get("SENTRY_RELEASE") or None,
+        traces_sample_rate=_traces_sample_rate(),
         send_default_pii=False,
+        max_request_body_size="never",  # request bodies carry QR tokens, signatures, phone numbers
         include_local_variables=False,  # frames of the webhook code hold keys and request bodies
         before_send=before_send,
         before_breadcrumb=before_breadcrumb,

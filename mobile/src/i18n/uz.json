@@ -69,6 +69,16 @@
     "finish": "Tayyor",
     "later": "Keyinroq"
   },
+  "push": {
+    "promptTitle": "Broningizdan xabardor bo‘ling",
+    "promptText": "Vaqt tugashidan oldin eslatma olish va bron o‘zgarishlari haqida bilish uchun bildirishnomalarga ruxsat bering.",
+    "notNow": "Hozir emas",
+    "enable": "Ruxsat berish",
+    "settingsTitle": "Bildirishnomalar",
+    "settingsHint": "Bron tugashidan oldingi eslatmalar va bron o‘zgarishlari haqida xabarlar.",
+    "settingsOn": "Bildirishnomalar yoqilgan",
+    "settingsOff": "Bu qurilmada bildirishnomalar o‘chiq"
+  },
   "tabs": {
     "map": "Xarita",
     "bookings": "Bronlarim",

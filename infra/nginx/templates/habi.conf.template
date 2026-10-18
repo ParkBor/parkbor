@@ -1,0 +1,169 @@
+# Rendered by the nginx image entrypoint (envsubst replaces ONLY ${API_DOMAIN} and ${ADMIN_DOMAIN}).
+# Certificates: /etc/nginx/certs/<domain>/fullchain.pem + privkey.pem (docs/DEPLOY.md, "TLS").
+
+# ---------------------------------------------------------------- port 80: ACME + redirect
+server {
+    listen 8080 default_server;
+    server_name _;
+
+    location = /nginx-health { access_log off; default_type text/plain; return 200 "ok\n"; }
+    location ^~ /.well-known/acme-challenge/ { root /var/www/acme; }
+    # Only our own hostnames are redirected (no open redirect via a forged Host header).
+    location / {
+        if ($host !~ ^(${API_DOMAIN}|${ADMIN_DOMAIN})$) { return 444; }
+        return 301 https://$host$request_uri;
+    }
+}
+
+# Anything on 443 that is not one of our hostnames: refuse the TLS handshake.
+server {
+    listen 8443 ssl default_server;
+    ssl_reject_handshake on;
+}
+
+# ---------------------------------------------------------------- API + WebSocket
+server {
+    listen 8443 ssl;
+    http2 on;
+    server_name ${API_DOMAIN};
+
+    ssl_certificate     /etc/nginx/certs/${API_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/${API_DOMAIN}/privkey.pem;
+    include /etc/nginx/snippets/tls.conf;
+
+    include /etc/nginx/snippets/security-headers.conf;
+    # JSON only: nothing here may be framed, scripted or embedded.
+    add_header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'" always;
+
+    limit_conn conn_per_ip 100;
+
+    # WebSocket (ARCHITECTURE 12, 17). proxy_read_timeout must exceed the server ping (30 s) and
+    # idle limit (90 s). The access log records $uri only, never ?ticket=.
+    location /ws/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        proxy_pass http://asgi;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_buffering off;
+        limit_conn ws_per_ip 20;
+        client_max_body_size 8k;
+    }
+
+    # Payment webhooks: ONLY these two exact paths, POST only, 64k body (the app rejects >16 KB).
+    # Provider IPs are enforced by the app (PAYMENTS_PAYME_IPS / PAYMENTS_CLICK_IPS). To also
+    # block at the edge, add `allow <cidr>;` lines for the provider ranges followed by `deny all;`
+    # inside each block. Payme: 185.234.113.1-15; Click: ask CLICK support.
+    location = /api/v1/payments/payme/webhook {
+        include /etc/nginx/snippets/security-headers.conf;
+        limit_except POST { deny all; }
+        limit_req zone=webhooks burst=40 nodelay;
+        client_max_body_size 64k;
+        include /etc/nginx/snippets/proxy-api.conf;
+    }
+    location = /api/v1/payments/click/webhook {
+        include /etc/nginx/snippets/security-headers.conf;
+        limit_except POST { deny all; }
+        limit_req zone=webhooks burst=40 nodelay;
+        client_max_body_size 64k;
+        include /etc/nginx/snippets/proxy-api.conf;
+    }
+    # Telegram bot webhook (authenticated by the secret_token header). Optional edge allowlist:
+    # Telegram sends from 149.154.160.0/20 and 91.108.4.0/22.
+    location = /api/v1/telegram/webhook {
+        include /etc/nginx/snippets/security-headers.conf;
+        limit_except POST { deny all; }
+        limit_req zone=webhooks burst=40 nodelay;
+        client_max_body_size 64k;
+        include /etc/nginx/snippets/proxy-api.conf;
+    }
+
+    # Login endpoints: 10/min per IP (ARCHITECTURE 15); never cached.
+    location ^~ /api/v1/auth/telegram/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-store" always;
+        limit_req zone=api_auth burst=5 nodelay;
+        include /etc/nginx/snippets/proxy-api.conf;
+    }
+    location = /api/v1/ws/ticket {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-store" always;
+        limit_req zone=api_wsticket burst=10 nodelay;
+        include /etc/nginx/snippets/proxy-api.conf;
+    }
+    # Booking creation: 10/min per IP (only POST is counted, see $booking_key).
+    location = /api/v1/bookings {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-store" always;
+        limit_req zone=api_booking burst=5 nodelay;
+        limit_req zone=api_general burst=60 nodelay;
+        include /etc/nginx/snippets/proxy-api.conf;
+    }
+    location ~ ^/api/v1/(auth/|me(/|$)) {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-store" always;
+        limit_req zone=api_general burst=60 nodelay;
+        include /etc/nginx/snippets/proxy-api.conf;
+    }
+
+    location /api/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        limit_req zone=api_general burst=60 nodelay;
+        include /etc/nginx/snippets/proxy-api.conf;
+    }
+
+    # The API host serves nothing else (no schema/docs, no static files).
+    location / { return 404; }
+}
+
+# ---------------------------------------------------------------- admin SPA (+ same-origin API)
+server {
+    listen 8443 ssl;
+    http2 on;
+    server_name ${ADMIN_DOMAIN};
+
+    ssl_certificate     /etc/nginx/certs/${ADMIN_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/${ADMIN_DOMAIN}/privkey.pem;
+    include /etc/nginx/snippets/tls.conf;
+
+    root /usr/share/nginx/admin;
+    index index.html;
+    limit_conn conn_per_ip 100;
+
+    # Admin CSP (ARCHITECTURE 14.3). 'unsafe-eval' is required by the Telegram Login Widget
+    # (data-onauth); style 'unsafe-inline' by Ant Design. If VITE_TILE_URL points to another tile
+    # host, add it to img-src; if the API is on another origin, add it to connect-src.
+    set $admin_csp "default-src 'self'; script-src 'self' https://telegram.org 'unsafe-eval'; frame-src https://oauth.telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'";
+
+    # The browser calls the API on this origin (VITE_API_URL=/api/v1), so no CORS is needed.
+    # Payment and bot webhooks are NOT reachable through the admin host.
+    location ~ ^/api/v1/(payments/|telegram/webhook) { return 404; }
+    location /api/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'" always;
+        add_header Cache-Control "no-store" always;
+        limit_req zone=api_general burst=60 nodelay;
+        include /etc/nginx/snippets/proxy-api.conf;
+    }
+
+    # Hashed build assets: cache for a year.
+    location /assets/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Content-Security-Policy $admin_csp always;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # SPA fallback; index.html must always be revalidated so a deploy takes effect at once.
+    location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Content-Security-Policy $admin_csp always;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri /index.html;
+    }
+}

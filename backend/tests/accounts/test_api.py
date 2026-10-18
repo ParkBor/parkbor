@@ -450,3 +450,24 @@ def test_global_handler_still_maps_missing_rows_to_404():
 
     response = api_exception_handler(User.DoesNotExist(), {})
     assert response.status_code == 404
+
+
+def test_logout_never_deletes_another_users_device(user):
+    other = User.objects.create_user(telegram_id=2003)
+    Device.objects.create(user=other, platform="ios", expo_push_token=TOKEN_A)
+    refresh = str(RefreshToken.for_user(user))
+    response = auth_client(user).post(
+        f"{API}/auth/logout", {"refresh": refresh, "expo_push_token": TOKEN_A}, format="json"
+    )
+    assert response.status_code == 204  # the same answer as for an unknown token: nothing leaks
+    assert Device.objects.get(expo_push_token=TOKEN_A).user == other
+
+
+def test_delete_device_never_removes_another_users_token(user):
+    other = User.objects.create_user(telegram_id=2004)
+    Device.objects.create(user=other, platform="ios", expo_push_token=TOKEN_A)
+    response = auth_client(user).delete(
+        f"{API}/me/devices", {"expo_push_token": TOKEN_A}, format="json"
+    )
+    assert response.status_code == 204
+    assert Device.objects.filter(user=other, expo_push_token=TOKEN_A).exists()

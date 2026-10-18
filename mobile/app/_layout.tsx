@@ -14,6 +14,8 @@ import { bindKeeperToSession } from '@/features/booking/idempotencyKey';
 import { bindQrCacheToSession } from '@/features/booking/qrCache';
 import { operatorStore } from '@/features/operator/operatorSession';
 import { initPaymentEnv } from '@/features/payment/paymentEnv';
+import { PushSetup } from '@/features/push/PushSetup';
+import { startRealtime } from '@/features/realtime/realtimeSession';
 import { clearLastPayment } from '@/features/payment/lastPayment';
 import { initI18n, restoreSavedLanguage } from '@/i18n';
 import { resolveRedirect } from '@/lib/authGuard';
@@ -66,6 +68,8 @@ export default function RootLayout() {
     const unbindPayment = onSessionEnd(authStore, clearLastPayment);
     // Operator working state (chosen lot, plate switches, mode) never outlives the session.
     const unbindOperator = onSessionEnd(authStore, () => operatorStore.getState().reset());
+    // Live free-spot counts, booking status and operator slots over the WebSocket (polling stays as fallback).
+    const stopRealtime = startRealtime(queryClient);
     void qrCache.prune();
     // Foreground refetches stale data; connectivity pauses/resumes queries instead of failing them.
     const unwireFocus = wireFocus(
@@ -82,6 +86,7 @@ export default function RootLayout() {
       unbindPayment();
       unbindOperator();
       unwireFocus();
+      stopRealtime();
     };
   }, [queryClient]);
 
@@ -91,6 +96,7 @@ export default function RootLayout() {
         {/* In-memory cache only: responses behind auth must never be persisted. */}
         <QueryClientProvider client={queryClient}>
           <StatusBar style="auto" />
+          <PushSetup />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="booking/new" options={{ presentation: 'modal' }} />
             {/* A payment in progress is left only through the confirm dialog, never by a swipe. */}

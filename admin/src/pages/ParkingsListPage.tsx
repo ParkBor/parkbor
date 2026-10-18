@@ -8,7 +8,7 @@ import { ParkingsTable } from '../components/ParkingsTable'
 import { QueryError } from '../components/QueryError'
 import { adminApi } from '../lib/api'
 import { useRole } from '../lib/auth'
-import { describeError } from '../lib/errors'
+import { errorText } from '../lib/errorText'
 import type { ModerationAction } from '../lib/moderation'
 
 const STATUSES: LotStatus[] = ['PENDING_REVIEW', 'ACTIVE', 'SUSPENDED']
@@ -31,7 +31,7 @@ export default function ParkingsListPage() {
     mutationFn: ({ id, action }: { id: string; action: ModerationAction }) =>
       adminApi.parkings[action](id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['parkings'] }),
-    onError: (error) => void message.error(describeError(error, t('common.error'))),
+    onError: (error) => void message.error(errorText(error, t)),
   })
 
   return (

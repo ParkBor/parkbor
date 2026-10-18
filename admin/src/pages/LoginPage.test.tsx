@@ -35,7 +35,7 @@ function renderPage(auth: AuthState, options: PageOptions = {}) {
       >
         <Routes>
           <Route path="/login" element={page} />
-          <Route path="/parkings" element={<p>parkings page</p>} />
+          <Route path="/dashboard" element={<p>dashboard page</p>} />
           <Route path="/tariffs" element={<p>tariffs page</p>} />
         </Routes>
       </MemoryRouter>
@@ -255,13 +255,13 @@ describe('redirect', () => {
     expect(screen.getByText('tariffs page')).toBeInTheDocument()
   })
 
-  it('defaults to the parkings page', () => {
+  it('defaults to the dashboard page', () => {
     renderPage(makeAuth({ role: 'OWNER' }), BOT)
-    expect(screen.getByText('parkings page')).toBeInTheDocument()
+    expect(screen.getByText('dashboard page')).toBeInTheDocument()
   })
 
   it.each(['//evil.example', '/LOGIN', '/a\tb'])('ignores the redirect target %j', (from) => {
     renderPage(makeAuth({ role: 'OWNER' }), { ...BOT, from })
-    expect(screen.getByText('parkings page')).toBeInTheDocument()
+    expect(screen.getByText('dashboard page')).toBeInTheDocument()
   })
 })

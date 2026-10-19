@@ -228,7 +228,10 @@
       "server": "Server xatosi. Keyinroq qayta urinib ko‘ring.",
       "invalidResponse": "Serverdan kutilmagan javob keldi.",
       "generic": "Avtoturargohlarni yuklab bo‘lmadi. Qayta urinib ko‘ring."
-    }
+    },
+    "styleFailedTitle": "Xaritani yuklab bo‘lmadi",
+    "styleFailedText": "Internet aloqasini tekshiring. Quyidagi avtoturargohlar ro‘yxati ishlayveradi.",
+    "attributionLabel": "Xarita ma’lumotlari: {{text}}"
   },
   "failure": {
     "network": "Internet yo‘q yoki server javob bermayapti. Ulanishni tekshirib, qayta urinib ko‘ring.",

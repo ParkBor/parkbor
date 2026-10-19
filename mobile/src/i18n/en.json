@@ -228,7 +228,10 @@
       "server": "Server error. Please try again later.",
       "invalidResponse": "The server sent an unexpected response.",
       "generic": "Could not load parking lots. Please try again."
-    }
+    },
+    "styleFailedTitle": "The map could not be loaded",
+    "styleFailedText": "Check your internet connection. The list of parking lots below still works.",
+    "attributionLabel": "Map data: {{text}}"
   },
   "failure": {
     "network": "No internet or the server is not responding. Check your connection and try again.",

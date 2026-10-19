@@ -3,7 +3,7 @@ export interface LatLng {
   lng: number;
 }
 
-/** react-native-maps Region shape (kept here so pure logic does not import the native module). */
+/** Viewport as centre + span (kept here so pure logic does not import the native map module; maplibreAdapter converts it). */
 export interface Region {
   latitude: number;
   longitude: number;

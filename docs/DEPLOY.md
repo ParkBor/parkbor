@@ -29,7 +29,7 @@ Tarmoq: `data` (internal, internetga chiqmaydi): db, redis, redis-cache, osrm. `
 - [ ] Payme Business: `PAYME_MERCHANT_ID`, `PAYME_KEY`; Click: `CLICK_SERVICE_ID`, `CLICK_MERCHANT_ID`, `CLICK_MERCHANT_USER_ID`, `CLICK_SECRET_KEY`; Click server IP lari (`PAYMENTS_CLICK_IPS`) — CLICK support dan.
 - [ ] Maxfiy kalitlar: `SECRET_KEY`, `JWT_SIGNING_KEY`, `QR_SIGNING_KEY` (>= 50 belgi), Postgres/Redis parollari.
 - [ ] Expo/EAS akkaunti, `EXPO_PUBLIC_EAS_PROJECT_ID` (`eas init`), Expo access token (ixtiyoriy `EXPO_ACCESS_TOKEN`).
-- [ ] Google Maps Android kaliti (paket `uz.parkbor.app` + SHA-1 bilan cheklangan); Apple Developer va Google Play akkauntlari.
+- [ ] Xarita: kalit kerak emas (MapLibre + OpenFreeMap, ARCHITECTURE 11.3); production uchun xarita uslubi provayderini hal qiling. Apple Developer va Google Play akkauntlari.
 - [ ] `mobile/eas.json` dagi haqiqiy domenlar (hozir `api.parkbor.uz`, `staging-api.parkbor.uz`) va bot nomlari (`parkbor_bot`, `parkbor_staging_bot`, `parkbor_dev_bot`) — o‘zingiznikiga almashtiring.
 - [ ] Sentry (ixtiyoriy): backend DSN. Mobil/admin DSN nomlari faqat zaxiralangan (`EXPO_PUBLIC_SENTRY_DSN`, `VITE_SENTRY_DSN`), SDK hali o‘rnatilmagan.
 - [ ] Zaxira nusxa saqlanadigan tashqi joy (boshqa server / S3) va monitoring (uptime tekshiruvi).

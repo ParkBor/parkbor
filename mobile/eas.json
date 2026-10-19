@@ -7,7 +7,6 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "development",
       "env": {
         "EXPO_PUBLIC_API_URL": "http://localhost:8000/api/v1",
         "EXPO_PUBLIC_WS_URL": "ws://localhost:8000/ws",
@@ -19,7 +18,6 @@
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview",
       "android": {
         "buildType": "apk"
       },
@@ -35,7 +33,6 @@
     "e2e": {
       "developmentClient": false,
       "distribution": "internal",
-      "channel": "e2e",
       "android": {
         "buildType": "apk"
       },
@@ -51,7 +48,6 @@
     "e2e-ios-simulator": {
       "developmentClient": false,
       "distribution": "internal",
-      "channel": "e2e",
       "ios": {
         "simulator": true
       },
@@ -66,7 +62,6 @@
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.parkbor.uz/api/v1",
         "EXPO_PUBLIC_WS_URL": "wss://api.parkbor.uz/ws",

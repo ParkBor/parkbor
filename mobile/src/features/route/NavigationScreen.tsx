@@ -1,14 +1,16 @@
 import { useQueryClient } from '@tanstack/react-query';
+import type { CameraRef } from '@maplibre/maplibre-react-native';
+import { Marker } from '@maplibre/maplibre-react-native';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AccessibilityInfo, Platform, StyleSheet, Text, useColorScheme, View } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
-import { DARK_MAP_STYLE } from '@/features/map/darkMapStyle';
+import { AppMap } from '@/features/map/AppMap';
+import { boundsOfPath, runCamera, toLngLat } from '@/features/map/maplibreAdapter';
 import type { NearbyResponse } from '@/features/map/schemas';
 import { regionAround } from '@/features/map/search';
 import { useLanguage } from '@/features/map/useLanguage';
@@ -41,6 +43,9 @@ const LOT_VIEW_RADIUS_M = 400;
 const KEEP_AWAKE_TAG = 'habi-navigation';
 /** Panels float over the map: edge padding keeps the fitted route between them. */
 const FIT_PADDING = { top: 240, right: 40, bottom: 260, left: 40 };
+const FIT_MS = 500;
+/** Keeps the credit line above the bottom bar. */
+const ATTRIBUTION_BOTTOM = 150;
 
 type NavParams = RawLotParams & { fromLat?: string | string[]; fromLng?: string | string[] };
 
@@ -120,8 +125,7 @@ function ActiveNavigation({ lot, initialOrigin, onExit }: ActiveProps) {
   const p = usePalette();
   const lang = useLanguage();
   const insets = useSafeAreaInsets();
-  const isDark = useColorScheme() === 'dark';
-  const mapRef = useRef<MapView>(null);
+  const cameraRef = useRef<CameraRef>(null);
   const fittedRoute = useRef<Route | null>(null);
 
   const session = useNavigationSession(lot, initialOrigin);
@@ -148,7 +152,8 @@ function ActiveNavigation({ lot, initialOrigin, onExit }: ActiveProps) {
   useEffect(() => {
     if (!route) return;
     if (shouldFitRoute(fittedRoute.current, route)) {
-      mapRef.current?.fitToCoordinates(route.path, { edgePadding: FIT_PADDING, animated: true });
+      const bounds = boundsOfPath(route.path);
+      if (bounds) runCamera(() => cameraRef.current?.fitBounds(bounds, { padding: FIT_PADDING, duration: FIT_MS, easing: 'ease' }));
     }
     fittedRoute.current = route;
   }, [route]);
@@ -179,22 +184,18 @@ function ActiveNavigation({ lot, initialOrigin, onExit }: ActiveProps) {
 
   return (
     <View style={[styles.root, { backgroundColor: p.background }]}>
-      <MapView
-        ref={mapRef}
+      <AppMap
+        cameraRef={cameraRef}
         accessibilityLabel={t('nav.mapLabel')}
-        style={StyleSheet.absoluteFill}
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         initialRegion={regionAround(lot.location, LOT_VIEW_RADIUS_M)}
-        userInterfaceStyle={isDark ? 'dark' : 'light'}
-        customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
         showsUserLocation={location.state === 'granted'}
-        showsMyLocationButton={false}
-        toolbarEnabled={false}
-        rotateEnabled={false}
+        attributionBottom={ATTRIBUTION_BOTTOM + insets.bottom}
       >
         {route ? <RouteLayer route={route} /> : null}
-        <Marker coordinate={{ latitude: lot.location.lat, longitude: lot.location.lng }} title={lot.name} />
-      </MapView>
+        <Marker id="lot" lngLat={toLngLat(lot.location)} anchor="bottom" accessibilityLabel={lot.name}>
+          <View style={[styles.lotPin, { backgroundColor: p.primary, borderColor: p.background }]} />
+        </Marker>
+      </AppMap>
 
       {/* Edge-to-edge (Android) and notches: panels are offset by the safe-area insets. */}
       <View style={[styles.top, { paddingTop: insets.top + 12 }]} pointerEvents="box-none">
@@ -244,6 +245,7 @@ const styles = StyleSheet.create({
   top: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 12, paddingBottom: 12, gap: 8 },
   bottom: { position: 'absolute', bottom: 0, left: 0, right: 0 },
   locationAction: { alignSelf: 'flex-start' },
+  lotPin: { width: 26, height: 26, borderRadius: 13, borderWidth: 4 },
   missing: { flex: 1, padding: 24, gap: 16, justifyContent: 'center' },
   missingTitle: { fontSize: 24, fontWeight: '700' },
   missingText: { fontSize: 16 },

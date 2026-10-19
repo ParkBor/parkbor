@@ -1,16 +1,17 @@
 import type BottomSheet from '@gorhom/bottom-sheet';
+import type { CameraRef } from '@maplibre/maplibre-react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Platform, StyleSheet, useColorScheme, View } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import { Alert, StyleSheet, View } from 'react-native';
 
-import { DARK_MAP_STYLE } from '@/features/map/darkMapStyle';
+import { AppMap } from '@/features/map/AppMap';
 import { activeFilterCount } from '@/features/map/filters';
 import { useFiltersStore } from '@/features/map/filtersStore';
 import { FiltersSheet } from '@/features/map/FiltersSheet';
 import type { LatLng, Region } from '@/features/map/geo';
 import { DEFAULT_CENTER } from '@/features/map/locationModel';
+import { boundsOfPath, runCamera } from '@/features/map/maplibreAdapter';
 import { MapControls } from '@/features/map/MapControls';
 import { MapSheet, SHEET_DEFAULT_INDEX } from '@/features/map/MapSheet';
 import { ParkingMarkers } from '@/features/map/ParkingMarkers';
@@ -27,12 +28,11 @@ import { usePalette } from '@/theme/theme';
 export function MapScreen() {
   const { t } = useTranslation();
   const p = usePalette();
-  const isDark = useColorScheme() === 'dark';
   const filters = useFiltersStore((s) => s.filters);
   const location = useUserLocation();
   const nearby = useNearbyParkings(location.position, filters, location.isReady);
-  const mapRef = useRef<MapView>(null);
-  const camera = useMapCamera(mapRef, location.position, filters.radiusM);
+  const cameraRef = useRef<CameraRef>(null);
+  const camera = useMapCamera(cameraRef, location.position, filters.radiusM);
   const sheetRef = useRef<BottomSheet>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -45,7 +45,8 @@ export function MapScreen() {
   const routeState = useRoute(activeRoute?.from ?? null, activeRoute ? (selected?.location ?? null) : null);
   const routePath = routeState.route?.path;
   useEffect(() => {
-    if (routePath) mapRef.current?.fitToCoordinates(routePath, { edgePadding: ROUTE_FIT_PADDING, animated: true });
+    const bounds = routePath ? boundsOfPath(routePath) : null;
+    if (bounds) runCamera(() => cameraRef.current?.fitBounds(bounds, { padding: ROUTE_FIT_PADDING, duration: ROUTE_FIT_MS, easing: 'ease' }));
   }, [routePath]);
 
   const select = (parking: Parking): void => {
@@ -88,20 +89,14 @@ export function MapScreen() {
 
   return (
     <View testID="map-screen" style={[styles.root, { backgroundColor: p.background }]}>
-      <MapView
-        ref={mapRef}
-        style={StyleSheet.absoluteFill}
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+      <AppMap
+        cameraRef={cameraRef}
         initialRegion={camera.initialRegion}
-        userInterfaceStyle={isDark ? 'dark' : 'light'}
-        customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
         showsUserLocation={location.state === 'granted'}
-        showsMyLocationButton={false}
-        toolbarEnabled={false}
-        rotateEnabled={false}
-        onPanDrag={camera.markMoved}
+        attributionBottom={ATTRIBUTION_BOTTOM}
+        onUserMove={camera.markMoved}
         onPress={() => setSelectedId(null)}
-        onRegionChangeComplete={regionSettled}
+        onRegionSettled={regionSettled}
       >
         <ParkingMarkers
           parkings={nearby.parkings}
@@ -111,7 +106,7 @@ export function MapScreen() {
           onZoomTo={camera.zoomTo}
         />
         {activeRoute && routeState.route ? <RouteLayer route={routeState.route} /> : null}
-      </MapView>
+      </AppMap>
       <MapControls
         locationState={location.state}
         filterCount={activeFilterCount(filters)}
@@ -145,5 +140,8 @@ export function MapScreen() {
 }
 
 const ROUTE_FIT_PADDING = { top: 80, right: 40, bottom: 320, left: 40 };
+const ROUTE_FIT_MS = 500;
+/** The credit line sits just above the collapsed bottom sheet (18 % of the screen). */
+const ATTRIBUTION_BOTTOM = '19%';
 
 const styles = StyleSheet.create({ root: { flex: 1 } });

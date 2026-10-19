@@ -1,7 +1,7 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { Marker } from '@maplibre/maplibre-react-native';
+import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
-import { Marker } from 'react-native-maps';
 
 import {
   buildClusterIndex,
@@ -9,24 +9,13 @@ import {
   getMapItems,
   type ClusterIndex,
 } from '@/features/map/cluster';
-import type { Region } from '@/features/map/geo';
+import type { LatLng, Region } from '@/features/map/geo';
 import { markerColor, markerFill, markerLabel, readableTextColor, type MarkerKind } from '@/features/map/markerColor';
+import { toLngLat } from '@/features/map/maplibreAdapter';
 import type { Parking } from '@/features/map/schemas';
 import { usePalette } from '@/theme/theme';
 
-/** Custom marker views must be re-rasterised by the map; stop tracking once they settle. */
-const TRACK_VIEW_CHANGES_MS = 400;
 const MARKER_SIZE = 48;
-
-/** True until the marker content (identified by `signature`) has been stable for a moment. */
-function useSettledTracking(signature: string): boolean {
-  const [settled, setSettled] = useState<string | null>(null);
-  useEffect(() => {
-    const timer = setTimeout(() => setSettled(signature), TRACK_VIEW_CHANGES_MS);
-    return () => clearTimeout(timer);
-  }, [signature]);
-  return settled !== signature;
-}
 
 interface BadgeProps {
   kind: MarkerKind;
@@ -62,21 +51,17 @@ const LotMarker = memo(function LotMarker({ parking, isSelected, onSelect }: Lot
   const { t } = useTranslation();
   const kind = markerColor(parking.freeSlots, parking.totalSlots, parking.isOpen);
   const label = markerLabel(parking.freeSlots, parking.isOpen);
-  const isTracking = useSettledTracking(`${kind}|${label}|${isSelected}`);
   const a11y = parking.isOpen
     ? t('map.markerLabel', { name: parking.name, free: parking.freeSlots })
     : t('map.markerClosedLabel', { name: parking.name });
   return (
     <Marker
-      coordinate={{ latitude: parking.location.lat, longitude: parking.location.lng }}
-      anchor={{ x: 0.5, y: 0.5 }}
-      tracksViewChanges={isTracking}
-      zIndex={isSelected ? 2 : 1}
+      id={`lot-${parking.id}`}
+      lngLat={toLngLat(parking.location)}
+      anchor="center"
+      selected={isSelected}
       accessibilityLabel={a11y}
-      onPress={(event) => {
-        event.stopPropagation();
-        onSelect(parking);
-      }}
+      onPress={() => onSelect(parking)}
     >
       <Badge kind={kind} label={label} isCluster={false} isSelected={isSelected} />
     </Marker>
@@ -110,14 +95,16 @@ export function ParkingMarkers({ parkings, region, selectedId, onSelect, onZoomT
             />
           );
         }
+        const center: LatLng = { lat: item.lat, lng: item.lng };
         return (
           <ClusterMarker
             key={`c-${item.id}`}
+            id={`cluster-${item.id}`}
             label={String(item.free)}
             kind={item.kind}
             a11y={t('map.clusterLabel', { count: item.count, free: item.free })}
-            coordinate={{ latitude: item.lat, longitude: item.lng }}
-            onPress={() => onZoomTo(clusterExpansionRegion(index, item.id, { latitude: item.lat, longitude: item.lng }))}
+            center={center}
+            onPress={() => onZoomTo(clusterExpansionRegion(index, item.id, center))}
           />
         );
       })}
@@ -126,26 +113,17 @@ export function ParkingMarkers({ parkings, region, selectedId, onSelect, onZoomT
 }
 
 interface ClusterMarkerProps {
+  id: string;
   label: string;
   kind: MarkerKind;
   a11y: string;
-  coordinate: { latitude: number; longitude: number };
+  center: LatLng;
   onPress: () => void;
 }
 
-function ClusterMarker({ label, kind, a11y, coordinate, onPress }: ClusterMarkerProps) {
-  const isTracking = useSettledTracking(`${kind}|${label}`);
+function ClusterMarker({ id, label, kind, a11y, center, onPress }: ClusterMarkerProps) {
   return (
-    <Marker
-      coordinate={coordinate}
-      anchor={{ x: 0.5, y: 0.5 }}
-      tracksViewChanges={isTracking}
-      accessibilityLabel={a11y}
-      onPress={(event) => {
-        event.stopPropagation();
-        onPress();
-      }}
-    >
+    <Marker id={id} lngLat={toLngLat(center)} anchor="center" accessibilityLabel={a11y} onPress={onPress}>
       <Badge kind={kind} label={label} isCluster isSelected={false} />
     </Marker>
   );

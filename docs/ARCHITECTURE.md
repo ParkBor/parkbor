@@ -125,7 +125,7 @@ Rollar `RBAC` (rolga asoslangan ruxsatlar) orqali boshqariladi (15-bo‘lim).
 | Navigatsiya | **Expo Router** (fayl asosidagi) | Tablar, stack, deep link (`parkbor://`) |
 | Server holati | **TanStack Query** | Kesh, qayta so‘rov, optimistik yangilash |
 | Global holat | Zustand | Sessiya, til, tanlangan filtrlar |
-| Karta | **react-native-maps** (Android: Google, iOS: Apple Maps) | Marker, `Polyline`; klasterlash o‘zimizniki: `supercluster` (bo‘sh joylar yig‘indisi va rang kerak, `react-native-map-clustering` buni bera olmaydi) |
+| Karta | **@maplibre/maplibre-react-native** (OpenStreetMap vektor plitkalari, kalitsiz) | `Marker`, `GeoJSONSource` + `Layer` (marshrut); klasterlash o‘zimizniki: `supercluster` (bo‘sh joylar yig‘indisi va rang kerak, `react-native-map-clustering` buni bera olmaydi) |
 | Joylashuv | `expo-location` | Foreground kuzatish, ruxsatlar |
 | QR | `expo-camera` (skaner), `react-native-qrcode-svg` (QR ko‘rsatish) | |
 | Pastki panel | `@gorhom/bottom-sheet` | Xarita ustidagi ro‘yxat |
@@ -1187,7 +1187,7 @@ Celery Beat har daqiqada:
 
 ```
 mobile/src/features/map/
-  MapScreen.tsx           # react-native-maps MapView + MapControls + MapSheet (BottomSheet)
+  MapScreen.tsx           # AppMap (MapLibre) + MapControls + MapSheet (BottomSheet)
   UserLocation.ts         # expo-location: ruxsat, watchPositionAsync (faqat tab fokusda), 4 s birinchi-fix kutish
   locationWatcher.ts      # kuzatuvchi mantig‘i (generatsiya tokeni, eski fix filtri) - sof, testlangan
   ParkingMarkers.tsx      # klasterlangan markerlar (cluster.ts, supercluster), rang bandlik bo‘yicha; yopiq lotda "—"
@@ -1231,15 +1231,21 @@ Bog‘liqlik: `expo-keep-awake` (navigatsiya ekrani uyg‘oq turishi; yetib kelg
 7. **Majburiy (testlanadigan) talab:** `/routes` javobida `source == "fallback"` yoki `approximate == true` bo‘lsa, mobil foydalanuvchiga “taxminiy marshrut” ogohlantirishini ko‘rsatishi shart; `400 route_too_far` va `404 route_not_found` uchun alohida xabar chiqadi.
 8. “Tashqi navigator” tugmasi: o‘rnatilgan ilovalarga qarab Yandex Navigator, Google Maps yoki Apple Maps deep link.
 
-### 11.3 Google Maps kalitini cheklash va maxfiylik (mobil xarita)
+### 11.3 Xarita: MapLibre + OpenStreetMap va maxfiylik (mobil xarita)
 
-**Kalit.** Android Google Maps SDK kaliti `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` orqali beriladi va `app.config.ts` → `android.config.googleMaps.apiKey` ga tushadi. `EXPO_PUBLIC_*` qiymatlari ilova bundle’iga (va AndroidManifest’ga) kiradi, shuning uchun kalit **maxfiy emas**: uni Google Cloud’da cheklash — yagona himoya. Production build’da kalit bo‘lmasa yoki `replace-me` bo‘lsa build xato beradi (`mobile/config/mapsKey.js`); dev’da bo‘lmasa Android xaritasi bo‘sh chiqadi.
+**Qaror.** Google Maps ishlatilmaydi (Google Cloud billing yo‘q, kalit va kvota kerak emas). Xarita — `@maplibre/maplibre-react-native` 11.5.0 (MapLibre Native; faqat yangi arxitektura, Expo ≥ 54, RN ≥ 0.80; **development build/EAS build kerak, Expo Go’da ishlamaydi**). Ma’lumot — OpenStreetMap, vektor plitkalar. Kalit yo‘q: `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`, `config/mapsKey.js`, `android.config.googleMaps` olib tashlangan. Tashqi navigator (Yandex / Google Maps / Apple Maps ilovalari) intent orqali ochilishda o‘zgarmagan.
 
-Google Cloud Console → Credentials → API key sozlamalari:
-1. **Application restriction: Android apps.** Paket `uz.parkbor.app` + SHA-1 barmoq izlari: *debug keystore* (dev build), *release/upload keystore* va **Play App Signing** kaliti (Play Console → App integrity → App signing key certificate SHA-1; foydalanuvchilar qurilmasida aynan shu imzo bo‘ladi). Har biri alohida qo‘shiladi.
-2. **API restriction: faqat “Maps SDK for Android”.** Boshqa API’lar (Places, Directions, Geocoding) bu kalitga yoqilmaydi; ular kerak bo‘lsa server tomonida alohida (cheklangan) kalit bilan.
-3. **Kvota va byudjet:** Billing’da byudjet ogohlantirishi (masalan 50/90/100%) va Maps SDK uchun kunlik kvota chegarasi qo‘yiladi — kalit chiqib ketsa zarar cheklanadi.
-4. iOS Apple Maps ishlatadi, kalit kerak emas. Kalit aylantirilsa (rotate) yangi kalit bilan yangi build kerak (OTA yetmaydi: manifest o‘zgaradi).
+**Uslub (style) sozlanadi, qattiq yozilmaydi.** `EXPO_PUBLIC_MAP_STYLE_URL` (yorug‘; standart **OpenFreeMap “liberty”** — `https://tiles.openfreemap.org/styles/liberty`, kalitsiz, bepul; 2026-10-19 da tekshirilgan: 200 OK, `dark`, `positron`, `bright`, `fiord` ham bor), `EXPO_PUBLIC_MAP_STYLE_URL_DARK` (qorong‘i; standart OpenFreeMap “dark”; maxsus yorug‘ uslub berilsa va qorong‘isi berilmasa — ikkalasida ham o‘sha, provayderlar aralashtirilmaydi), `EXPO_PUBLIC_MAP_ATTRIBUTION` (o‘z serveringiz uchun qo‘shimcha kredit). Tekshiruv (`features/map/mapStyle.ts`): faqat `https` (dev’da lokal `http`), userinfo/fragment/bo‘shliq yo‘q; query (provayder kaliti) mumkin; noto‘g‘ri URL startda xato beradi, jimgina almashtirilmaydi. **`tile.openstreetmap.org` (OSM ko‘ngillilar serverlari) rad etiladi** — ularning foydalanish siyosati ilovalar trafigini taqiqlaydi.
+
+**Muqobillar.** MapTiler: `https://api.maptiler.com/maps/streets-v2/style.json?key=<key>` (kalit origin/ilova bo‘yicha cheklanadi; bepul reja cheklangan); Stadia Maps: `https://tiles.stadiamaps.com/styles/alidade_smooth.json` (+ kalit/domen autentifikatsiyasi); o‘z serveringiz: OpenMapTiles/Planetiler + `tileserver-gl` yoki PMTiles, uslub JSON’i https orqali. OpenFreeMap — jamoa xayriyasi bilan yashaydi va SLA’siz: production uchun keyinroq o‘z serveringizga yoki pulli provayderga o‘tish rejalashtirilishi kerak (faqat env o‘zgaradi).
+
+**Atribut.** Xaritada doim ko‘rinib turadi: “© OpenStreetMap contributors · OpenFreeMap © OpenMapTiles” (MapTiler/Stadia uchun ularning krediti avtomatik; noma’lum host uchun `EXPO_PUBLIC_MAP_ATTRIBUTION`). Mahalliy “i” tugmasi o‘rniga ekranda oddiy matn (`AppMap`).
+
+**Yuklanmasa.** Uslub yuklanmasa (oflayn, provayder ishlamayapti) yoki 20 s ichida yuklanmasa, xarita o‘rnida qisqa xabar + “Qayta urinish” chiqadi; ro‘yxat, filtrlar va pastki panel ishlayveradi. Yuklangan xarita keyingi tarmoq xatolarida almashtirilmaydi.
+
+**Kod tuzilishi.** Mantiq (sof, testlangan) o‘zgarmagan: `cluster`, `search`, `geo` (Region), marshrut yo‘li. Yupqa moslashtirgich: `maplibreAdapter` (Region ↔ `[w,s,e,n]`, yo‘l → GeoJSON LineString, kamera buyruqlarini xavfsiz bajarish), `mapStyle`, `mapLoadState`; ko‘rinish: `AppMap` (Map + Camera + UserLocation + atribut + xato holati), `ParkingMarkers` (`Marker` ko‘rinishlari), `RouteLayer` (`GeoJSONSource` + chiziq qatlami; taxminiy marshrut — punktir, amber).
+
+**Maxfiylik.** Plitka so‘rovlari uslub provayderiga (standartda OpenFreeMap, Cloudflare orqali) qurilma IP’sini va ko‘rilayotgan hudud plitkalarini ko‘rsatadi; foydalanuvchi ID’si yoki bron ma’lumoti yuborilmaydi. O‘z serveringizda bu oqim sizning nazoratingizda qoladi.
 
 **Maxfiylik.** Koordinatalar `GET /parkings/nearby` query’sida ketadi, shuning uchun backend/proksi access loglarida ko‘rinadi: so‘rov ~110 m ga (3 kasr) yumaloqlanadi, loglarda query-string saqlash muddati qisqa bo‘lishi va ruxsatsiz o‘qilmasligi kerak. Ilovada koordinatalar loglanmaydi; axios xatolari `sanitizeAxiosError` orqali `config.params` ni tozalaydi. Kelajakda Sentry (yoki boshqa xato monitoringi) qo‘shilsa — `beforeSend` da `config.params`, URL query va breadcrumb’lardagi koordinatalar tozalansin. Query cache faqat xotirada, diskka yozilmaydi; logout/akkaunt almashganda `queryClient.cancelQueries()` + `clear()` chaqiriladi.
 
@@ -1512,7 +1518,7 @@ Bron kartasi va tafsilotida PENDING_PAYMENT bronda «To‘lash» tugmasi: `payme
 
 Django admin o‘rniga to‘liq React veb ilova (`admin/`), Ant Design uslubida. Faqat `OWNER` va `ADMIN` rollari kira oladi (Telegram Login Widget, 6.0). Mobil ilova bilan bir xil API va umumiy `api-client` paketidan foydalanadi.
 
-**Brend: ParkBor CRM.** Loyiha — ParkBor; haydovchilar mobil ilovadan foydalanadi, bu veb panel esa avtoturargoh egalari va platforma adminlari uchun **ParkBor CRM** (sarlavha, favicon, login va yon panelda logotip; matnlar uz/ru/en `app.title`). Logotip manbasi `docs/brand/parkbor-logo-original.png` (oq fon); admin uchun shaffof variantlari `admin/public/parkbor-logo.png`, `parkbor-mark.png`, `favicon.svg|png`, `apple-touch-icon.png`. Ant Design tokenlari `admin/src/theme.ts`: birlamchi rang — logotipdagi «Park» ko‘ki `#0056B4` (oq fonda 7.0:1, AAA); logotipdagi och yashil `#3BC654` (2.2:1) va pin ko‘ki `#0478E9` (4.3:1) matn/tugma uchun AA dan o‘tmaydi, shuning uchun faqat logotipda; `colorSuccess` — yashilning to‘qroq `#1B7F36` (5.1:1); hover `#0A66CC` (5.6:1); burchak radiusi 6 px. Panelda qorong‘i rejim yo‘q, yon panel ham och (ko‘k so‘z belgisi qorong‘i fonda o‘qilmaydi). Ichki nomlar (`@habi/*` paketlari) o‘zgarmagan.
+**Brend: ParkBor CRM.** Loyiha — ParkBor; haydovchilar mobil ilovadan foydalanadi, bu veb panel esa avtoturargoh egalari va platforma adminlari uchun **ParkBor CRM** (sarlavha, favicon, login va yon panelda logotip; matnlar uz/ru/en `app.title`). Logotip manbalari (oq fon): `docs/brand/parkbor-web-banner-original.png` (pin + «ParkBor» so‘z belgisi — veb logotipi) va `docs/brand/parkbor-mark-original.png` (faqat pin — favicon, yon panelning yig‘ilgan holati); `parkbor-app-icon-original.png` (PB) faqat telefon ilovasi uchun. Admin uchun shaffof variantlar (chekkadan to‘ldirish bilan kesilgan, ichki oq joylar saqlangan; och va qorong‘i fonda tekshirilgan): `admin/public/parkbor-logo.png` (640 px), `parkbor-mark.png` (256), `favicon.png` (64), `favicon.svg`, `apple-touch-icon.png` (180, oq fonda), `og-image.png` (1200×630). Ant Design tokenlari `admin/src/theme.ts`: birlamchi rang — logotipdagi «Park» ko‘ki `#0056B4` (oq fonda 7.0:1, AAA); logotipdagi och yashil `#3BC654` (2.2:1) va pin ko‘ki `#0478E9` (4.3:1) matn/tugma uchun AA dan o‘tmaydi, shuning uchun faqat logotipda; `colorSuccess` — yashilning to‘qroq `#1B7F36` (5.1:1); hover `#0A66CC` (5.6:1); burchak radiusi 6 px. Panelda qorong‘i rejim yo‘q, yon panel ham och (ko‘k so‘z belgisi qorong‘i fonda o‘qilmaydi). Ichki nomlar (`@habi/*` paketlari) o‘zgarmagan.
 
 ### 14.1 Bo‘limlar
 
@@ -1832,7 +1838,7 @@ Har birini Claude Code’ga alohida xabar sifatida bering:
 - Har bosqich oldidan “avval reja tuz, keyin yoz” deb so‘rang (plan mode) va rejani tasdiqlang.
 - Har bosqichni alohida git branch va PR qiling; testlar yashil bo‘lmaguncha keyingisiga o‘tmang.
 - Bot tokeni, to‘lov kalitlari kabi maxfiy ma’lumotlarni chatga yozmang: `.env` ga o‘zingiz qo‘ying, Claude Code faqat `.env.example` ni to‘ldiradi.
-- Mobil ilovani telefoningizda Expo Go orqali sinang; `react-native-maps` ning Google provayderi uchun Android’da API kalit kerak (development build’da).
+- Mobil ilovani development build (EAS `development` profili) bilan sinang: MapLibre native modul, Expo Go’da ishlamaydi. Xarita kaliti kerak emas (11.3).
 - Arxitekturadan chetga chiqish kerak bo‘lsa (masalan boshqa kutubxona), Claude Code’dan avval shu hujjatni yangilashni so‘rang, shunda keyingi sessiyalar ham bir xil yo‘ldan boradi.
 
 ---
@@ -1853,3 +1859,7 @@ Tizim **modulli Django monoliti** (DRF + GeoDjango + Channels + Celery), haydovc
 - **Nom:** ParkBor (mobil ilova: haydovchilar va darvoza operatorlari; veb — ParkBor CRM). `app.config.ts`: `name: 'ParkBor'`, `slug: 'parkbor'`, `scheme: 'parkbor'` (deep linklar `parkbor://booking/<uuid>`, `parkbor://payment/result`; eski `habi://` sxemasi QABUL QILINMAYDI — hali relizlar yo‘q), `ios.bundleIdentifier` va `android.package` = `uz.parkbor.app`. **Bu identifikatorlar vaqtinchalik:** birinchi do‘kon relizigacha egasi o‘zgartirishi mumkin (app.config.ts + EAS/Apple/Google konsollari), keyin o‘zgartirib bo‘lmaydi. EAS loyiha ID o‘zgarmagan; EAS’dagi loyiha slug’i ham `parkbor` ga o‘zgartirilishi kerak, aks holda `eas build` slug mos kelmasligi haqida xato beradi. Telegram bot nomlari (placeholder): `parkbor_bot`, `parkbor_staging_bot`, `parkbor_dev_bot`; hostlar (placeholder): `api.parkbor.uz`, `staging-api.parkbor.uz`, `parkbor.uz/b/<id>`.
 - **Logotip va ikonkalar:** `docs/brand/` (palitra, ishlatish qoidalari va olinish usuli — `docs/brand/README.md`). Ilovada `src/components/BrandLogo.tsx` (kirish/welcome ekranlarida; qorong‘i rejimda to‘liq logotip oq plastinada, chunki "Park" to‘q ko‘k). Splash — to‘liq logotip, oq fon; Android adaptive ikonka — oq fon + belgi (xavfsiz zonaning ~60%); monoxrom qatlam belgi siluetidan.
 - Saqlash kalitlari (`habi.*` SecureStore) va `@habi/*` paket nomlari ichki identifikator sifatida saqlangan.
+
+### 13.8 Xarita (MapLibre) — qisqacha
+
+Xarita, plitkalar va atribut qoidalari 11.3 da. Mobilda: `mobile/src/features/map/AppMap.tsx` (MapScreen va NavigationScreen ishlatadi), uslub `src/lib/config.ts` → `getMapConfig()` (`extra.mapStyleUrl`, `mapStyleUrlDark`, `mapAttribution`), `app.config.ts` plugini `@maplibre/maplibre-react-native` (Android: standart location engine — Google Play Services shart emas; iOS: MapLibre Native SPM orqali). EAS build’da xavf: yangi native modul (Android MapLibre Native 13.6.1, iOS 6.31.0), birinchi build uzoqroq; `expo-doctor`/prebuild tekshiruvi qurilmasiz o‘tadi, ammo xaritaning haqiqiy ko‘rinishi qurilmada tekshirilishi kerak.

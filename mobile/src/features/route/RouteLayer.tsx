@@ -1,10 +1,13 @@
-import { Polyline } from 'react-native-maps';
+import { GeoJSONSource, Layer } from '@maplibre/maplibre-react-native';
+import { useMemo } from 'react';
 
+import { pathToLineFeature } from '@/features/map/maplibreAdapter';
 import type { Route } from '@/features/route/routeSchemas';
 import { usePalette } from '@/theme/theme';
 
 const ROUTE_WIDTH = 6;
-const DASH = [14, 10];
+/** MapLibre dash arrays are in multiples of the line width. */
+const DASH = [2, 1.5];
 
 interface RouteLayerProps {
   route: Route;
@@ -16,15 +19,20 @@ interface RouteLayerProps {
  */
 export function RouteLayer({ route }: RouteLayerProps) {
   const p = usePalette();
+  const feature = useMemo(() => pathToLineFeature(route.path), [route.path]);
+  if (!feature) return null;
   return (
-    <Polyline
-      coordinates={route.path}
-      strokeWidth={ROUTE_WIDTH}
-      strokeColor={route.isApproximate ? p.warningText : p.primary}
-      lineDashPattern={route.isApproximate ? DASH : undefined}
-      lineCap="round"
-      lineJoin="round"
-      zIndex={2}
-    />
+    <GeoJSONSource id="route" data={feature}>
+      <Layer
+        id="route-line"
+        type="line"
+        layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+        paint={{
+          'line-color': route.isApproximate ? p.warningText : p.primary,
+          'line-width': ROUTE_WIDTH,
+          ...(route.isApproximate ? { 'line-dasharray': DASH } : {}),
+        }}
+      />
+    </GeoJSONSource>
   );
 }

@@ -103,8 +103,8 @@ token after it). No test-only app path is needed.
   without ever running one; it uses `runFlow`, `runScript`, `evalScript`, `setLocation`,
   `setAirplaneMode`, `copyTextFrom`, `onFlowComplete`, the JS `http`/`json`/`output` globals). Check
   `maestro --version` against the Maestro release notes if a command is rejected.
-- Android: Android Studio emulator, API 34, **Google APIs** image (react-native-maps needs Google Play
-  services), locale en-US, animations off:
+- Android: Android Studio emulator, API 34 (any image: the map is MapLibre with OpenStreetMap vector tiles, no Google
+  Play services needed; the emulator needs internet access to load the map style), locale en-US, animations off:
   `adb shell settings put global window_animation_scale 0` (same for `transition_animation_scale`,
   `animator_duration_scale`). API 33+ is required for the notification flows (07/07b): older Android
   grants notifications at install, so no soft prompt appears.

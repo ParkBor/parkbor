@@ -36,6 +36,9 @@ export default defineConfig({
         'src/features/operator/tabVisibility.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/features/operator/walkInForm.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         // Step 10b (realtime + push): one floor per logic file.
+        'src/features/map/mapLoadState.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/map/mapStyle.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/map/maplibreAdapter.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/lib/notFound.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/features/realtime/appState.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/features/realtime/frameLimiter.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
@@ -66,7 +69,7 @@ export default defineConfig({
         'src/features/auth/{code,schemas,loginLink,createLoginStore,loginStore}.ts',
         // Map: only the pure logic extracted from the hooks (useNearbyParkings / UserLocation are
         // thin wiring over these and are NOT covered), plus app-level query/maps helpers.
-        'src/features/map/{cluster,debounce,filters,format,geo,locationModel,locationWatcher,mapError,markerColor,parkingText,parkingsApi,schemas,search}.ts',
+        'src/features/map/{cluster,debounce,filters,format,geo,locationModel,locationWatcher,mapError,mapLoadState,mapStyle,maplibreAdapter,markerColor,parkingText,parkingsApi,schemas,search}.ts',
         // Route/navigation: pure logic only. NOT covered: *.tsx (RouteLayer, RouteNotices,
         // NavigationPanels, NavigationScreen), useRoute / useNavigationSession (hook wiring),
         // openExternalNavigator (OS calls) and app/navigate - there are no render tests.
@@ -101,7 +104,7 @@ export default defineConfig({
         // server and a real device are needed to exercise those.
         'src/features/realtime/{appState,backoff,batcher,cacheBridge,cacheUpdates,closePolicy,frameLimiter,geohash,lifecycle,pollFallback,protocol,rateLimit,realtimeClient,rejectPolicy,staleFilter,ticket}.ts',
         'src/features/push/{deviceRegistrar,logoutToken,notificationLink,permissionPolicy}.ts',
-        'config/{mapsKey,paymentSandbox}.js',
+        'config/paymentSandbox.js',
         'src/i18n/{resolveLanguage,languagePreference}.ts',
         'src/theme/palette.ts',
       ],

@@ -1,6 +1,5 @@
 import type { ExpoConfig } from 'expo/config';
 
-import { resolveGoogleMapsKey } from './config/mapsKey';
 import { resolvePaymentSandbox } from './config/paymentSandbox';
 
 // EAS sets EAS_BUILD_PROFILE during builds; APP_ENV=production covers local prod checks.
@@ -42,12 +41,6 @@ const config: ExpoConfig = {
     package: 'uz.parkbor.app',
     // Tokens live in the Keystore-backed SecureStore; do not let adb/cloud backup copy app data.
     allowBackup: false,
-    // Android uses Google Maps (iOS uses Apple Maps). The key is public-by-design but restricted
-    // to the app in Google Cloud; it only comes from env, never from source.
-    // Production builds fail without a real key (see config/mapsKey.js).
-    config: {
-      googleMaps: { apiKey: resolveGoogleMapsKey(process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY, isProduction) },
-    },
     adaptiveIcon: {
       backgroundColor: '#FFFFFF',
       foregroundImage: './assets/images/android-icon-foreground.png',
@@ -60,6 +53,10 @@ const config: ExpoConfig = {
     'expo-secure-store',
     'expo-localization',
     'expo-notifications',
+    // MapLibre (OpenStreetMap vector tiles): no Google or Apple map keys. Native SDKs come from the plugin
+    // defaults (Android MapLibre Native, iOS via Swift Package Manager); the default Android location engine
+    // does not need Google Play Services.
+    '@maplibre/maplibre-react-native',
     // Release builds refuse cleartext HTTP; dev needs it for the local API.
     [
       'expo-build-properties',
@@ -108,6 +105,10 @@ const config: ExpoConfig = {
     apiUrl: envOrDevDefault('EXPO_PUBLIC_API_URL', 'http://localhost:8000/api/v1'),
     wsUrl: envOrDevDefault('EXPO_PUBLIC_WS_URL', 'ws://localhost:8000/ws'),
     telegramBot: envOrDevDefault('EXPO_PUBLIC_TELEGRAM_BOT', 'parkbor_dev_bot'),
+    // Map style (MapLibre style JSON URL). Empty = built-in default (OpenFreeMap, keyless). See docs 13.8.
+    mapStyleUrl: process.env.EXPO_PUBLIC_MAP_STYLE_URL ?? '',
+    mapStyleUrlDark: process.env.EXPO_PUBLIC_MAP_STYLE_URL_DARK ?? '',
+    mapAttribution: process.env.EXPO_PUBLIC_MAP_ATTRIBUTION ?? '',
     // EAS project id (@parkbor/parkbor; public, not a secret): getExpoPushTokenAsync and the EAS CLI need it.
     // EXPO_PUBLIC_EAS_PROJECT_ID overrides it (for example another Expo account).
     eas: { projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || '00dc4fa1-69ea-4b36-901f-e57db4036201' },

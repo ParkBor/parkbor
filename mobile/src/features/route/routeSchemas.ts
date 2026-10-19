@@ -30,7 +30,7 @@ export const INSTRUCTION_KEYS = [
 
 export type InstructionKey = (typeof INSTRUCTION_KEYS)[number];
 
-/** react-native-maps coordinate shape. */
+/** Map coordinate shape used by the route logic (maplibreAdapter turns paths into GeoJSON). */
 export interface MapPoint {
   latitude: number;
   longitude: number;
@@ -110,7 +110,7 @@ const routeSchema = z.object({
   approximate: z.boolean().optional(),
 });
 
-/** GeoJSON [lng, lat] -> react-native-maps { latitude, longitude }. */
+/** GeoJSON [lng, lat] -> { latitude, longitude }. */
 export function toMapPoints(coordinates: readonly (readonly number[])[]): MapPoint[] {
   return coordinates.map((c) => ({ latitude: c[1] ?? 0, longitude: c[0] ?? 0 }));
 }

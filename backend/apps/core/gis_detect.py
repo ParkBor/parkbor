@@ -10,8 +10,12 @@ _last_failure: str | None = None
 
 
 def _has_gdal() -> bool:
-    from django.contrib.gis.gdal import HAS_GDAL
-
+    try:
+        from django.contrib.gis.gdal import HAS_GDAL
+    except ImportError:
+        # Django >= 5.1 no longer exports the flag: importing the gdal package already raised if
+        # the library could not be loaded, so reaching this point means GDAL is available.
+        return True
     return bool(HAS_GDAL)
 
 

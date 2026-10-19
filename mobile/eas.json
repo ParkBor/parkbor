@@ -24,8 +24,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://staging-api.parkbor.uz/api/v1",
-        "EXPO_PUBLIC_WS_URL": "wss://staging-api.parkbor.uz/ws",
+        "EXPO_PUBLIC_API_URL": "https://api-production-431f.up.railway.app/api/v1",
+        "EXPO_PUBLIC_WS_URL": "wss://api-production-431f.up.railway.app/ws",
         "EXPO_PUBLIC_TELEGRAM_BOT": "parkborbot",
         "EXPO_PUBLIC_EAS_PROJECT_ID": "00dc4fa1-69ea-4b36-901f-e57db4036201",
         "EXPO_PUBLIC_PAYMENT_SANDBOX": "true"

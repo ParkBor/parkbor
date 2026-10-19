@@ -8,7 +8,7 @@
     ]
   },
   "deploy": {
-    "startCommand": "exec uvicorn config.asgi:application --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-2} --lifespan off --ws-max-size 16384 --timeout-graceful-shutdown 30 --proxy-headers --no-access-log",
+    "startCommand": "sh -c 'exec uvicorn config.asgi:application --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-2} --lifespan off --ws-max-size 16384 --timeout-graceful-shutdown 30 --proxy-headers --no-access-log'",
     "preDeployCommand": [
       "python manage.py migrate --noinput"
     ],

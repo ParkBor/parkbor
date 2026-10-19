@@ -8,7 +8,7 @@
     ]
   },
   "deploy": {
-    "startCommand": "exec celery -A config beat -l info --pidfile /tmp/celerybeat.pid -s /tmp/celerybeat-schedule",
+    "startCommand": "sh -c 'exec celery -A config beat -l info --pidfile /tmp/celerybeat.pid -s /tmp/celerybeat-schedule'",
     "restartPolicyType": "ALWAYS",
     "numReplicas": 1,
     "overlapSeconds": "0",

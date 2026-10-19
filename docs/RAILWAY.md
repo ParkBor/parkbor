@@ -72,11 +72,11 @@ Beshta backend xizmati bir xil `backend/Dockerfile` dan alohida quriladi (build 
 |---|---|---|---|---|---|---|---|
 | `postgis` | `/deploy/railway/postgis` | `Dockerfile` (avto) | `/deploy/railway/postgis/**` | — (Dockerfile `CMD`) | — | — | On failure |
 | `redis`, `redis-cache` | `/deploy/railway/redis` | `Dockerfile` (avto) | `/deploy/railway/redis/**` | — | — | — | On failure |
-| `api` | `/backend` | `Dockerfile` (avto) | `/backend/**` | `exec uvicorn config.asgi:application --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-2} --lifespan off --ws-max-size 16384 --timeout-graceful-shutdown 30 --proxy-headers --no-access-log` | `python manage.py migrate --noinput` | path `/health/live`, timeout 120 s | On failure, 5 |
-| `worker-default` | `/backend` | avto | `/backend/**` | `exec celery -A config worker -l info -Q celery -n default@%h --prefetch-multiplier 1 --concurrency 2 --max-tasks-per-child 1000` | — | — | Always |
-| `worker-realtime` | `/backend` | avto | `/backend/**` | `exec celery -A config worker -l info -Q realtime -n realtime@%h --prefetch-multiplier 1 --concurrency 2 --max-tasks-per-child 1000` | — | — | Always |
-| `worker-notify` | `/backend` | avto | `/backend/**` | `exec celery -A config worker -l info -Q notify -n notify@%h --prefetch-multiplier 1 --concurrency 2 --max-tasks-per-child 1000` | — | — | Always |
-| `beat` | `/backend` | avto | `/backend/**` | `exec celery -A config beat -l info --pidfile /tmp/celerybeat.pid -s /tmp/celerybeat-schedule` | — | — | Always |
+| `api` | `/backend` | `Dockerfile` (avto) | `/backend/**` | `sh -c 'exec uvicorn config.asgi:application --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-2} --lifespan off --ws-max-size 16384 --timeout-graceful-shutdown 30 --proxy-headers --no-access-log'` | `python manage.py migrate --noinput` | path `/health/live`, timeout 120 s | On failure, 5 |
+| `worker-default` | `/backend` | avto | `/backend/**` | `sh -c 'exec celery -A config worker -l info -Q celery -n default@%h --prefetch-multiplier 1 --concurrency 2 --max-tasks-per-child 1000'` | — | — | Always |
+| `worker-realtime` | `/backend` | avto | `/backend/**` | `sh -c 'exec celery -A config worker -l info -Q realtime -n realtime@%h --prefetch-multiplier 1 --concurrency 2 --max-tasks-per-child 1000'` | — | — | Always |
+| `worker-notify` | `/backend` | avto | `/backend/**` | `sh -c 'exec celery -A config worker -l info -Q notify -n notify@%h --prefetch-multiplier 1 --concurrency 2 --max-tasks-per-child 1000'` | — | — | Always |
+| `beat` | `/backend` | avto | `/backend/**` | `sh -c 'exec celery -A config beat -l info --pidfile /tmp/celerybeat.pid -s /tmp/celerybeat-schedule'` | — | — | Always |
 | `crm` | `/` (repo ildizi) | o‘zgaruvchi `RAILWAY_DOCKERFILE_PATH=deploy/railway/crm/Dockerfile` | `/admin/**`, `/packages/**`, `/pnpm-lock.yaml`, `/package.json`, `/pnpm-workspace.yaml`, `/deploy/railway/crm/**`, `/infra/nginx/snippets/**` | — | — | path `/healthz`, timeout 60 s | On failure, 5 |
 | `osrm` (ixtiyoriy) | `/deploy/railway/osrm` | avto | `/deploy/railway/osrm/**` | — | — | — | On failure |
 
@@ -88,6 +88,21 @@ Beshta backend xizmati bir xil `backend/Dockerfile` dan alohida quriladi (build 
    - **Public networking:** faqat `api` va `crm` ga domen bering. `postgis`, `redis*`, `osrm`, workerlarga **domen ham, TCP proxy ham yo‘q**.
    - **Region:** barcha xizmatlar BIR region’da (private tarmoq uchun). O‘zbekistonga eng yaqin: Yevropa (`europe-west4`, Amsterdam) yoki `asia-southeast1` (Singapur) — kechikishni o‘lchab tanlang (o‘lchanmagan).
 3. Fayllar ma’lumotnoma: `deploy/railway/*/railway.json`, o‘zgaruvchi shablonlari: `deploy/railway/env/*.env.example`.
+
+### 3a. Trial/staging profili (5 xizmat chegarasi) va Railway nuanslari
+
+- **Trial cheklovi:** loyihada eng ko‘pi bilan **5 xizmat** (`serviceCreate` xatosi: "Free plan resource provision limit exceeded"). Hajm 0.5 GB. To‘lov usuli yo‘q bo‘lsa, to‘liq topologiya (9 xizmat) sig‘maydi.
+- **Trial/staging topologiyasi (5 xizmat):** `postgis`, `redis`, `api`, `crm` va **bitta** `worker-default`, u hamma navbatni va beat’ni o‘zi bajaradi:
+  `sh -c 'exec celery -A config worker -B -l info -Q celery,realtime,notify -n all@%h --prefetch-multiplier 1 --concurrency 2 --max-tasks-per-child 1000 -s /tmp/celerybeat-schedule --pidfile /tmp/celerybeat.pid'`
+  (restart: Always, 1 nusxa, Overlap seconds = 0: o‘rnatilgan beat hech qachon ikki nusxada ishlamasin). RAM yetmasa `--concurrency 1`.
+- **Production’da albatta ajrating:** `worker-notify` (aniq 1 nusxa), `beat` (aniq 1 nusxa), `worker-realtime`, `worker-default` alohida xizmatlar. Bitta jarayonda ko‘p vazifa yuklangan notify navbati va beat uzilishlari bir-biriga ta’sir qiladi.
+- **Start command qobiqsiz ishlaydi:** Railway `startCommand` ni shell orqali ishga tushirmaydi (`exec` -> "The executable `exec` could not be found"; `${PORT:-8000}` kengaymaydi). Shuning uchun hamma buyruq `sh -c '...'` bilan o‘ralgan. Start command bo‘sh bo‘lsa Dockerfile `CMD` (u allaqachon `sh -c`) ishlaydi.
+- **Repo ildizidan avto-deploy:** `+ New -> GitHub Repo` darhol repo ildizi bilan (Railpack, "Detected Node") quradi va yiqiladi. Bu zararsiz: Root Directory ni qo‘ygach qayta deploy qiling.
+- **Region:** `region` maydoni yetmaydi, `multiRegionConfig` kerak: `{"europe-west4-drams3a":{"numReplicas":1}}` (aks holda xizmat `iad` da qoladi).
+- **Takroriy deploy poygasi:** `main` ga push avtomatik deploy qiladi; shu paytda qo‘lda deploy bossangiz ikkita `migrate` bir vaqtda ishlaydi, yutqazgani `constraint ... already exists` bilan yiqiladi (g‘olibi ishlayveradi). Push dan keyin qo‘lda deploy bosmang; “Deploy failed” ko‘rinsa avval ikkinchi deploy muvaffaqiyatli bo‘lganini tekshiring.
+- **`railway ssh`** ro‘yxatdan o‘tgan SSH kalit talab qiladi (`railway ssh keys`); kalitsiz 6-bo‘limdagi `railway ssh ...` buyruqlari ishlamaydi. `railway run` lokal ishlaydi va `*.railway.internal` ga yetmaydi.
+- **Oddiy http `/health` 301 qaytaradi** (Railway edge HTTPS’ga yo‘naltiradi; 10-bo‘limdagi "HTTP prob 200" kutilmasin). Healthcheck Railway ichida `healthcheck.railway.app` Host’i bilan ishlaydi va ALLOWED_HOSTS’da bo‘lishi shart.
+- **Redis:** `redis:7.4-alpine` da `su-exec` yo‘q edi (`start.sh` yiqilardi); `deploy/railway/redis/Dockerfile` endi `apk add su-exec` qiladi.
 
 ## 4. O‘zgaruvchilar (faqat nomlar; sirlarsiz)
 

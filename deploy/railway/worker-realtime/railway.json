@@ -8,7 +8,7 @@
     ]
   },
   "deploy": {
-    "startCommand": "exec celery -A config worker -l info -Q realtime -n realtime@%h --prefetch-multiplier 1 --concurrency 2 --max-tasks-per-child 1000",
+    "startCommand": "sh -c 'exec celery -A config worker -l info -Q realtime -n realtime@%h --prefetch-multiplier 1 --concurrency 2 --max-tasks-per-child 1000'",
     "restartPolicyType": "ALWAYS",
     "drainingSeconds": "30"
   }

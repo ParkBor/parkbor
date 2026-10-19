@@ -11,6 +11,9 @@ ENV REDIS_POLICY=noeviction \
     REDIS_MAXMEMORY=400mb \
     REDIS_PERSIST=yes
 
+# redis:7.4-alpine does not ship su-exec (start.sh needs it to drop root).
+RUN apk add --no-cache su-exec
+
 COPY start.sh /usr/local/bin/parkbor-redis-start
 RUN chmod 0755 /usr/local/bin/parkbor-redis-start
 # start.sh runs as root (Railway volumes are root-owned), chowns /data and drops to `redis`.

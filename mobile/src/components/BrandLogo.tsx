@@ -1,10 +1,11 @@
 import { Image, StyleSheet, useColorScheme, View } from 'react-native';
 
+import { FULL_LOGO_SIZE, MARK_LOGO_SIZE, aspectRatio } from '@/components/brandAssets';
 import { APP_NAME } from '@/lib/constants';
 
-// Aspect ratios of the derived assets (docs/brand/README.md).
-const FULL_RATIO = 660 / 226;
-const MARK_RATIO = 180 / 226;
+// Aspect ratios of the derived assets (docs/brand/README.md); brandAssets.test.ts pins them to the files.
+const FULL_RATIO = aspectRatio(FULL_LOGO_SIZE);
+const MARK_RATIO = aspectRatio(MARK_LOGO_SIZE);
 const FULL = require('../../assets/images/parkbor-logo.png') as number;
 const MARK = require('../../assets/images/parkbor-mark.png') as number;
 

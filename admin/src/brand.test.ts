@@ -23,17 +23,33 @@ describe('ParkBor CRM branding', () => {
     expect(html).not.toMatch(/habi/i)
   })
 
-  it.each(['parkbor-logo.png', 'parkbor-mark.png', 'favicon.png'])(
-    '%s is a PNG with an alpha channel (transparent background)',
-    (file) => {
-      const bytes = readFileSync(resolve(root, 'public', file))
-      expect(bytes.subarray(0, 8).toString('hex')).toBe(PNG_SIGNATURE)
-      expect(bytes[COLOR_TYPE_OFFSET]).toBe(RGBA)
-    },
-  )
+  const WIDTH_OFFSET = 16
+  const HEIGHT_OFFSET = 20
+  const size = (bytes: Buffer) => [bytes.readUInt32BE(WIDTH_OFFSET), bytes.readUInt32BE(HEIGHT_OFFSET)]
+
+  it.each([
+    ['parkbor-logo.png', 640, undefined],
+    ['parkbor-mark.png', 256, 256],
+    ['favicon.png', 64, 64],
+  ])('%s is a transparent PNG (alpha channel) of the expected size', (file, width, height) => {
+    const bytes = readFileSync(resolve(root, 'public', file))
+    expect(bytes.subarray(0, 8).toString('hex')).toBe(PNG_SIGNATURE)
+    expect(bytes[COLOR_TYPE_OFFSET]).toBe(RGBA)
+    const [w, h] = size(bytes)
+    expect(w).toBe(width)
+    if (height) expect(h).toBe(height)
+    else expect(w / h).toBeGreaterThan(2.8) // pin + wordmark banner, about 3:1
+  })
+
+  it('apple-touch-icon is a 180x180 opaque PNG and og-image is 1200x630', () => {
+    const icon = readFileSync(resolve(root, 'public', 'apple-touch-icon.png'))
+    expect(size(icon)).toEqual([180, 180])
+    expect(icon[COLOR_TYPE_OFFSET]).not.toBe(RGBA) // on white, no alpha
+    expect(size(readFileSync(resolve(root, 'public', 'og-image.png')))).toEqual([1200, 630])
+  })
 
   it('ships the other icon files', () => {
-    for (const file of ['favicon.svg', 'apple-touch-icon.png']) {
+    for (const file of ['favicon.svg']) {
       expect(existsSync(resolve(root, 'public', file))).toBe(true)
     }
     expect(readFileSync(resolve(root, 'public', 'favicon.svg'), 'utf8')).toContain('ParkBor CRM')

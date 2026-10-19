@@ -8,7 +8,7 @@ interface BrandLogoProps {
   decorative?: boolean
 }
 
-const LOGO_RATIO = 640 / 220 // parkbor-logo.png (transparent background; for light surfaces)
+const LOGO_RATIO = 640 / 216 // parkbor-logo.png (transparent background; for light surfaces)
 
 /** The ParkBor logo; the name is the accessible text, so it is not repeated as visible text. */
 export function BrandLogo({ variant = 'logo', height = 36, decorative = false }: BrandLogoProps) {

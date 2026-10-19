@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+**/coverage
+**/.expo
+**/.venv
+**/__pycache__
+.git
+.env
+.env.*
+backend
+mobile/assets

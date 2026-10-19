@@ -1,6 +1,6 @@
 # ParkBor: production joylashtirish (runbook)
 
-Arxitektura: `docs/ARCHITECTURE.md` 12, 14.3, 15, 16, 17. Bu hujjat — amaliy qadamlar. Fayllar:
+Arxitektura: `docs/ARCHITECTURE.md` 12, 14.3, 15, 16, 17. Bu hujjat — amaliy qadamlar (bir hostli compose). Railway varianti: `docs/RAILWAY.md`. Fayllar:
 
 | Fayl | Vazifasi |
 |---|---|
@@ -51,7 +51,7 @@ dc run --rm api python manage.py check --deploy --fail-level WARNING
 dc run --rm api python manage.py create_superadmin    # HABI_SUPERADMIN_PASSWORD yoki so‘raydi
 dc up -d                                       # qolganlari
 dc ps                                          # hammasi healthy bo‘lishi kerak
-dc run --rm api python manage.py set_telegram_webhook https://<API_DOMAIN>/api/v1/telegram/webhook
+dc run --rm api python manage.py set_telegram_webhook --base-url https://<API_DOMAIN>
 ```
 
 `.env.prod` da parollarda `$` ishlatmang (compose uni qayta interpolyatsiya qiladi); `ALLOWED_HOSTS` ga ikkala domenni
@@ -144,7 +144,7 @@ Kalit sizib chiqqan bo‘lsa: avval almashtiring, keyin loglarni va Sentry ni te
 ## 8. Telegram sozlamalari
 
 - **BotFather `/setdomain`:** `/setdomain` -> botni tanlang -> `<ADMIN_DOMAIN>` (sxemasiz). Admin Login Widget faqat shu domenda ishlaydi; staging uchun alohida bot va domen.
-- **Webhook:** `dc run --rm api python manage.py set_telegram_webhook https://<API_DOMAIN>/api/v1/telegram/webhook` (maxfiy `TELEGRAM_WEBHOOK_SECRET` header sifatida o‘rnatiladi). Tekshirish: `https://api.telegram.org/bot<TOKEN>/getWebhookInfo` (tokenni terminal tarixiga qoldirmang).
+- **Webhook:** `dc run --rm api python manage.py set_telegram_webhook --base-url https://<API_DOMAIN>` (maxfiy `TELEGRAM_WEBHOOK_SECRET` header sifatida o‘rnatiladi). Tekshirish: `https://api.telegram.org/bot<TOKEN>/getWebhookInfo` (tokenni terminal tarixiga qoldirmang).
 - nginx ixtiyoriy ravishda Telegram diapazonlarini (149.154.160.0/20, 91.108.4.0/22) cheklashi mumkin (shablonda izoh bor).
 
 ## 9. Payme va Click webhooklari

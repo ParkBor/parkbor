@@ -26,13 +26,18 @@ COPY --chown=app:app . .
 USER app
 EXPOSE 8000
 
-# TCP-level check: an HTTP probe would hit SECURE_SSL_REDIRECT / ALLOWED_HOSTS.
+# TCP-level check: an HTTP probe would hit SECURE_SSL_REDIRECT / ALLOWED_HOSTS. The port follows
+# $PORT (Railway injects it), 8000 elsewhere. Railway ignores HEALTHCHECK and uses its own HTTP
+# check (healthcheckPath); docker / compose still use this one.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD ["python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), 3).close()"]
+    CMD ["python", "-c", "import os, socket; socket.create_connection(('127.0.0.1', int(os.environ.get('PORT', '8000'))), 3).close()"]
 
 # One ASGI process serves HTTP and WebSocket (config.asgi). Worker count comes from
 # WEB_CONCURRENCY (override per environment). --ws-max-size caps a WebSocket frame (the consumer
 # enforces its own 4 KB message limit on top); --lifespan off: Channels' router has no lifespan
 # handler. The access log is on: tickets travel in the WS query string but are one-time (12).
 # WSGI (config.wsgi) stays for management commands; gunicorn remains in prod.txt for it.
-CMD ["sh", "-c", "exec uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY} --lifespan off --ws-max-size 16384 --timeout-graceful-shutdown 30 --proxy-headers"]
+# Port: $PORT when the platform injects one (Railway), else 8000 (compose publishes nothing and
+# nginx dials api:8000). Host: UVICORN_HOST (default 0.0.0.0; "::" listens on IPv6 too, needed
+# only for IPv6-only private networks).
+CMD ["sh", "-c", "exec uvicorn config.asgi:application --host ${UVICORN_HOST:-0.0.0.0} --port ${PORT:-8000} --workers ${WEB_CONCURRENCY} --lifespan off --ws-max-size 16384 --timeout-graceful-shutdown 30 --proxy-headers"]

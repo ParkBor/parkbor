@@ -1,0 +1,15 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile",
+    "watchPatterns": [
+      "/backend/**"
+    ]
+  },
+  "deploy": {
+    "startCommand": "exec celery -A config worker -l info -Q realtime -n realtime@%h --prefetch-multiplier 1 --concurrency 2 --max-tasks-per-child 1000",
+    "restartPolicyType": "ALWAYS",
+    "drainingSeconds": "30"
+  }
+}

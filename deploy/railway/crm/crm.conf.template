@@ -1,0 +1,33 @@
+# Rendered by the image entrypoint: envsubst replaces ONLY ${PORT} and ${API_ORIGIN}.
+server {
+    listen ${PORT} default_server;
+    listen [::]:${PORT} default_server;
+    server_name _;
+
+    root /usr/share/nginx/admin;
+    index index.html;
+
+    # Admin CSP (ARCHITECTURE 14.3) with the API on its own origin: connect-src = 'self' + API_ORIGIN.
+    # 'unsafe-eval' is required by the Telegram Login Widget (data-onauth); style 'unsafe-inline'
+    # by Ant Design. If VITE_TILE_URL points to another tile host, add it to img-src.
+    set $admin_csp "default-src 'self'; script-src 'self' https://telegram.org 'unsafe-eval'; frame-src https://oauth.telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self' ${API_ORIGIN}; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'";
+
+    # Railway healthcheck target (healthcheckPath). Railway sends Host: healthcheck.railway.app.
+    location = /healthz { access_log off; default_type text/plain; return 200 "ok\n"; }
+
+    # Hashed build assets: cache for a year. A missing asset must be a 404, never index.html.
+    location /assets/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Content-Security-Policy $admin_csp always;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # SPA fallback; index.html is always revalidated so a deploy takes effect at once.
+    location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Content-Security-Policy $admin_csp always;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri /index.html;
+    }
+}

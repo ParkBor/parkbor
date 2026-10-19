@@ -20,7 +20,7 @@
     "slideOf": "{{current}} / {{total}}"
   },
   "login": {
-    "title": "Habi",
+    "title": "ParkBor",
     "subtitle": "Bo‘sh joyni toping va bir bosishda bron qiling",
     "telegramButton": "Telegram orqali kirish",
     "terms": "Kirish orqali shartlarga rozilik bildirasiz",
@@ -43,7 +43,7 @@
     "verifying": "Tekshirilmoqda…",
     "startOver": "Qaytadan boshlash",
     "attemptsLeft": "Qolgan urinishlar: {{count}}",
-    "phishingWarning": "Kodni faqat siz hozir ilovada boshlagan kirish uchun kiriting. Hech kimga aytmang, hatto Habi xodimi bo‘lsa ham.",
+    "phishingWarning": "Kodni faqat siz hozir ilovada boshlagan kirish uchun kiriting. Hech kimga aytmang, hatto ParkBor xodimi bo‘lsa ham.",
     "pasteButton": "Buferdan qo‘yish",
     "pasteEmpty": "Buferda 6 xonali kod topilmadi."
   },
@@ -645,7 +645,7 @@
       "hintEntry": "Haydovchining kirish QR kodini ramkaga oling",
       "hintExit": "Haydovchining chiqish QR kodini ramkaga oling",
       "checking": "Tekshirilmoqda…",
-      "badQr": "Bu Habi QR kodi emas.",
+      "badQr": "Bu ParkBor QR kodi emas.",
       "next": "Keyingi skan",
       "retry": "Qayta urinish",
       "retryIn": "{{seconds}} soniyadan keyin qayta urinish mumkin",
@@ -793,5 +793,10 @@
     "a11y": {
       "result": "Natija: {{tone}}. {{reason}}"
     }
+  },
+  "notFound": {
+    "title": "Sahifa topilmadi",
+    "text": "Bu havola ParkBor ichida hech qayerga olib bormaydi.",
+    "back": "Ilovaga o‘tish"
   }
 }

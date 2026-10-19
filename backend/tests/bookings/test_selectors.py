@@ -71,6 +71,10 @@ def test_agree_per_slot_type(now):
 def test_quote_queries_do_not_grow_with_the_size_of_the_lot(driver, now):
     start, end = now + timedelta(hours=2), now + timedelta(hours=3)
 
+    from apps.bookings import conf
+
+    conf.load_overrides()  # warm the settings-override cache: only its first read queries
+
     def queries(slot_count):
         world = make_world(slots=slot_count)
         for slot in world.slots[: slot_count // 2]:

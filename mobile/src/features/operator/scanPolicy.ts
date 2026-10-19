@@ -39,7 +39,7 @@ export interface ScanGate {
    * in front of the camera.
    */
   touch(token: string): void;
-  /** True at most once per window: show "this is not a Habi QR" without touching the remembered code. */
+  /** True at most once per window: show "this is not a ParkBor QR" without touching the remembered code. */
   invalidNotice(): boolean;
   /** The request (and its result handling) is over; scanning may continue. */
   release(): void;

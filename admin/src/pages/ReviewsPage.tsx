@@ -1,5 +1,5 @@
 import type { AdminReview, ReviewStatus } from '@habi/api-client'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button, Select, Space, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +14,9 @@ import { errorText } from '../lib/errorText'
 import type { ExportColumn } from '../lib/exportXlsx'
 import { fetchAll } from '../lib/fetchAll'
 import { formatDateTime, safeText } from '../lib/format'
+import { usePagedQuery } from '../lib/usePagedQuery'
 import { useServerTable } from '../lib/useServerTable'
+import { useSingleFlight } from '../lib/useSingleFlight'
 
 const STATUSES: ReviewStatus[] = ['PUBLISHED', 'HIDDEN']
 const RATINGS = [1, 2, 3, 4, 5]
@@ -32,10 +34,10 @@ export default function ReviewsPage() {
   const queryClient = useQueryClient()
   const table = useServerTable<Filters>({})
   const params = { ...table.filters }
-  const query = useQuery({
-    queryKey: ['reviews', params, table.page, table.pageSize],
-    queryFn: () => adminApi.reviews.list({ ...params, page: table.page, page_size: table.pageSize }),
-  })
+  const query = usePagedQuery(['reviews', params], table, (paging) =>
+    adminApi.reviews.list({ ...params, ...paging }),
+  )
+  const singleFlight = useSingleFlight()
   const toggle = useMutation({
     mutationFn: ({ id, hide }: { id: string; hide: boolean }) =>
       hide ? adminApi.reviews.hide(id) : adminApi.reviews.publish(id),
@@ -47,7 +49,7 @@ export default function ReviewsPage() {
   })
 
   const columns: ColumnsType<AdminReview> = [
-    { title: t('bookings.lot'), key: 'lot', render: (_, row) => safeText(row.parking_lot.name, 80) },
+    { title: t('bookings.lot'), key: 'lot', render: (_, row) => safeText(row.parking_lot?.name, 80) },
     { title: t('reviews.rating'), key: 'rating', render: (_, row) => `${row.rating}/5` },
     {
       title: t('reviews.comment'),
@@ -69,7 +71,12 @@ export default function ReviewsPage() {
             size="small"
             danger={row.status === 'PUBLISHED'}
             loading={toggle.isPending && toggle.variables?.id === row.id}
-            onClick={() => toggle.mutate({ id: row.id, hide: row.status === 'PUBLISHED' })}
+            disabled={toggle.isPending}
+            onClick={() =>
+              void singleFlight(() =>
+                toggle.mutateAsync({ id: row.id, hide: row.status === 'PUBLISHED' }).catch(() => undefined),
+              )
+            }
           >
             {t(row.status === 'PUBLISHED' ? 'reviews.hide' : 'reviews.publish')}
           </Button>
@@ -78,7 +85,7 @@ export default function ReviewsPage() {
     },
   ]
   const exportColumns: ExportColumn<AdminReview>[] = [
-    { header: t('bookings.lot'), value: (row) => row.parking_lot.name },
+    { header: t('bookings.lot'), value: (row) => row.parking_lot?.name },
     { header: t('reviews.rating'), value: (row) => row.rating },
     { header: t('reviews.comment'), value: (row) => row.comment },
     { header: t('reviews.status'), value: (row) => row.status },

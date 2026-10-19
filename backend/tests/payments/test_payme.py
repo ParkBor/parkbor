@@ -655,7 +655,7 @@ class TestPaymentUrl:
         assert base == "https://test.paycom.uz"  # the test settings run in sandbox mode
         assert params == (
             f"m=587f72c72cac0d162c722ae2;ac.order_id={booking.pk};a=1200000;l=uz;"
-            "c=https://habi.test/payment-return"
+            "c=https://parkbor.test/payment-return"
         )
 
     def test_production_checkout_url(self, payme, booking, settings):
@@ -681,7 +681,7 @@ class TestPaymentUrl:
         """Standard base64 can contain '/', which would end the URL path segment."""
         encoded = []
         for question_marks in range(3, 12):  # runs of '?' make base64 emit '/' at some alignment
-            settings.PAYMENTS_RETURN_URL = "https://habi.test/?" + "?" * question_marks
+            settings.PAYMENTS_RETURN_URL = "https://parkbor.test/?" + "?" * question_marks
             url = payme.build_payment_url(booking)
             assert url.count("/") == 3  # "https://host/" and nothing else
             payload = url.rpartition("/")[2]

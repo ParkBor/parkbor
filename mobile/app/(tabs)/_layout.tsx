@@ -48,20 +48,21 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: t('tabs.map'), tabBarIcon: () => <TabGlyph glyph="🗺" /> }}
+        options={{ title: t('tabs.map'), tabBarButtonTestID: 'tab-map', tabBarIcon: () => <TabGlyph glyph="🗺" /> }}
       />
       <Tabs.Screen
         name="bookings"
-        options={{ title: t('tabs.bookings'), tabBarIcon: () => <TabGlyph glyph="🎫" /> }}
+        options={{ title: t('tabs.bookings'), tabBarButtonTestID: 'tab-bookings', tabBarIcon: () => <TabGlyph glyph="🎫" /> }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: t('tabs.profile'), tabBarIcon: () => <TabGlyph glyph="👤" /> }}
+        options={{ title: t('tabs.profile'), tabBarButtonTestID: 'tab-profile', tabBarIcon: () => <TabGlyph glyph="👤" /> }}
       />
       <Tabs.Screen
         name="operator"
         options={{
           title: t('tabs.operator'),
+          tabBarButtonTestID: 'tab-operator',
           // href: null removes the tab (and its route) from the bar for non-staff accounts.
           href: showOperator ? undefined : null,
           tabBarIcon: () => <TabGlyph glyph="🛂" />,

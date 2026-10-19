@@ -19,11 +19,11 @@ export function checkRefundNote(note: string): NoteProblem {
 }
 
 /** Outcomes an operator may choose for a refund (docs 8.4 "OPERATOR YO'RIQNOMASI"). */
-export function allowedOutcomes(refund: Pick<AdminRefund, 'status' | 'last_error' | 'payment'>): RefundOutcome[] {
+export function allowedOutcomes(refund: Pick<AdminRefund, 'status' | 'last_error'>): RefundOutcome[] {
   if (refund.status === 'MANUAL') return ['done', 'failed']
   if (refund.status === 'FAILED') {
     if (refund.last_error === OPERATOR_FAILED) return [] // final: money went back to the payment
-    return refund.payment ? ['done', 'retry'] : ['done']
+    return ['done', 'retry']
   }
   return [] // PENDING / SENT / DONE are never touched by hand
 }

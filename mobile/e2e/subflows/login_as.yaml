@@ -1,0 +1,31 @@
+# Bot-code login for ANY Telegram id, no real Telegram. Starts on the welcome / login screens.
+#   LOGIN_TG_ID (required)  LOGIN_NAME (first name stored for a NEW account)
+# Test-only path: the hook server plays the Telegram bot (confirms the pending login, returns the
+# 6-digit code). The app itself runs the production code path (start -> code -> verify).
+appId: uz.parkbor.app
+env:
+  LOGIN_NAME: Maestro
+---
+# Welcome slides 1-2 show "Skip"; on the login screen it is absent.
+- runFlow:
+    when:
+      visible: "Skip"
+    commands:
+      - tapOn: "Skip"
+- tapOn: "English"
+- tapOn: "Sign in with Telegram"
+# The t.me link opens Telegram or a browser and pushes the app to the background: bring it back
+# WITHOUT restarting it (the login session lives in memory).
+- launchApp:
+    appId: uz.parkbor.app
+    stopApp: false
+- extendedWaitUntil:
+    visible: "Enter the code"
+    timeout: 20000
+- runScript:
+    file: ../scripts/hook_call.js
+    env:
+      HOOK_PATH: /login-code
+      HOOK_BODY: '{"telegram_id": ${LOGIN_TG_ID}, "first_name": "${LOGIN_NAME}"}'
+# The code field has autoFocus; six digits submit by themselves.
+- inputText: ${output.hook.code}

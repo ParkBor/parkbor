@@ -42,7 +42,7 @@ def _require(name: str, value: str, min_length: int = 1) -> None:
 
 
 def _check_return_url(url: str) -> None:
-    """Empty, https, or an app deep link (``habi://...``). Never plain http; never ';' (Payme's
+    """Empty, https, or an app deep link (``parkbor://...``). Never plain http; never ';' (Payme's
     GET checkout format splits parameters on it)."""
     if not url:
         return

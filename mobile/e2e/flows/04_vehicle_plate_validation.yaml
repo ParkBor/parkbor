@@ -1,0 +1,65 @@
+# Vehicles: list, plate validation (client rules mirror the backend), duplicate refusal, success.
+# Cyrillic plates are NOT typed here: adb/idb text input is ASCII-only; "plateAscii" is covered by
+# the vitest unit tests (src/features/vehicles/vehiclePlate.test.ts).
+appId: uz.parkbor.app
+name: Add vehicle with plate validation
+tags:
+  - full
+  - needs-testids
+  - needs-hook
+---
+- runFlow: ../subflows/launch_fresh.yaml
+- runFlow:
+    file: ../subflows/login_new_user.yaml
+    env:
+      NOTIFICATIONS: later
+- evalScript: ${output.firstPlate = output.plate}
+- evalScript: ${output.firstPlateSpaced = output.plateSpaced}
+- tapOn: "Profile"
+- tapOn: "My vehicles"
+- assertVisible: ${output.firstPlateSpaced}
+- tapOn: "Add vehicle"
+- assertVisible: "New vehicle"
+# Too short
+- tapOn:
+    id: vehicle-plate-input
+- inputText: "AB"
+- hideKeyboard
+- tapOn: "Save"
+- assertVisible: "The plate must be 5 to 12 characters"
+# Digits only
+- tapOn:
+    id: vehicle-plate-input
+- eraseText: 32
+- inputText: "12345678"
+- hideKeyboard
+- tapOn: "Save"
+- assertVisible: "The plate needs both letters and digits"
+# Symbols (spaces and dashes are stripped, "!" is not allowed)
+- tapOn:
+    id: vehicle-plate-input
+- eraseText: 32
+- inputText: "AB12!@#"
+- hideKeyboard
+- tapOn: "Save"
+- assertVisible: "Use letters and digits only"
+# Same plate as the first vehicle: the server refuses (409 vehicle_exists)
+- tapOn:
+    id: vehicle-plate-input
+- eraseText: 32
+- inputText: ${output.firstPlate}
+- hideKeyboard
+- tapOn: "Save"
+- assertVisible: "A vehicle with this plate number is already added."
+# A new valid plate is saved and listed in the formatted form
+- runScript: ../scripts/new_identity.js
+- tapOn:
+    id: vehicle-plate-input
+- eraseText: 32
+- inputText: ${output.plate}
+- hideKeyboard
+- tapOn: "Save"
+- extendedWaitUntil:
+    visible: ${output.plateSpaced}
+    timeout: 15000
+- assertVisible: ${output.firstPlateSpaced}

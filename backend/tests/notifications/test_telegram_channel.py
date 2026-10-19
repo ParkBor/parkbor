@@ -29,7 +29,7 @@ def bot(monkeypatch):
 
 def test_message_is_sent_with_an_inline_link_button(bot):
     result = telegram.send(
-        42, "Title\nBody", button_label="Open booking", button_url="https://habi.test/b/1"
+        42, "Title\nBody", button_label="Open booking", button_url="https://parkbor.test/b/1"
     )
     assert result.outcome is TelegramOutcome.OK
     assert bot.sent == [
@@ -37,7 +37,7 @@ def test_message_is_sent_with_an_inline_link_button(bot):
             "chat_id": 42,
             "text": "Title\nBody",
             "reply_markup": {
-                "inline_keyboard": [[{"text": "Open booking", "url": "https://habi.test/b/1"}]]
+                "inline_keyboard": [[{"text": "Open booking", "url": "https://parkbor.test/b/1"}]]
             },
         }
     ]
@@ -49,7 +49,7 @@ def test_no_button_without_a_link(bot):
 
 
 def test_only_https_urls_become_buttons(bot):
-    telegram.send(42, "x", button_label="Open", button_url="habi://booking/1")
+    telegram.send(42, "x", button_label="Open", button_url="parkbor://booking/1")
     assert bot.sent[0]["reply_markup"] is None  # Telegram would reject a custom scheme
 
 

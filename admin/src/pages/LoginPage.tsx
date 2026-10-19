@@ -12,6 +12,7 @@ import {
   PAGE_PADDING_PX,
   WIDGET_MIN_HEIGHT_PX,
 } from '../lib/styles'
+import { BrandLogo } from '../components/BrandLogo'
 
 const WIDGET_SRC = 'https://telegram.org/js/telegram-widget.js'
 /**
@@ -123,6 +124,7 @@ export default function LoginPage({ botUsername = import.meta.env.VITE_TELEGRAM_
         <div style={{ textAlign: 'right' }}>
           <LanguageSelect />
         </div>
+        <BrandLogo height={56} decorative />
         <Typography.Title level={3}>{t('app.title')}</Typography.Title>
         <Typography.Paragraph type="secondary">{t('auth.subtitle')}</Typography.Paragraph>
         {shownErrorKey && (
@@ -147,9 +149,9 @@ export default function LoginPage({ botUsername = import.meta.env.VITE_TELEGRAM_
           />
         )}
         {isSubmitting && (
-          <div role="status">
+          <output>
             <Spin /> <Typography.Text>{t('auth.signingIn')}</Typography.Text>
-          </div>
+          </output>
         )}
         <div
           ref={containerRef}

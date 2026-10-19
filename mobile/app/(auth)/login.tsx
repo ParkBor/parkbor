@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { BrandLogo } from '@/components/BrandLogo';
 import { Button } from '@/components/Button';
 import { ErrorText } from '@/components/ErrorText';
 import { Screen } from '@/components/Screen';
@@ -32,7 +33,7 @@ export default function LoginScreen() {
   return (
     <Screen>
       <View style={styles.hero}>
-        <Text style={[styles.logo, { color: p.primary }]}>{t('login.title')}</Text>
+        <BrandLogo variant="full" width={280} />
         <Text style={[styles.subtitle, { color: p.text }]}>{t('login.subtitle')}</Text>
       </View>
       <ErrorText message={errorKey ? t(errorKey) : null} />
@@ -60,7 +61,6 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   hero: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  logo: { fontSize: 44, fontWeight: '800' },
   subtitle: { fontSize: 20, textAlign: 'center' },
   terms: { fontSize: 13, textAlign: 'center' },
   languages: { flexDirection: 'row', justifyContent: 'flex-end' },

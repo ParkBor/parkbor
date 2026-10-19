@@ -1,4 +1,4 @@
-# Habi production stack (single host). Architecture: docs/ARCHITECTURE.md 16, 17; runbook: docs/DEPLOY.md.
+# ParkBor production stack (single host). Architecture: docs/ARCHITECTURE.md 16, 17; runbook: docs/DEPLOY.md.
 #
 #   cd infra
 #   cp prod.env.example .env.prod     # fill in (NEVER commit .env.prod; .gitignore covers .env.*)
@@ -9,10 +9,10 @@
 #
 # No secret lives in this file: every credential comes from .env.prod (compose interpolation for
 # the data services, env_file for the application containers).
-name: habi
+name: parkbor
 
 x-backend: &backend
-  image: ${HABI_BACKEND_IMAGE:-habi-backend:local}
+  image: ${HABI_BACKEND_IMAGE:-parkbor-backend:local}
   build:
     context: ../backend
     args:
@@ -254,7 +254,7 @@ services:
   # Image = nginx + the built admin SPA (infra/nginx/Dockerfile). Unprivileged image: runs as the
   # non-root `nginx` user and therefore listens on 8080/8443 inside; the host maps 80/443.
   nginx:
-    image: ${HABI_NGINX_IMAGE:-habi-nginx:local}
+    image: ${HABI_NGINX_IMAGE:-parkbor-nginx:local}
     build:
       context: ..
       dockerfile: infra/nginx/Dockerfile
@@ -271,7 +271,7 @@ services:
     volumes:
       # <TLS_DIR>/<domain>/fullchain.pem and privkey.pem for API_DOMAIN and ADMIN_DOMAIN, readable
       # by uid 101 (nginx). See docs/DEPLOY.md "TLS certificates".
-      - ${TLS_DIR:-/opt/habi/certs}:/etc/nginx/certs:ro
+      - ${TLS_DIR:-/opt/parkbor/certs}:/etc/nginx/certs:ro
       # Let's Encrypt HTTP-01 challenge files (certbot --webroot on the host).
       - ${ACME_WEBROOT:-/var/www/acme}:/var/www/acme:ro
     environment:

@@ -12,9 +12,9 @@ export function ProtectedRoute() {
 
   if (status === 'loading') {
     return (
-      <div role="status" aria-busy="true" style={FULL_HEIGHT_CENTER}>
+      <output aria-busy="true" style={FULL_HEIGHT_CENTER}>
         <Spin />
-      </div>
+      </output>
     )
   }
   if (status === 'unavailable') {

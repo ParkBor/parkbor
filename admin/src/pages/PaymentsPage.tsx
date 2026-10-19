@@ -4,7 +4,6 @@ import type {
   PaymentProviderName,
   PaymentStatus,
 } from '@habi/api-client'
-import { useQuery } from '@tanstack/react-query'
 import { Select, Space, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
@@ -17,8 +16,9 @@ import { StatusTag } from '../components/StatusTag'
 import { adminApi } from '../lib/api'
 import type { ExportColumn } from '../lib/exportXlsx'
 import { fetchAll } from '../lib/fetchAll'
-import { formatDateTime, formatMoney, safeText } from '../lib/format'
+import { formatDateTime, formatMoney, isUuid, safeText, shortId } from '../lib/format'
 import { type DayRange, toRangeParams } from '../lib/time'
+import { usePagedQuery } from '../lib/usePagedQuery'
 import { useServerTable } from '../lib/useServerTable'
 
 const STATUSES: PaymentStatus[] = ['CREATED', 'PENDING', 'PAID', 'CANCELLED', 'REFUNDED', 'FAILED']
@@ -38,16 +38,16 @@ export default function PaymentsPage() {
     provider: table.filters.provider,
     ...toRangeParams(table.filters.range),
   }
-  const query = useQuery({
-    queryKey: ['payments', params, table.page, table.pageSize],
-    queryFn: () => adminApi.payments.list({ ...params, page: table.page, page_size: table.pageSize }),
-  })
+  const query = usePagedQuery(['payments', params], table, (paging) =>
+    adminApi.payments.list({ ...params, ...paging }),
+  )
 
   const columns: ColumnsType<AdminPayment> = [
     {
       title: t('payments.booking'),
       key: 'booking',
-      render: (_, row) => <Link to={`/bookings/${encodeURIComponent(row.booking)}`}>{row.booking.slice(0, 8)}</Link>,
+      render: (_, row) =>
+        isUuid(row.booking) ? <Link to={`/bookings/${row.booking}`}>{shortId(row.booking)}</Link> : shortId(row.booking),
     },
     { title: t('payments.provider'), key: 'provider', render: (_, row) => safeText(row.provider, 20) },
     { title: t('payments.status'), key: 'status', render: (_, row) => <StatusTag kind="payment" value={row.status} /> },
@@ -89,7 +89,7 @@ export default function PaymentsPage() {
           onChange={(value: PaymentProviderName | undefined) => table.setFilter('provider', value)}
           options={PROVIDERS.map((p) => ({ value: p, label: p }))}
         />
-        <DayRangeFilter value={table.filters.range} onChange={(range) => table.setFilter('range', range)} />
+        <DayRangeFilter basis="created" value={table.filters.range} onChange={(range) => table.setFilter('range', range)} />
         <ExportButton
           filename="payments"
           columns={exportColumns}

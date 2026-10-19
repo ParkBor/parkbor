@@ -1,5 +1,5 @@
 import type { AdminUser, UserRole, UserUpdate } from '@habi/api-client'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button, Input, Modal, Select, Space, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
@@ -8,9 +8,12 @@ import { PagedTable } from '../components/PagedTable'
 import { StatusTag } from '../components/StatusTag'
 import { adminApi } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { errorText } from '../lib/errorText'
+import { userErrorText } from '../lib/errorText'
 import { formatDateTime, safeText } from '../lib/format'
+import { usePagedQuery } from '../lib/usePagedQuery'
+import { isSuperAdmin } from '../lib/rbac'
 import { useServerTable } from '../lib/useServerTable'
+import { useSingleFlight } from '../lib/useSingleFlight'
 
 const ROLES: UserRole[] = ['DRIVER', 'OPERATOR', 'OWNER', 'ADMIN']
 
@@ -30,23 +33,25 @@ export default function UsersPage() {
   const { t, i18n } = useTranslation()
   const { user: me } = useAuth()
   const queryClient = useQueryClient()
+  // Hints only: the server still refuses (super_admin_required) whatever the UI shows.
+  const superAdmin = isSuperAdmin(me)
   const table = useServerTable<Filters>({ search: '' })
   const params = {
     role: table.filters.role,
     is_active: table.filters.active,
     search: table.filters.search.trim() || undefined,
   }
-  const query = useQuery({
-    queryKey: ['users', params, table.page, table.pageSize],
-    queryFn: () => adminApi.users.list({ ...params, page: table.page, page_size: table.pageSize }),
-  })
+  const query = usePagedQuery(['users', params], table, (paging) =>
+    adminApi.users.list({ ...params, ...paging }),
+  )
+  const singleFlight = useSingleFlight()
   const update = useMutation({
     mutationFn: ({ id, body }: { id: string; body: UserUpdate }) => adminApi.users.update(id, body),
     onSuccess: () => {
       void message.success(t('common.saved'))
       void queryClient.invalidateQueries({ queryKey: ['users'] })
     },
-    onError: (error) => void message.error(errorText(error, t)),
+    onError: (error) => void message.error(userErrorText(error, t)),
   })
 
   function changeRole(user: AdminUser, role: UserRole) {
@@ -54,7 +59,8 @@ export default function UsersPage() {
       title: t('users.confirmRole', { name: displayName(user), role: t(`status.role.${role}`) }),
       okText: t('common.confirm'),
       cancelText: t('common.cancel'),
-      onOk: () => update.mutateAsync({ id: user.id, body: { role } }).catch(() => undefined),
+      onOk: () =>
+        singleFlight(() => update.mutateAsync({ id: user.id, body: { role } }).catch(() => undefined)),
     })
   }
 
@@ -66,7 +72,9 @@ export default function UsersPage() {
       okButtonProps: { danger: block },
       cancelText: t('common.cancel'),
       onOk: () =>
-        update.mutateAsync({ id: user.id, body: { is_active: !block } }).catch(() => undefined),
+        singleFlight(() =>
+          update.mutateAsync({ id: user.id, body: { is_active: !block } }).catch(() => undefined),
+        ),
     })
   }
 
@@ -81,7 +89,7 @@ export default function UsersPage() {
       title: t('users.role'),
       key: 'role',
       render: (_, row) =>
-        row.id === me?.id ? (
+        row.id === me?.id || (row.role === 'ADMIN' && !superAdmin) ? (
           <StatusTag kind="role" value={row.role} />
         ) : (
           <Select<UserRole>
@@ -90,7 +98,10 @@ export default function UsersPage() {
             value={row.role}
             style={{ minWidth: 130 }}
             onChange={(role) => changeRole(row, role)}
-            options={ROLES.map((r) => ({ value: r, label: t(`status.role.${r}`) }))}
+            options={ROLES.filter((r) => r !== 'ADMIN' || superAdmin).map((r) => ({
+              value: r,
+              label: t(`status.role.${r}`),
+            }))}
           />
         ),
     },
@@ -108,7 +119,7 @@ export default function UsersPage() {
       title: t('common.actions'),
       key: 'actions',
       render: (_, row) =>
-        row.id === me?.id ? null : (
+        row.id === me?.id || (row.role === 'ADMIN' && !superAdmin) ? null : (
           <Button size="small" danger={row.is_active} onClick={() => toggleActive(row)}>
             {t(row.is_active ? 'users.block' : 'users.unblock')}
           </Button>
@@ -145,9 +156,9 @@ export default function UsersPage() {
         />
         <Input.Search
           allowClear
-          placeholder={t('common.search')}
-          aria-label={t('common.search')}
-          style={{ width: 220 }}
+          placeholder={t('users.searchHint')}
+          aria-label={t('users.searchHint')}
+          style={{ width: 300 }}
           onSearch={(value) => table.setFilter('search', value)}
         />
       </Space>

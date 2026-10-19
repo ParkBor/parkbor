@@ -97,6 +97,15 @@ export const opsEn: typeof opsUz = {
     cancelReason: 'Reason (optional)',
     cancelConfirm: 'Yes, cancel',
     cancelled: 'Booking cancelled',
+    actor: 'Who',
+    actors: {
+      driver: 'Driver',
+      operator: 'Operator',
+      owner: 'Owner',
+      admin: 'Admin',
+      system: 'System',
+    },
+    cancelRefundNote: 'Cancelling returns 100% of the amount paid.',
   },
   overstay: {
     title: 'Overstay (not collected)',
@@ -126,6 +135,14 @@ export const opsEn: typeof opsUz = {
     resolve: 'Resolve',
     resolved: 'Refund updated',
     resolveTitle: 'Resolve refund',
+    errorCodes: {
+      error: 'Error',
+      unknown_error: 'Unknown error',
+      retries_exhausted: 'Retries exhausted',
+      operator_failed: 'Operator decided not to refund',
+      click_error: 'Click error',
+      http_error: 'Network/provider error',
+    },
     outcomeLabel: 'Outcome',
     chooseOutcome: 'Choose an outcome',
     confirmDone: 'I confirm the money was really returned',
@@ -169,6 +186,14 @@ export const opsEn: typeof opsUz = {
     confirmBlock: 'Block {{name}}?',
     confirmUnblock: 'Unblock {{name}}?',
     confirmRole: 'Change the role of {{name}} to "{{role}}"?',
+    searchHint: 'Search by username, first or last name',
+    errors: {
+      cannot_modify_self: 'You cannot change yourself.',
+      super_admin_protected: 'The super admin account cannot be changed.',
+      super_admin_required: 'Only a super admin can grant or remove the ADMIN role or block an ADMIN.',
+      last_admin: 'This is the last active admin and cannot be changed.',
+      owner_has_parkings: 'The owner still has parking lots: transfer or delete them first.',
+    },
   },
   moderation: {
     title: 'Lot moderation',
@@ -187,6 +212,11 @@ export const opsEn: typeof opsUz = {
     publish: 'Publish',
   },
   settings: {
+    readOnly: 'Only a super admin can change the settings. For you they are read-only.',
+    errors: {
+      settings_range_invalid: 'The value is outside the allowed range.',
+      settings_order_invalid: 'Wrong order of percentages: after start <= late <= early.',
+    },
     title: 'Settings',
     fields: {
       hold_minutes: 'Payment hold time (minutes)',

@@ -1,0 +1,14 @@
+# Expo development build: after launch the app shows the dev launcher. Open the Metro bundle by
+# deep link (scheme exp+<slug>). E2E_METRO_URL: Android emulator http://10.0.2.2:8081, iOS sim http://localhost:8081.
+# The first run also shows the dev-client welcome sheet; dismiss it when it appears.
+appId: uz.parkbor.app
+---
+- openLink: "exp+parkbor://expo-development-client/?url=${encodeURIComponent(typeof E2E_METRO_URL === 'undefined' ? 'http://10.0.2.2:8081' : E2E_METRO_URL)}"
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Skip|Get started|Sign in with Telegram|Nearby parking lots|Can.t connect"
+    timeout: 90000

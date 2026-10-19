@@ -1,5 +1,5 @@
 import type { AdminRefund, RefundOutcome, RefundStatus } from '@habi/api-client'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Alert, Button, Select, Space, Switch, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useState } from 'react'
@@ -14,8 +14,10 @@ import { StatusTag } from '../components/StatusTag'
 import { adminApi } from '../lib/api'
 import type { ExportColumn } from '../lib/exportXlsx'
 import { fetchAll } from '../lib/fetchAll'
-import { formatDateTime, formatMoney, safeText } from '../lib/format'
+import { formatDateTime, formatMoney, isUuid, safeText, shortId } from '../lib/format'
+import { refundErrorLabel } from '../lib/refundErrors'
 import { allowedOutcomes } from '../lib/refundNote'
+import { usePagedQuery } from '../lib/usePagedQuery'
 import { useServerTable } from '../lib/useServerTable'
 
 const STATUSES: RefundStatus[] = ['PENDING', 'SENT', 'DONE', 'FAILED', 'MANUAL']
@@ -35,10 +37,9 @@ export default function RefundsPage() {
     status: table.filters.status,
     needs_attention: table.filters.needsAttention || undefined,
   }
-  const query = useQuery({
-    queryKey: ['refunds', params, table.page, table.pageSize],
-    queryFn: () => adminApi.refunds.list({ ...params, page: table.page, page_size: table.pageSize }),
-  })
+  const query = usePagedQuery(['refunds', params], table, (paging) =>
+    adminApi.refunds.list({ ...params, ...paging }),
+  )
   const resolve = useMutation({
     mutationFn: ({ id, outcome, note }: { id: string; outcome: RefundOutcome; note: string }) =>
       adminApi.refunds.resolve(id, { outcome, note }),
@@ -54,13 +55,14 @@ export default function RefundsPage() {
     {
       title: t('payments.booking'),
       key: 'booking',
-      render: (_, row) => <Link to={`/bookings/${encodeURIComponent(row.booking)}`}>{row.booking.slice(0, 8)}</Link>,
+      render: (_, row) =>
+        isUuid(row.booking) ? <Link to={`/bookings/${row.booking}`}>{shortId(row.booking)}</Link> : shortId(row.booking),
     },
     { title: t('refunds.status'), key: 'status', render: (_, row) => <StatusTag kind="refund" value={row.status} /> },
     { title: t('refunds.amount'), key: 'amount', align: 'right', render: (_, row) => formatMoney(row.amount) },
     { title: t('refunds.reason'), key: 'reason', render: (_, row) => safeText(row.reason, 40) },
     { title: t('refunds.attempts'), key: 'attempts', dataIndex: 'attempts' },
-    { title: t('refunds.lastError'), key: 'error', render: (_, row) => safeText(row.last_error, 40) || '—' },
+    { title: t('refunds.lastError'), key: 'error', render: (_, row) => refundErrorLabel(row.last_error, t) },
     { title: t('refunds.created'), key: 'created', render: (_, row) => formatDateTime(row.created_at, i18n.language) },
     {
       title: t('common.actions'),
@@ -129,6 +131,7 @@ export default function RefundsPage() {
       <RefundResolveModal
         refund={selected}
         onClose={() => setSelected(null)}
+        onStale={() => void queryClient.invalidateQueries({ queryKey: ['refunds'] })}
         onResolve={(id, outcome, note) => resolve.mutateAsync({ id, outcome, note })}
       />
     </Space>

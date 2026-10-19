@@ -18,7 +18,7 @@ vi.mock('@/lib/authApi', () => ({
   authApi: { start: mocks.start, status: mocks.status, verify: mocks.verify },
 }));
 vi.mock('@/lib/deviceId', () => ({ getDeviceId: async () => 'device-1' }));
-vi.mock('@/lib/config', () => ({ getTelegramBot: () => 'HabiParkingBot' }));
+vi.mock('@/lib/config', () => ({ getTelegramBot: () => 'ParkBorBot' }));
 vi.mock('@/store/auth', () => ({
   authStore: { getState: () => ({ setSession: mocks.setSession }) },
 }));
@@ -35,7 +35,7 @@ beforeEach(() => {
   loginStore.getState().reset();
   mocks.start.mockResolvedValue({
     login_token: TOKEN,
-    bot_url: `https://t.me/HabiParkingBot?start=${TOKEN}`,
+    bot_url: `https://t.me/ParkBorBot?start=${TOKEN}`,
     expires_in: 300,
   });
   mocks.openURL.mockResolvedValue(undefined);
@@ -48,7 +48,7 @@ beforeEach(() => {
 describe('loginStore wiring', () => {
   it('opens the bot link through Linking', async () => {
     await loginStore.getState().start();
-    expect(mocks.openURL).toHaveBeenCalledWith(`https://t.me/HabiParkingBot?start=${TOKEN}`);
+    expect(mocks.openURL).toHaveBeenCalledWith(`https://t.me/ParkBorBot?start=${TOKEN}`);
   });
 
   it('refuses a link to another bot (extra.telegramBot is enforced)', async () => {

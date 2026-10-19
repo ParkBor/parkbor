@@ -68,6 +68,16 @@ def _name(key) -> str:
     return _SAFE_NAME.sub("", str(key).lower())[:40]
 
 
+# Control characters (ESC, NUL, ...) and invisible / bidi-override characters never belong in a log
+# line or an admin screen: they are replaced by a space before the text is collapsed.
+_INVISIBLE = re.compile(r"[\x00-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]")
+_CODE = re.compile(r"^[a-z0-9_.:\-]{1,60}$")
+
+
+def _clean_text(value) -> str:
+    return re.sub(r"\s+", " ", _INVISIBLE.sub(" ", str(value))).strip()[:MAX_TEXT]
+
+
 def _clean_value(value, depth: int):
     if isinstance(value, dict):
         return _clean_dict(value, depth + 1, structural=False)
@@ -75,7 +85,7 @@ def _clean_value(value, depth: int):
         return [_clean_value(item, depth + 1) for item in value]
     if value is None or isinstance(value, bool | int | float):
         return value
-    return re.sub(r"\s+", " ", str(value))[:MAX_TEXT]
+    return _clean_text(value)
 
 
 def _clean_dict(data: dict, depth: int, *, structural: bool) -> dict:
@@ -87,6 +97,10 @@ def _clean_dict(data: dict, depth: int, *, structural: bool) -> dict:
         lowered = str(key).lower()
         if lowered in PLATE_KEYS:
             cleaned[lowered] = plate_hint(item) if item not in (None, "") else item
+        elif lowered == "error":
+            # a machine code only: provider text must never reach the log (see payments.errors)
+            text = _clean_text(item) if item is not None else ""
+            cleaned[lowered] = text if (not text or _CODE.match(text)) else "invalid_error_code"
         elif lowered in allowed:
             cleaned[lowered] = _clean_value(item, depth)
         else:

@@ -31,7 +31,7 @@ jobs:
           file: infra/nginx/Dockerfile
           load: true
           push: false
-          tags: habi-nginx:ci
+          tags: parkbor-nginx:ci
           build-args: |
             VITE_TELEGRAM_BOT_USERNAME=ci_bot
           cache-from: type=gha
@@ -39,14 +39,14 @@ jobs:
       - name: nginx -t with throwaway certificates
         run: |
           set -e
-          for d in api.ci.test admin.ci.test; do
+          for d in api.ci.test crm.ci.test; do
             mkdir -p "$RUNNER_TEMP/certs/$d"
             openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj "/CN=$d" \
               -keyout "$RUNNER_TEMP/certs/$d/privkey.pem" -out "$RUNNER_TEMP/certs/$d/fullchain.pem"
           done
           chmod -R a+rX "$RUNNER_TEMP/certs"
           docker run --rm --add-host api:127.0.0.1 \
-            -e API_DOMAIN=api.ci.test -e ADMIN_DOMAIN=admin.ci.test \
+            -e API_DOMAIN=api.ci.test -e ADMIN_DOMAIN=crm.ci.test \
             -e 'NGINX_ENVSUBST_FILTER=^(API|ADMIN)_DOMAIN$' \
             -v "$RUNNER_TEMP/certs:/etc/nginx/certs:ro" \
-            habi-nginx:ci nginx -t
+            parkbor-nginx:ci nginx -t

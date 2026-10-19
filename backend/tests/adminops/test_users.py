@@ -20,7 +20,13 @@ def test_list_has_no_phone_and_filters_by_role_active_and_search(admin, driver):
     client = bearer(admin)
     rows = client.get(f"{BASE}/users").data["results"]
     assert set(rows[0]) == {
-        "id", "telegram_username", "first_name", "last_name", "role", "is_active", "created_at"
+        "id",
+        "telegram_username",
+        "first_name",
+        "last_name",
+        "role",
+        "is_active",
+        "created_at",
     }
     assert [r["id"] for r in client.get(f"{BASE}/users", {"role": "DRIVER"}).data["results"]] == [
         str(driver.pk)
@@ -67,7 +73,9 @@ def test_role_change_is_audited(admin, driver):
     assert row.meta["before"]["role"] == "DRIVER" and row.meta["after"]["role"] == "OWNER"
 
 
-@pytest.mark.parametrize("body", [{}, {"role": "ROOT"}, {"is_superuser": True}, {"role": "OWNER", "phone": "1"}])
+@pytest.mark.parametrize(
+    "body", [{}, {"role": "ROOT"}, {"is_superuser": True}, {"role": "OWNER", "phone": "1"}]
+)
 def test_invalid_bodies_are_400(admin, driver, body):
     assert patch(admin, driver, body).status_code == 400
     driver.refresh_from_db()
@@ -77,7 +85,9 @@ def test_invalid_bodies_are_400(admin, driver, body):
 def test_unknown_user_is_404(admin):
     import uuid
 
-    response = bearer(admin).patch(f"{BASE}/users/{uuid.uuid4()}", {"is_active": False}, format="json")
+    response = bearer(admin).patch(
+        f"{BASE}/users/{uuid.uuid4()}", {"is_active": False}, format="json"
+    )
     assert response.status_code == 404
 
 

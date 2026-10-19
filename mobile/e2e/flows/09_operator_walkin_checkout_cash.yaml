@@ -1,0 +1,61 @@
+# Walk-in (no booking) and the two-step cash checkout: release -> server states the cash due ->
+# "Cash taken" repeats the request with collect=true.
+# DATA DEPENDENT: when the tariff / free-minutes rule yields 0 due for a stay of a few seconds, the
+# cash panel never opens and the flow takes the "Car released" branch (the screenshot name tells which).
+# To force the cash step, seed a lot whose tariff has no free minutes and a minimum charge (README).
+appId: uz.parkbor.app
+name: Operator walk-in and cash checkout (collected)
+tags:
+  - full
+  - needs-testids
+  - needs-hook
+---
+- runFlow: ../subflows/launch_fresh.yaml
+- runFlow:
+    file: ../subflows/login_seeded.yaml
+    env:
+      ROLE: operator
+      INDEX: "1"
+- tapOn: "Operator"
+- tapOn: 'Walk-in \(no booking\)'
+- assertVisible: "Walk-in"
+- runScript: ../scripts/new_identity.js
+- tapOn: "Car"
+- tapOn:
+    id: walkin-plate-input
+- inputText: ${output.plate}
+- hideKeyboard
+- tapOn: "Next free slot"
+- tapOn: "Register"
+- extendedWaitUntil:
+    visible: "Registered: .*"
+    timeout: 20000
+- takeScreenshot: 09_walkin_registered
+# Manual exit list: our car, "Walk-in" tag, Release button under its plate.
+- scrollUntilVisible:
+    element:
+      text: ${output.plateSpaced}
+    timeout: 20000
+- tapOn:
+    text: "Release"
+    below: ${output.plateSpaced}
+- assertVisible: "Release the car?"
+- tapOn: "Release"
+- extendedWaitUntil:
+    visible: "Car released|Collect at the cashier"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Collect at the cashier"
+    commands:
+      - takeScreenshot: 09_cash_step_collect
+      - assertVisible: "The amount comes from the server. Do not recalculate."
+      - tapOn: "Cash taken"
+      - extendedWaitUntil:
+          visible: "Cash taken, car released"
+          timeout: 20000
+- runFlow:
+    when:
+      visible: "Car released"
+    commands:
+      - takeScreenshot: 09_no_cash_due

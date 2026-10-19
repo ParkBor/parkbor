@@ -22,7 +22,7 @@ export function BookingDetailScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const target = resolveBookingParam(params.id);
 
-  // habi://booking/<garbage>: nothing to show, go to the list.
+  // parkbor://booking/<garbage>: nothing to show, go to the list.
   useEffect(() => {
     if (!target.ok) router.replace('/(tabs)/bookings');
   }, [target.ok, router]);

@@ -69,31 +69,33 @@ describe('isAllowedNavigation: top frame (strict allow-list)', () => {
 
 describe('isAllowedNavigation: result link', () => {
   it.each([TOP, ANDROID])('is the result signal in the top frame (%o)', (options) => {
-    expect(isAllowedNavigation('habi://payment/result', options)).toBe('result');
-    expect(isAllowedNavigation('habi://payment/result?status=ok&id=1', options)).toBe('result');
-    expect(isAllowedNavigation('habi://payment/result#frag', options)).toBe('result');
-    expect(isAllowedNavigation('HABI://payment/result', options)).toBe('result');
+    expect(isAllowedNavigation('parkbor://payment/result', options)).toBe('result');
+    expect(isAllowedNavigation('parkbor://payment/result?status=ok&id=1', options)).toBe('result');
+    expect(isAllowedNavigation('parkbor://payment/result#frag', options)).toBe('result');
+    expect(isAllowedNavigation('PARKBOR://payment/result', options)).toBe('result');
   });
 
   it('is NEVER accepted from an iframe (a framed page must not be able to close the payment)', () => {
-    expect(isAllowedNavigation('habi://payment/result', FRAME)).toBe('block');
-    expect(isAllowedNavigation('habi://payment/result?id=1', FRAME)).toBe('block');
+    expect(isAllowedNavigation('parkbor://payment/result', FRAME)).toBe('block');
+    expect(isAllowedNavigation('parkbor://payment/result?id=1', FRAME)).toBe('block');
   });
 
   it.each([
-    'habi://payment/result/extra',
-    'habi://payment/resultx',
-    'habi://payment/results',
-    'habi://payment/',
-    'habi://booking/e4d0c1de-1111-4222-8333-444455556666',
-    'habi://payment/Result',
-    'habi://evil/payment/result',
-    'habi:payment/result',
-    'habi://payment/result\nx',
-    'habi://payment/result x',
-    'habi://payment\\result',
-    'xhabi://payment/result',
-    'http://habi/payment/result',
+    'parkbor://payment/result/extra',
+    'parkbor://payment/resultx',
+    'parkbor://payment/results',
+    'parkbor://payment/',
+    'parkbor://booking/e4d0c1de-1111-4222-8333-444455556666',
+    'parkbor://payment/Result',
+    'parkbor://evil/payment/result',
+    'parkbor:payment/result',
+    'parkbor://payment/result\nx',
+    'parkbor://payment/result x',
+    'parkbor://payment\\result',
+    'habi://payment/result',
+    'HABI://payment/result',
+    'xparkbor://payment/result',
+    'http://parkbor/payment/result',
   ])('blocks the look-alike deep link %s', (url) => {
     expect(isAllowedNavigation(url, TOP)).toBe('block');
   });
@@ -141,14 +143,14 @@ describe('isAllowedNavigation: sub-frames (iOS reports iframes, Android does not
 
 describe('isResultUrl', () => {
   it('recognises only the exact result link', () => {
-    expect(isResultUrl('habi://payment/result?x=1')).toBe(true);
-    expect(isResultUrl('habi://payment/result/x')).toBe(false);
+    expect(isResultUrl('parkbor://payment/result?x=1')).toBe(true);
+    expect(isResultUrl('parkbor://payment/result/x')).toBe(false);
     expect(isResultUrl('https://checkout.paycom.uz/x')).toBe(false);
     expect(isResultUrl(undefined)).toBe(false);
   });
 
   it('refuses an oversized link', () => {
-    expect(isResultUrl(`habi://payment/result?${'a'.repeat(5000)}`)).toBe(false);
+    expect(isResultUrl(`parkbor://payment/result?${'a'.repeat(5000)}`)).toBe(false);
   });
 });
 
@@ -166,7 +168,7 @@ describe('createNavigationGuard (redirect budget and block counter)', () => {
     expect(guard.check('https://checkout.paycom.uz/2')).toBe('allow');
     expect(guard.check('https://my.click.uz/3')).toBe('allow');
     expect(guard.check('https://checkout.paycom.uz/4')).toBe('block');
-    expect(guard.check('habi://payment/result')).toBe('result');
+    expect(guard.check('parkbor://payment/result')).toBe('result');
   });
 
   it('the default budget is exactly MAX_NAVIGATIONS page loads', () => {
@@ -214,12 +216,12 @@ describe('decideStartLoad (the onShouldStartLoadWithRequest answer)', () => {
   });
 
   it('stops the result link and reports it (top frame / Android)', () => {
-    expect(decideStartLoad(guard(), { url: 'habi://payment/result' })).toEqual({ shouldStart: false, effect: 'result' });
-    expect(decideStartLoad(guard(), { url: 'habi://payment/result', isTopFrame: true })).toEqual({ shouldStart: false, effect: 'result' });
+    expect(decideStartLoad(guard(), { url: 'parkbor://payment/result' })).toEqual({ shouldStart: false, effect: 'result' });
+    expect(decideStartLoad(guard(), { url: 'parkbor://payment/result', isTopFrame: true })).toEqual({ shouldStart: false, effect: 'result' });
   });
 
   it('a result link from an iframe is dropped WITHOUT closing the payment', () => {
-    expect(decideStartLoad(guard(), { url: 'habi://payment/result', isTopFrame: false })).toEqual({ shouldStart: false, effect: 'none' });
+    expect(decideStartLoad(guard(), { url: 'parkbor://payment/result', isTopFrame: false })).toEqual({ shouldStart: false, effect: 'none' });
   });
 
   it('a blocked TOP-level navigation is reported so the user is told (no silent dead end)', () => {
@@ -247,7 +249,7 @@ describe('decideNavigationState (second line of defence, Android may load before
   });
 
   it('a late result link still ends the payment (also when the native side already navigated)', () => {
-    expect(decideNavigationState('habi://payment/result?id=1', { sandbox: false })).toBe('result');
+    expect(decideNavigationState('parkbor://payment/result?id=1', { sandbox: false })).toBe('result');
   });
 
   it('a page outside the allow-list is a violation', () => {

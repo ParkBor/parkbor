@@ -89,6 +89,18 @@ describe('admin ops api routes', () => {
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
+  it('leaves needs_attention and empty filters out of the query (server: omitted = all)', async () => {
+    const { api, calls } = make()
+    await api.refunds.list({ needs_attention: undefined, status: undefined, page: 1, page_size: 20 })
+    await api.users.list({ search: '', role: undefined })
+    await api.bookings.list({ from: '2026-10-01T00:00:00+05:00', to: '2026-10-08T00:00:00+05:00' })
+    expect(calls()).toEqual([
+      'GET /api/v1/admin/refunds?page=1&page_size=20',
+      'GET /api/v1/admin/users',
+      'GET /api/v1/admin/bookings?from=2026-10-01T00%3A00%3A00%2B05%3A00&to=2026-10-08T00%3A00%3A00%2B05%3A00',
+    ])
+  })
+
   it('percent-encodes ids', async () => {
     const { api, calls } = make()
     await api.users.update('a/b', { role: 'ADMIN' })

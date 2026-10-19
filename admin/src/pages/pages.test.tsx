@@ -64,9 +64,15 @@ beforeEach(() => {
 })
 
 describe('ParkingEditPage', () => {
+  it('never requests a lot for a malformed id', async () => {
+    renderAt('/parkings/..%2Fevil/edit', <ParkingEditPage />, '/parkings/:id/edit')
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(api.parkings.get).not.toHaveBeenCalled()
+  })
+
   it('shows a not-found state instead of an empty "new" form', async () => {
     api.parkings.get.mockRejectedValue(new ApiError(404, { detail: 'Not found.' }, 'http'))
-    renderAt('/parkings/abc/edit', <ParkingEditPage />, '/parkings/:id/edit')
+    renderAt('/parkings/123e4567-e89b-12d3-a456-426614174000/edit', <ParkingEditPage />, '/parkings/:id/edit')
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     expect(screen.queryByRole('form')).not.toBeInTheDocument()
   })
@@ -75,7 +81,7 @@ describe('ParkingEditPage', () => {
     api.parkings.get
       .mockRejectedValueOnce(new ApiError(502, null, 'http'))
       .mockResolvedValueOnce(loadedLot)
-    renderAt('/parkings/abc/edit', <ParkingEditPage />, '/parkings/:id/edit')
+    renderAt('/parkings/123e4567-e89b-12d3-a456-426614174000/edit', <ParkingEditPage />, '/parkings/:id/edit')
     await userEvent.click(await screen.findByRole('button', { name: 'Qayta urinish' }))
     expect(await screen.findByDisplayValue('Loaded lot')).toBeInTheDocument()
   })

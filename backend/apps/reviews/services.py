@@ -10,7 +10,7 @@ from apps.bookings import services as booking_services
 from apps.bookings.models import Booking
 from apps.bookings.state import BookingStatus
 from apps.core.exceptions import Conflict, NotFoundError
-from apps.parking.models import ParkingLot
+from apps.parking.models import LotStatus, ParkingLot
 from apps.parking.services import audit, lock_lot
 
 from .models import Review, ReviewStatus
@@ -19,7 +19,7 @@ RATING_DECIMALS = Decimal("0.01")
 
 
 class NotReviewable(Conflict):
-    default_detail = "Only a completed booking of this parking lot can be reviewed."
+    default_detail = "Only a completed, paid booking of this parking lot can be reviewed."
     default_code = "booking_not_reviewable"
 
 
@@ -42,7 +42,9 @@ def recalculate_rating(lot_id) -> None:
 def create_review(*, user, lot_id, booking_id, rating: int, comment: str) -> Review:
     """A driver reviews a COMPLETED booking of his own in this lot (once per booking)."""
     booking_services.set_local_timeouts(5)
-    lock_lot(lot_id)
+    lot = lock_lot(lot_id)
+    if lot.status != LotStatus.ACTIVE:
+        raise NotFoundError("Parking lot not found.")  # only listed lots take reviews
     booking = (
         Booking.objects.filter(pk=booking_id, user=user, slot__zone__parking_lot_id=lot_id)
         .select_related("slot__zone")
@@ -50,8 +52,8 @@ def create_review(*, user, lot_id, booking_id, rating: int, comment: str) -> Rev
     )
     if booking is None:
         raise NotFoundError("Booking not found.")
-    if booking.status != BookingStatus.COMPLETED:
-        raise NotReviewable
+    if booking.status != BookingStatus.COMPLETED or booking.paid_amount <= 0:
+        raise NotReviewable  # an unpaid / free stay is not a verified customer
     try:
         with transaction.atomic():
             review = Review.objects.create(

@@ -28,3 +28,32 @@ jobs:
       - run: pnpm --filter admin test
       - run: pnpm --filter admin build
       - run: pnpm --filter "./packages/*" typecheck
+  e2e:
+    # Browser tests of the built admin against a mocked API (page.route): no backend needed.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Type-check the E2E code
+        run: pnpm --filter admin exec tsc -p e2e/tsconfig.json
+      - name: Install Chromium
+        run: pnpm --filter admin exec playwright install --with-deps chromium
+      - name: Run E2E
+        run: pnpm --filter admin e2e
+      - name: Upload report, traces and videos
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-e2e-${{ github.run_attempt }}
+          path: |
+            admin/e2e/.artifacts/report
+            admin/e2e/.artifacts/test-results
+            admin/e2e/.artifacts/junit.xml
+          retention-days: 7
+          if-no-files-found: ignore

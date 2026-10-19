@@ -183,7 +183,7 @@ TELEGRAM_BOT_USERNAME = env("TELEGRAM_BOT_USERNAME", default="")
 TELEGRAM_WEBHOOK_SECRET = env("TELEGRAM_WEBHOOK_SECRET", default="")
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Habi API",
+    "TITLE": "ParkBor API",
     "DESCRIPTION": "Avtoturargoh bron qilish tizimi",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,

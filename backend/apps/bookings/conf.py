@@ -19,26 +19,68 @@ from .pricing import PricingConfig
 logger = logging.getLogger(__name__)
 
 # Admin-editable settings (key -> (django setting name, low, high)). The environment value is the
-# default; a ``BookingSetting`` row overrides it. Ranges mirror ``config/settings/base.py``.
+# default; a ``BookingSetting`` row overrides it. Minimums are higher than the environment's: an
+# admin typo (a 1-minute hold, a 1-minute no-show grace) would wreck the business at once.
 EDITABLE_SETTINGS: dict[str, tuple[str, int, int]] = {
-    "hold_minutes": ("BOOKING_HOLD_MINUTES", 1, 120),
-    "no_show_grace_minutes": ("BOOKING_NO_SHOW_GRACE_MINUTES", 1, 240),
+    "hold_minutes": ("BOOKING_HOLD_MINUTES", 5, 120),
+    "no_show_grace_minutes": ("BOOKING_NO_SHOW_GRACE_MINUTES", 5, 240),
     "cancel_full_refund_minutes": ("BOOKING_CANCEL_FULL_REFUND_MINUTES", 0, 10080),
     "cancel_full_percent": ("BOOKING_CANCEL_FULL_PERCENT", 0, 100),
     "cancel_late_percent": ("BOOKING_CANCEL_LATE_PERCENT", 0, 100),
     "cancel_after_start_percent": ("BOOKING_CANCEL_AFTER_START_PERCENT", 0, 100),
 }
+LOCK_KEY = "_lock"  # sentinel row: update_settings serialises on it (never an override)
 OVERRIDES_CACHE_KEY = "booking_setting_overrides"
 OVERRIDES_CACHE_SECONDS = 30
 OVERRIDES_FAILURE_CACHE_SECONDS = 5
 
 
-def load_overrides() -> dict[str, int]:
-    """Admin overrides, cached for a few seconds (``update_settings`` clears the cache). A failed
-    read falls back to the environment defaults: bookings must keep working."""
-    cached = cache.get(OVERRIDES_CACHE_KEY)
-    if cached is not None:
-        return cached
+def invariant_error(values: dict) -> tuple[str, str] | None:
+    """Why ``values`` (all editable settings) are not acceptable, as ``(code, text)``, or None.
+    Codes: ``settings_range_invalid``, ``settings_order_invalid``. Used by the admin API
+    and by ``get_config`` (a broken stored set must never reach the booking rules)."""
+    for key, (_, low, high) in EDITABLE_SETTINGS.items():
+        value = values.get(key)
+        if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
+            return "settings_range_invalid", f"{key} must be an integer from {low} to {high}."
+    if values["cancel_late_percent"] > values["cancel_full_percent"]:
+        return "settings_order_invalid", "cancel_late_percent must not exceed cancel_full_percent."
+    if values["cancel_after_start_percent"] > values["cancel_late_percent"]:
+        return (
+            "settings_order_invalid",
+            "cancel_after_start_percent must not exceed cancel_late_percent.",
+        )
+    return None
+
+
+def env_defaults() -> dict[str, int]:
+    return {key: getattr(settings, name) for key, (name, _, _) in EDITABLE_SETTINGS.items()}
+
+
+def _cache_get():
+    try:
+        return cache.get(OVERRIDES_CACHE_KEY)
+    except Exception:  # noqa: BLE001 - a dead cache must not stop bookings
+        logger.exception("booking setting cache unreadable")
+        return None
+
+
+def _cache_set(value: dict, seconds: int) -> None:
+    try:
+        cache.set(OVERRIDES_CACHE_KEY, value, seconds)
+    except Exception:  # noqa: BLE001
+        logger.exception("booking setting cache not writable")
+
+
+def invalidate_overrides() -> None:
+    """Drop the cached overrides (never raises: it also runs after the commit)."""
+    try:
+        cache.delete(OVERRIDES_CACHE_KEY)
+    except Exception:  # noqa: BLE001
+        logger.exception("booking setting cache not clearable")
+
+
+def _stored_overrides() -> dict[str, int] | None:
     from .models import BookingSetting
 
     try:
@@ -46,20 +88,38 @@ def load_overrides() -> dict[str, int]:
             rows = dict(BookingSetting.objects.values_list("key", "value"))
     except DatabaseError:
         logger.exception("booking setting overrides unreadable; using defaults")
-        cache.set(OVERRIDES_CACHE_KEY, {}, OVERRIDES_FAILURE_CACHE_SECONDS)
+        return None
+    return {key: value for key, value in rows.items() if key in EDITABLE_SETTINGS}
+
+
+def load_overrides() -> dict[str, int]:
+    """Admin overrides, cached for a few seconds (``update_settings`` clears the cache). Anything
+    unreadable or inconsistent falls back to the environment defaults: bookings keep working."""
+    cached = _cache_get()
+    if cached is not None:
+        return cached
+    rows = _stored_overrides()
+    if rows is None:
+        _cache_set({}, OVERRIDES_FAILURE_CACHE_SECONDS)
         return {}
-    rows = {key: value for key, value in rows.items() if key in EDITABLE_SETTINGS}
-    cache.set(OVERRIDES_CACHE_KEY, rows, OVERRIDES_CACHE_SECONDS)
+    error = invariant_error({**env_defaults(), **rows})
+    if error:
+        logger.error("stored booking settings are inconsistent (%s); using defaults", error[0])
+        rows = {}
+    _cache_set(rows, OVERRIDES_CACHE_SECONDS)
     return rows
 
 
-def effective_settings() -> dict[str, int]:
-    """Value of every editable setting: override if present, else the environment default."""
-    overrides = load_overrides()
-    return {
-        key: overrides.get(key, getattr(settings, name))
-        for key, (name, _, _) in EDITABLE_SETTINGS.items()
-    }
+def effective_settings(*, fresh: bool = False) -> dict[str, int]:
+    """Value of every editable setting: override if present, else the environment default.
+    ``fresh`` reads the database, not the cache (the admin screen must not show stale values)."""
+    if fresh:
+        overrides = _stored_overrides() or {}
+        if invariant_error({**env_defaults(), **overrides}):
+            overrides = {}
+    else:
+        overrides = load_overrides()
+    return {**env_defaults(), **overrides}
 
 
 @dataclass(frozen=True)

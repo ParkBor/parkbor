@@ -238,7 +238,7 @@ def test_code_message_warns_not_to_share_and_start_names_app_context(lang):
 
     warn = {"uz": "hech kimga", "ru": "никому", "en": "anyone"}[lang]
     assert warn in messages.text(lang, "code_sent", code="123456").lower()
-    assert "Habi" in messages.text(lang, "ask_contact")
+    assert "ParkBor" in messages.text(lang, "ask_contact")
 
 
 # ---- throttles ---------------------------------------------------------------------------------

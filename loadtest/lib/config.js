@@ -1,4 +1,4 @@
-// Shared configuration for every Habi k6 script. Everything comes from the environment
+// Shared configuration for every ParkBor k6 script. Everything comes from the environment
 // (k6 run -e NAME=value ...). Nothing secret and no host is hardcoded here.
 import { fail } from 'k6';
 

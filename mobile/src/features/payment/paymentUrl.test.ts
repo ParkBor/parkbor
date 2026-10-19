@@ -5,7 +5,7 @@ import { isPaymentSandbox, setPaymentSandbox } from '@/features/payment/paymentS
 
 const PAYME = 'https://checkout.paycom.uz/bT01NjQ3O2FjLm9yZGVyX2lkPTEyMzthPTEyMDAwMDA=';
 const CLICK =
-  'https://my.click.uz/services/pay?service_id=1&merchant_id=2&amount=12000.00&transaction_param=e4d0c1de-1111-4222-8333-444455556666&return_url=habi%3A%2F%2Fpayment%2Fresult';
+  'https://my.click.uz/services/pay?service_id=1&merchant_id=2&amount=12000.00&transaction_param=e4d0c1de-1111-4222-8333-444455556666&return_url=parkbor%3A%2F%2Fpayment%2Fresult';
 const SANDBOX = 'https://test.paycom.uz/bT01NjQ3O2E9MQ==';
 
 afterEach(() => setPaymentSandbox(false));
@@ -84,9 +84,9 @@ describe('isAllowedPaymentUrl: schemes', () => {
     'sms:+998901234567',
     'mailto:a@b.c',
     'data:text/html,<script>alert(1)</script>',
-    'file:///data/data/uz.habi.app/x',
+    'file:///data/data/uz.parkbor.app/x',
     'ftp://checkout.paycom.uz/x',
-    'habi://payment/result',
+    'parkbor://payment/result',
     'about:blank',
     'blob:https://checkout.paycom.uz/x',
     '//checkout.paycom.uz/x',
@@ -258,7 +258,7 @@ describe('displayHost (what the user sees in the header)', () => {
 
   it('is null for anything not allowed', () => {
     expect(displayHost('https://evil.com/')).toBeNull();
-    expect(displayHost('habi://payment/result')).toBeNull();
+    expect(displayHost('parkbor://payment/result')).toBeNull();
     expect(displayHost(undefined)).toBeNull();
     expect(displayHost('https://test.paycom.uz/x')).toBeNull();
     expect(displayHost('https://test.paycom.uz/x', { sandbox: true })).toBe('test.paycom.uz');

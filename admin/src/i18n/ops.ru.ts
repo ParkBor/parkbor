@@ -97,6 +97,15 @@ export const opsRu: typeof opsUz = {
     cancelReason: 'Причина (необязательно)',
     cancelConfirm: 'Да, отменить',
     cancelled: 'Бронь отменена',
+    actor: 'Кто',
+    actors: {
+      driver: 'Водитель',
+      operator: 'Оператор',
+      owner: 'Владелец',
+      admin: 'Админ',
+      system: 'Система',
+    },
+    cancelRefundNote: 'При отмене возвращается 100% оплаченной суммы.',
   },
   overstay: {
     title: 'Превышение времени (не получено)',
@@ -126,6 +135,14 @@ export const opsRu: typeof opsUz = {
     resolve: 'Обработать',
     resolved: 'Статус возврата обновлён',
     resolveTitle: 'Обработка возврата',
+    errorCodes: {
+      error: 'Ошибка',
+      unknown_error: 'Неизвестная ошибка',
+      retries_exhausted: 'Попытки исчерпаны',
+      operator_failed: 'Оператор решил не возвращать',
+      click_error: 'Ошибка Click',
+      http_error: 'Ошибка сети/провайдера',
+    },
     outcomeLabel: 'Результат',
     chooseOutcome: 'Выберите результат',
     confirmDone: 'Подтверждаю, что деньги действительно возвращены',
@@ -169,6 +186,14 @@ export const opsRu: typeof opsUz = {
     confirmBlock: 'Заблокировать {{name}}?',
     confirmUnblock: 'Разблокировать {{name}}?',
     confirmRole: 'Изменить роль {{name}} на «{{role}}»?',
+    searchHint: 'Поиск по username, имени или фамилии',
+    errors: {
+      cannot_modify_self: 'Нельзя изменить самого себя.',
+      super_admin_protected: 'Аккаунт суперадмина изменить нельзя.',
+      super_admin_required: 'Выдавать или снимать роль ADMIN и блокировать ADMIN может только суперадмин.',
+      last_admin: 'Это последний активный админ: изменить его нельзя.',
+      owner_has_parkings: 'У владельца есть парковки: сначала передайте или удалите их.',
+    },
   },
   moderation: {
     title: 'Модерация парковок',
@@ -187,6 +212,11 @@ export const opsRu: typeof opsUz = {
     publish: 'Опубликовать',
   },
   settings: {
+    readOnly: 'Настройки может менять только суперадмин. Вам они доступны только для чтения.',
+    errors: {
+      settings_range_invalid: 'Значение вне допустимого диапазона.',
+      settings_order_invalid: 'Неверный порядок процентов: после начала ≤ поздняя ≤ ранняя.',
+    },
     title: 'Настройки',
     fields: {
       hold_minutes: 'Время ожидания оплаты (мин)',

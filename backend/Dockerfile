@@ -9,7 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # SENTRY_RELEASE if needed).
 ARG RELEASE=""
 ENV SENTRY_RELEASE=${RELEASE}
-LABEL org.opencontainers.image.title="habi-backend" org.opencontainers.image.revision="${RELEASE}"
+LABEL org.opencontainers.image.title="parkbor-backend" org.opencontainers.image.revision="${RELEASE}"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gdal-bin libgdal-dev libgeos-dev libproj-dev \

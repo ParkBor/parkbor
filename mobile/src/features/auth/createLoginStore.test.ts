@@ -5,7 +5,7 @@ import { createLoginStore } from '@/features/auth/createLoginStore';
 import type { AuthResult, User } from '@/lib/types';
 
 const TOKEN = 'abcDEF123_-abcDEF123_-abcDEF123_-abcDEF123_-abc';
-const BOT_URL = `https://t.me/HabiParkingBot?start=${TOKEN}`;
+const BOT_URL = `https://t.me/ParkBorBot?start=${TOKEN}`;
 const NOW = 1_700_000_000_000;
 
 const USER: User = {
@@ -44,7 +44,7 @@ function setup(nowRef = { value: NOW }) {
     api,
     openUrl,
     getDeviceId: async () => 'device-1',
-    botName: 'HabiParkingBot',
+    botName: 'ParkBorBot',
     onAuthenticated,
     now: () => nowRef.value,
   });
@@ -81,7 +81,7 @@ describe('login store: start', () => {
     expect(store.getState().session).toBeNull();
   });
 
-  it.each(['https://evil.com/HabiParkingBot?start=' + TOKEN, 'javascript:alert(1)', 'http://t.me/x'])(
+  it.each(['https://evil.com/ParkBorBot?start=' + TOKEN, 'javascript:alert(1)', 'http://t.me/x'])(
     'refuses an untrusted bot_url %s',
     async (botUrl) => {
       const { store, api, openUrl } = setup();
@@ -104,7 +104,7 @@ describe('login store: start', () => {
 
     api.start.mockResolvedValueOnce({
       login_token: TOKEN,
-      bot_url: `https://t.me/habiparkingbot?start=${TOKEN}`,
+      bot_url: `https://t.me/parkborbot?start=${TOKEN}`,
       expires_in: 300,
     });
     expect((await store.getState().start()).ok).toBe(true);

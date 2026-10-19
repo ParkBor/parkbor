@@ -19,7 +19,7 @@ export interface PaymentWebViewHandle {
 interface PaymentWebViewProps {
   /** Already checked by `payAvailability`; checked once more here before it is loaded. */
   url: string;
-  /** The provider returned to `habi://payment/result`. Only a signal. */
+  /** The provider returned to `parkbor://payment/result`. Only a signal. */
   onResult: () => void;
   /** The user wants out (close). The caller decides what that means. */
   onExit: () => void;
@@ -44,7 +44,7 @@ function PaymentWebViewBase({ url, onResult, onExit, onCheckStatus, isDeviceOffl
   if (!isAllowedPaymentUrl(url)) return <ErrorText message={t(errorMessageKey('load'))} />;
 
   return (
-    <View style={styles.root} accessibilityLabel={t('payment.webview.pageLabel')}>
+    <View testID="payment-webview" style={styles.root} accessibilityLabel={t('payment.webview.pageLabel')}>
       <HostBar host={host} />
       {state.blockedCount > 0 ? <BlockedNotice onRetry={retry} onCheckStatus={onCheckStatus} /> : null}
       {state.phase === 'error' && state.error !== null ? (

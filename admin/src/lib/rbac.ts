@@ -74,6 +74,13 @@ export function can(role: MaybeRole, action: Action): boolean {
   return includesRole(ACTION_ROLES[action], role)
 }
 
+/** Granting ADMIN, blocking an ADMIN and changing settings are for a super admin only. */
+export function isSuperAdmin(
+  user: { role: UserRole; is_superuser?: boolean } | null | undefined,
+): boolean {
+  return user?.role === 'ADMIN' && user.is_superuser === true
+}
+
 export function visibleFeatures(role: MaybeRole): Feature[] {
   return (Object.keys(FEATURE_ROLES) as Feature[]).filter((feature) => canAccess(role, feature))
 }

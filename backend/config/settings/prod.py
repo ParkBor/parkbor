@@ -19,6 +19,9 @@ if DATABASES["default"]["ENGINE"] != "django.contrib.gis.db.backends.postgis":
 DATABASES["default"]["OPTIONS"] = {
     **DATABASES["default"].get("OPTIONS", {}),
     "options": "-c lock_timeout=10s -c statement_timeout=30s",
+    # A black-holed database must fail a connect in seconds (health answers 503, requests 5xx)
+    # instead of hanging until the OS gives up.
+    "connect_timeout": 3,
 }
 REDIS_URL = env("REDIS_URL")  # broker + Celery results (database 0)
 # Separate keyspaces (and, for the cache, ideally a separate allkeys-lru server): see redis_urls.
@@ -34,6 +37,8 @@ CELERY_RESULT_BACKEND = REDIS_URL
 
 SECURE_SSL_REDIRECT = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Probes (container healthcheck, uptime monitors) may use plain HTTP: no 301 instead of an answer.
+SECURE_REDIRECT_EXEMPT = [r"^health(/live)?$"]
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
@@ -86,6 +91,9 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": CACHE_REDIS_URL,
+        # built-in RedisCache passes OPTIONS to redis-py's connection pool: a dead cache must
+        # not hang a request (throttling, settings overrides)
+        "OPTIONS": {"socket_timeout": 2, "socket_connect_timeout": 2},
     }
 }
 CHANNEL_LAYERS = channel_layers(CHANNEL_REDIS_URL)

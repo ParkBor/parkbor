@@ -1,0 +1,43 @@
+# After a NEW account logged in: name + first vehicle, then the permission screen.
+#   NAME (letters only), PLATE (valid, unique), NOTIFICATIONS = allow | later (default later)
+# OS dialogs differ by platform/version; the optional taps cover Android 11-15 and iOS 17+.
+appId: uz.parkbor.app
+env:
+  NAME: Maestro
+  NOTIFICATIONS: later
+---
+- extendedWaitUntil:
+    visible: "Let.s get acquainted"
+    timeout: 20000
+- tapOn:
+    id: profile-first-name
+- inputText: ${NAME}
+- tapOn:
+    id: vehicle-plate-input
+- inputText: ${PLATE}
+- hideKeyboard
+- tapOn: "Car"
+- tapOn: "Save"
+- extendedWaitUntil:
+    visible: "Permissions"
+    timeout: 20000
+# Location row is first: tapping its "Allow" removes it, so index 0 is then the notifications row.
+- tapOn:
+    id: permissions-allow-location
+- tapOn:
+    text: "While using the app|Allow While Using App|Only this time"
+    optional: true
+- assertVisible: "Allowed"
+- runFlow:
+    when:
+      true: ${NOTIFICATIONS == 'allow'}
+    commands:
+      - tapOn:
+          id: permissions-allow-notifications
+      - tapOn:
+          text: "Allow"
+          optional: true
+- tapOn: "Done"
+- extendedWaitUntil:
+    visible: "Nearby parking lots"
+    timeout: 30000

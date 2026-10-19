@@ -1,0 +1,44 @@
+# After a payment is confirmed the app explains notifications first (soft prompt); "Not now" must not
+# trigger the OS dialog; the settings screen then shows "off" and can enable them.
+# Needs Android 13+ (older Android grants notifications at install, so no prompt is shown) or iOS.
+appId: uz.parkbor.app
+name: Notification soft prompt after payment, settings screen
+tags:
+  - full
+  - needs-hook
+---
+- runFlow:
+    file: ../subflows/launch_fresh.yaml
+    env:
+      NOTIFICATIONS_PERM: unset
+- runFlow:
+    file: ../subflows/login_seeded.yaml
+    env:
+      ROLE: driver
+      INDEX: "6"
+- runScript:
+    file: ../scripts/hook_call.js
+    env:
+      HOOK_PATH: /paid-booking
+      HOOK_BODY: '{"driver_index": 6, "lot": "payments", "start_in_min": 60, "hours": 1}'
+# parkbor://payment/result?id=<uuid> is the provider return link: the app re-reads the booking.
+- openLink: parkbor://payment/result?id=${output.hook.booking_id}
+- extendedWaitUntil:
+    visible: "Stay informed about your booking"
+    timeout: 45000
+- assertVisible: "Allow notifications to get a reminder.*"
+- tapOn: "Not now"
+- extendedWaitUntil:
+    visible: "Booking QR code"
+    timeout: 30000
+- tapOn: "Back"
+- tapOn: "Profile"
+- tapOn: "Notifications"
+- assertVisible: "Notifications are off on this device"
+- tapOn: "Allow"
+- tapOn:
+    text: "Allow"
+    optional: true
+- extendedWaitUntil:
+    visible: "Notifications are on"
+    timeout: 15000

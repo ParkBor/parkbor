@@ -1,9 +1,10 @@
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import { Button, Layout, Menu, Space, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { navItemsFor, selectedNavPath } from '../lib/navigation'
+import { BrandLogo } from './BrandLogo'
 import { ErrorBoundary } from './ErrorBoundary'
 import { LanguageSelect } from './LanguageSelect'
 import { PageSpinner } from './PageSpinner'
@@ -17,15 +18,17 @@ export function AppLayout() {
   const { user, logout } = useAuth()
   const items = navItemsFor(user?.role)
   const selected = selectedNavPath(pathname)
+  // Below the `lg` breakpoint the sider is hidden: the header then carries the mark.
+  const [collapsed, setCollapsed] = useState(false)
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider breakpoint="lg" collapsedWidth={0}>
-        <Typography.Title level={4} style={{ color: '#fff', margin: 16 }}>
-          {t('app.title')}
-        </Typography.Title>
+      <Sider theme="light" breakpoint="lg" collapsedWidth={0} onBreakpoint={setCollapsed}>
+        <div style={{ padding: 16 }}>
+          <BrandLogo height={40} />
+        </div>
         <Menu
-          theme="dark"
+          theme="light"
           mode="inline"
           selectedKeys={selected ? [selected] : []}
           onClick={({ key }) => navigate(key)}
@@ -33,7 +36,8 @@ export function AppLayout() {
         />
       </Sider>
       <Layout>
-        <Header style={{ background: '#fff', textAlign: 'right' }}>
+        <Header style={{ background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>{collapsed ? <BrandLogo variant="mark" height={32} /> : null}</div>
           <Space>
             {user && <Typography.Text>{user.first_name || user.telegram_username}</Typography.Text>}
             <LanguageSelect />

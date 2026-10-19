@@ -19,7 +19,7 @@ const AUTO_OPEN_DELAY_MS = 2000;
 const CLOCK_TICK_MS = 1000;
 
 /**
- * payment/result = `habi://payment/result`. Reached from the payment WebView and from outside the
+ * payment/result = `parkbor://payment/result`. Reached from the payment WebView and from outside the
  * app (external browser / provider app). The link is only a signal: its status is ignored, a
  * booking id is used only if it is a UUID (else the booking last paid in this app run, else the
  * bookings list). The outcome comes from the SERVER booking via polling.

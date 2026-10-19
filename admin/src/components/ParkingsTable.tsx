@@ -2,6 +2,7 @@ import type { LotStatus, ParkingLot } from '@habi/api-client'
 import { Button, Space, Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
+import { safeText } from '../lib/format'
 import { type ModerationAction, moderationActionsFor } from '../lib/moderation'
 
 interface ParkingsTableProps {
@@ -37,14 +38,16 @@ export function ParkingsTable({
   const { t } = useTranslation()
 
   const columns: ColumnsType<ParkingLot> = [
-    { title: t('parkings.name'), dataIndex: 'name', key: 'name' },
-    { title: t('parkings.address'), dataIndex: 'address', key: 'address' },
+    { title: t('parkings.name'), key: 'name', render: (_, lot) => safeText(lot.name, 120) },
+    { title: t('parkings.address'), key: 'address', render: (_, lot) => safeText(lot.address, 200) },
     {
       title: t('parkings.status'),
       dataIndex: 'status',
       key: 'status',
       render: (status: LotStatus) => (
-        <Tag color={STATUS_COLOR[status]}>{t(`parkings.statuses.${status}`)}</Tag>
+        (Object.hasOwn(STATUS_COLOR, status)
+          ? <Tag color={STATUS_COLOR[status]}>{t(`parkings.statuses.${status}`)}</Tag>
+          : <Tag>{safeText(status, 40)}</Tag>)
       ),
     },
     {
@@ -52,7 +55,7 @@ export function ParkingsTable({
       key: 'slots',
       render: (_, lot) => `${lot.free_slots}/${lot.total_slots}`,
     },
-    { title: t('parkings.rating'), dataIndex: 'rating', key: 'rating' },
+    { title: t('parkings.rating'), key: 'rating', render: (_, lot) => safeText(lot.rating, 8) },
     {
       title: t('common.actions'),
       key: 'actions',

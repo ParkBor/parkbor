@@ -6,7 +6,7 @@ from urllib.parse import urlsplit
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
-APP_SCHEME = "habi"
+APP_SCHEME = "parkbor"
 
 
 def validate_public_url(value: str) -> str:
@@ -15,7 +15,7 @@ def validate_public_url(value: str) -> str:
     parts = urlsplit(value or "")
     if parts.scheme != "https" or not parts.hostname or parts.query or parts.fragment:
         raise ImproperlyConfigured(
-            "HABI_PUBLIC_URL must be an https URL such as https://habi.uz (universal links)."
+            "HABI_PUBLIC_URL must be an https URL such as https://parkbor.uz (universal links)."
         )
     return value.rstrip("/")
 
@@ -27,7 +27,7 @@ def _booking_uuid(booking_id) -> uuid.UUID:
 
 
 def booking_deep_link(booking_id) -> str:
-    """``habi://booking/<id>``: put in the push ``data.url``; the app routes it (Expo Router)."""
+    """``parkbor://booking/<id>``: put in the push ``data.url``; the app routes it (Expo Router)."""
     return f"{APP_SCHEME}://booking/{_booking_uuid(booking_id)}"
 
 

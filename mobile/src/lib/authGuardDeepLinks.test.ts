@@ -40,7 +40,7 @@ describe('authGuard: screens outside the tab group', () => {
     expect(resolveRedirect({ status: 'anonymous', onboarding: null, segments: ['booking', '[id]'] })).toBe('/(auth)/welcome');
   });
 
-  it('habi://payment/result: anonymous -> welcome, onboarding -> its step, signed in -> stays (never bounced to the tabs)', () => {
+  it('parkbor://payment/result: anonymous -> welcome, onboarding -> its step, signed in -> stays (never bounced to the tabs)', () => {
     const segments = ['payment', 'result'];
     expect(resolveRedirect({ status: 'anonymous', onboarding: null, segments })).toBe('/(auth)/welcome');
     expect(resolveRedirect({ status: 'authenticated', onboarding: 'permissions', segments })).toBe('/(auth)/permissions');

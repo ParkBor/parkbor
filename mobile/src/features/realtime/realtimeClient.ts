@@ -43,7 +43,7 @@ export interface SocketLike {
 }
 
 export interface ClientDeps {
-  /** `extra.wsUrl`, e.g. wss://api.habi.uz/ws */
+  /** `extra.wsUrl`, e.g. wss://api.parkbor.uz/ws */
   wsUrl: string;
   /** A NEW one-time ticket (rejects with a TicketError). */
   fetchTicket: () => Promise<string>;

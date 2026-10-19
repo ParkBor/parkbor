@@ -1,4 +1,4 @@
-import { Button, Space, Spin, Typography, message } from 'antd'
+import { Alert, Button, Space, Spin, Typography, message } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -6,6 +6,7 @@ import { ParkingForm } from '../components/ParkingForm'
 import { QueryError } from '../components/QueryError'
 import { adminApi } from '../lib/api'
 import { useRole } from '../lib/auth'
+import { isUuid } from '../lib/format'
 import { toPayload } from '../lib/payload'
 import type { ParkingFormValues } from '../schemas'
 
@@ -16,11 +17,13 @@ export default function ParkingEditPage() {
   const role = useRole()
   const queryClient = useQueryClient()
   const isEdit = Boolean(id)
+  // A route parameter is untrusted input: only a real UUID is ever put into a request path.
+  const badId = isEdit && !isUuid(id)
 
   const existing = useQuery({
     queryKey: ['parkings', id],
     queryFn: () => adminApi.parkings.get(id ?? ''),
-    enabled: isEdit,
+    enabled: isEdit && !badId,
   })
 
   const save = useMutation({
@@ -35,6 +38,14 @@ export default function ParkingEditPage() {
     },
   })
 
+  if (badId) {
+    return (
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <Alert type="error" showIcon message={t('common.notFound')} />
+        <Button onClick={() => navigate('/parkings')}>{t('common.back')}</Button>
+      </Space>
+    )
+  }
   if (isEdit && existing.isLoading) return <Spin />
   if (isEdit && existing.isError) {
     // Never fall through to an empty "new lot" form when loading the lot failed.

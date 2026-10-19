@@ -46,6 +46,7 @@ export function CodeCells({
         </View>
       ))}
       <TextInput
+        testID="code-input"
         ref={inputRef}
         value={value}
         onChangeText={onChangeText}

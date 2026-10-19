@@ -1,0 +1,54 @@
+# Cancel a CONFIRMED booking: refund preview first, "keep" leaves it untouched, confirm cancels.
+appId: uz.parkbor.app
+name: Cancel booking with refund preview
+tags:
+  - full
+  - needs-hook
+---
+- runFlow: ../subflows/launch_fresh.yaml
+- runScript:
+    file: ../scripts/seed_identity.js
+    env:
+      SEED_ROLE: driver
+      SEED_INDEX: "1"
+- evalScript: ${output.driverTg = output.tgId}
+- runFlow:
+    file: ../subflows/login_as.yaml
+    env:
+      LOGIN_TG_ID: ${output.driverTg}
+- extendedWaitUntil:
+    visible: "Nearby parking lots"
+    timeout: 30000
+# A confirmed, paid booking 3 h ahead (created through the real API, paid by the hook).
+- runScript:
+    file: ../scripts/hook_call.js
+    env:
+      HOOK_PATH: /paid-booking
+      HOOK_BODY: '{"driver_index": 1, "lot": "payments", "start_in_min": 180, "hours": 1}'
+- tapOn: "Bookings"
+- tapOn: "Upcoming"
+- extendedWaitUntil:
+    visible: ".*${E2E_PAY_LOT_NAME}.*Confirmed.*"
+    timeout: 20000
+- tapOn: ".*${E2E_PAY_LOT_NAME}.*Confirmed.*"
+- assertVisible: "Status: Confirmed"
+- tapOn: "Cancel"
+- assertVisible: "Cancel this booking?"
+# The amount comes from the server preview; the confirm button is disabled until it arrived.
+- extendedWaitUntil:
+    visible: "A refund of .*|No money is refunded.*|No payment has been recorded yet.*"
+    timeout: 20000
+- takeScreenshot: 06_refund_preview
+# Keep: nothing changes.
+- tapOn: "No, keep it"
+- assertVisible: "Status: Confirmed"
+# Cancel for real.
+- tapOn: "Cancel"
+- extendedWaitUntil:
+    visible: "A refund of .*|No money is refunded.*"
+    timeout: 20000
+- tapOn: "Yes, cancel"
+- extendedWaitUntil:
+    visible: "Status: Cancelled"
+    timeout: 20000
+- assertNotVisible: "Booking QR code"

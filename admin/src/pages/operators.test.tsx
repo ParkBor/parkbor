@@ -92,7 +92,10 @@ describe('OperatorsPage', () => {
     renderPage(<OperatorsPage />, { role: 'OWNER' })
     await pickLot()
     await userEvent.click(await screen.findByRole('tab', { name: 'Taklif-kodlar' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Bekor qilish' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Kodni bekor qilish' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(api.invites.revoke).not.toHaveBeenCalled()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Kodni bekor qilish' }))
     await waitFor(() => expect(api.invites.revoke).toHaveBeenCalledWith(LOT, 'inv1'))
   })
 

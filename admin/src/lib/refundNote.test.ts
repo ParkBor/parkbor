@@ -29,9 +29,13 @@ describe('allowedOutcomes', () => {
   it('MANUAL: done or failed', () => {
     expect(allowedOutcomes({ ...base, status: 'MANUAL' })).toEqual(['done', 'failed'])
   })
-  it('FAILED: done or retry; retry needs a payment', () => {
+  it('FAILED: done or retry for any failure that is not operator_failed', () => {
     expect(allowedOutcomes({ ...base, status: 'FAILED' })).toEqual(['done', 'retry'])
-    expect(allowedOutcomes({ payment: null, last_error: '', status: 'FAILED' })).toEqual(['done'])
+    expect(allowedOutcomes({ ...base, status: 'FAILED', last_error: 'click_error_-5' })).toEqual(['done', 'retry'])
+    expect(allowedOutcomes({ ...base, status: 'FAILED', last_error: 'retries_exhausted' })).toEqual(['done', 'retry'])
+  })
+  it('tolerates a missing last_error', () => {
+    expect(allowedOutcomes({ status: 'FAILED' } as never)).toEqual(['done', 'retry'])
   })
   it('an operator-failed refund is final', () => {
     expect(allowedOutcomes({ ...base, status: 'FAILED', last_error: 'operator_failed' })).toEqual([])

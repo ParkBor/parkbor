@@ -1,0 +1,6 @@
+# Maestro workspace config. `maestro test mobile/e2e` runs every flow in flows/; subflows/ is only
+# reachable through runFlow. Filter by tag:
+#   maestro test --include-tags=smoke mobile/e2e
+#   maestro test --exclude-tags=android,needs-testids mobile/e2e
+flows:
+  - "flows/*"

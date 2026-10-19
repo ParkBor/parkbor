@@ -62,11 +62,11 @@ def test_init_sentry_wires_environment_release_and_never_sends_bodies(monkeypatc
     fake = types.SimpleNamespace(init=lambda **kw: captured.update(kw))
     monkeypatch.setitem(sys.modules, "sentry_sdk", fake)
     monkeypatch.setenv("SENTRY_ENVIRONMENT", "staging")
-    monkeypatch.setenv("SENTRY_RELEASE", "habi-backend@abc123")
+    monkeypatch.setenv("SENTRY_RELEASE", "parkbor-backend@abc123")
     monkeypatch.setenv("SENTRY_TRACES_SAMPLE_RATE", "0.25")
     sentry.init_sentry("https://k@o.ingest.sentry.io/1")
     assert captured["environment"] == "staging"
-    assert captured["release"] == "habi-backend@abc123"
+    assert captured["release"] == "parkbor-backend@abc123"
     assert captured["traces_sample_rate"] == 0.25
     assert captured["max_request_body_size"] == "never"
 
@@ -89,7 +89,7 @@ def test_a_bare_query_string_ticket_is_masked():
 def test_scan_request_bodies_and_qr_tokens_never_leave():
     event = {
         "request": {
-            "url": "https://api.habi.uz/api/v1/operator/checkin",
+            "url": "https://api.parkbor.uz/api/v1/operator/checkin",
             "data": {"qr_token": "SECRET-QR"},
             "query_string": "x=1",
         },
@@ -112,7 +112,7 @@ def test_scan_request_bodies_and_qr_tokens_never_leave():
     ],
 )
 def test_bodies_of_secret_carrying_endpoints_are_dropped_by_exact_path(path):
-    event = {"request": {"url": f"https://api.habi.uz{path}?x=1", "data": {"code": "SECRET"}}}
+    event = {"request": {"url": f"https://api.parkbor.uz{path}?x=1", "data": {"code": "SECRET"}}}
 
     assert "data" not in sentry.before_send(event, {})["request"]
 
@@ -120,7 +120,7 @@ def test_bodies_of_secret_carrying_endpoints_are_dropped_by_exact_path(path):
 def test_other_paths_that_merely_look_similar_keep_their_bodies():
     event = {
         "request": {
-            "url": "https://api.habi.uz/api/v1/bookings/operator/checkin",
+            "url": "https://api.parkbor.uz/api/v1/bookings/operator/checkin",
             "data": {"a": 1},
         }
     }
@@ -140,7 +140,7 @@ def test_a_ws_ticket_in_a_url_is_masked():
 def test_a_ws_ticket_in_the_event_is_removed_everywhere():
     event = {
         "request": {
-            "url": "https://api.habi.uz/ws/availability/?ticket=TICKETVALUE0123456789",
+            "url": "https://api.parkbor.uz/ws/availability/?ticket=TICKETVALUE0123456789",
             "query_string": "ticket=TICKETVALUE0123456789",
             "data": {"type": "auth", "ticket": "TICKETVALUE0123456789"},
         },
@@ -152,7 +152,7 @@ def test_a_ws_ticket_in_the_event_is_removed_everywhere():
 
 
 def test_the_ticket_endpoint_response_is_not_reported():
-    event = {"request": {"url": "https://api.habi.uz/api/v1/ws/ticket", "data": {"x": 1}}}
+    event = {"request": {"url": "https://api.parkbor.uz/api/v1/ws/ticket", "data": {"x": 1}}}
     assert "data" not in sentry.before_send(event, {})["request"]
 
 

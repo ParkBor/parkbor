@@ -176,7 +176,7 @@ class TestClientShape:
 
 class TestUrlValidation:
     @pytest.mark.parametrize(
-        "url", ["http://localhost:5000", "https://osrm.habi.uz", "http://osrm:5000/"]
+        "url", ["http://localhost:5000", "https://osrm.parkbor.uz", "http://osrm:5000/"]
     )
     def test_accepts_http_and_https(self, url):
         assert validate_osrm_url(url) == url

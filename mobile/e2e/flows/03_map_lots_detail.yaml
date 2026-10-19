@@ -1,0 +1,27 @@
+# Map -> nearby lots list -> lot detail with free spots per type.
+# Needs the seed (README): E2E_WS_LOT_NAME = "LT-ws0-<tag>" (20 STANDARD slots, ACTIVE).
+appId: uz.parkbor.app
+name: Map, nearby list, lot detail with availability
+tags:
+  - smoke
+  - needs-hook
+---
+- runFlow: ../subflows/launch_fresh.yaml
+- runFlow:
+    file: ../subflows/login_seeded.yaml
+    env:
+      ROLE: driver
+      INDEX: "0"
+- assertVisible: "Nearby parking lots"
+- assertVisible: "Found: .*"
+- runFlow:
+    file: ../subflows/open_lot_detail.yaml
+    env:
+      LOT_NAME: ${E2E_WS_LOT_NAME}
+# Detail: facts + live count per spot type + the two actions.
+- assertVisible: ".*${E2E_WS_LOT_NAME}.*"
+- assertVisible: "Standard"
+- assertVisible: '\d+ / \d+ free'
+- assertVisible: "Book"
+- assertVisible: "Route"
+- takeScreenshot: 03_lot_detail

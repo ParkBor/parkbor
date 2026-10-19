@@ -30,7 +30,7 @@ class TelegramResult:
 
 
 def _markup(label: str | None, url: str | None) -> dict | None:
-    # Telegram accepts http(s) links on URL buttons only (a habi:// deep link would be refused).
+    # Telegram accepts http(s) links on URL buttons only (a parkbor:// deep link would be refused).
     if not label or not url or not url.startswith("https://"):
         return None
     return {"inline_keyboard": [[{"text": label, "url": url}]]}

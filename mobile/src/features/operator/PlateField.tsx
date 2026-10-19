@@ -9,15 +9,17 @@ interface PlateFieldProps {
   error?: string | null;
   hint?: string | null;
   editable?: boolean;
+  testID?: string;
 }
 
 /** Plate input: upper case, no autocorrect, no autofill (a plate is typed from the car). */
-export function PlateField({ label, value, onChange, error = null, hint = null, editable = true }: PlateFieldProps) {
+export function PlateField({ label, value, onChange, error = null, hint = null, editable = true, testID }: PlateFieldProps) {
   const p = usePalette();
   return (
     <View style={styles.wrap}>
       <Text style={[styles.label, { color: p.text }]}>{label}</Text>
       <TextInput
+        testID={testID}
         accessibilityLabel={label}
         value={value}
         onChangeText={onChange}

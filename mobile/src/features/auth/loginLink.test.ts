@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { isValidLoginToken, isTrustedBotUrl } from '@/features/auth/loginLink';
 
-const BOT = 'HabiParkingBot';
+const BOT = 'ParkBorBot';
 const TOKEN = 'abcDEF123_-abcDEF123_-abcDEF123_-abcDEF123_-abc';
 
 describe('isValidLoginToken', () => {
@@ -28,33 +28,33 @@ describe('isValidLoginToken', () => {
 
 describe('isTrustedBotUrl', () => {
   it('rejects every URL when the expected bot name is unusable', () => {
-    expect(isTrustedBotUrl(`https://t.me/HabiParkingBot?start=${TOKEN}`, TOKEN, '')).toBe(false);
-    expect(isTrustedBotUrl(`https://t.me/HabiParkingBot?start=${TOKEN}`, TOKEN, 'bad name!')).toBe(false);
+    expect(isTrustedBotUrl(`https://t.me/ParkBorBot?start=${TOKEN}`, TOKEN, '')).toBe(false);
+    expect(isTrustedBotUrl(`https://t.me/ParkBorBot?start=${TOKEN}`, TOKEN, 'bad name!')).toBe(false);
   });
 
   it('tolerates a leading @ in the configured bot name', () => {
-    expect(isTrustedBotUrl(`https://t.me/HabiParkingBot?start=${TOKEN}`, TOKEN, '@HabiParkingBot')).toBe(true);
+    expect(isTrustedBotUrl(`https://t.me/ParkBorBot?start=${TOKEN}`, TOKEN, '@ParkBorBot')).toBe(true);
   });
 
   it('accepts the t.me deep link carrying the same token', () => {
-    expect(isTrustedBotUrl(`https://t.me/HabiParkingBot?start=${TOKEN}`, TOKEN, BOT)).toBe(true);
-    expect(isTrustedBotUrl(`https://telegram.me/habiparkingbot?start=${TOKEN}`, TOKEN, BOT)).toBe(true);
+    expect(isTrustedBotUrl(`https://t.me/ParkBorBot?start=${TOKEN}`, TOKEN, BOT)).toBe(true);
+    expect(isTrustedBotUrl(`https://telegram.me/parkborbot?start=${TOKEN}`, TOKEN, BOT)).toBe(true);
   });
 
   it.each([
-    ['other host', `https://evil.com/HabiParkingBot?start=${TOKEN}`],
-    ['lookalike host', `https://t.me.evil.com/HabiParkingBot?start=${TOKEN}`],
-    ['userinfo trick', `https://t.me@evil.com/HabiParkingBot?start=${TOKEN}`],
-    ['http', `http://t.me/HabiParkingBot?start=${TOKEN}`],
+    ['other host', `https://evil.com/ParkBorBot?start=${TOKEN}`],
+    ['lookalike host', `https://t.me.evil.com/ParkBorBot?start=${TOKEN}`],
+    ['userinfo trick', `https://t.me@evil.com/ParkBorBot?start=${TOKEN}`],
+    ['http', `http://t.me/ParkBorBot?start=${TOKEN}`],
     ['javascript scheme', 'javascript:alert(1)'],
     ['file scheme', 'file:///etc/passwd'],
     ['intent scheme', 'intent://t.me/x#Intent;scheme=https;end'],
-    ['different token', `https://t.me/HabiParkingBot?start=${'z'.repeat(40)}`],
-    ['extra params', `https://t.me/HabiParkingBot?start=${TOKEN}&x=1`],
+    ['different token', `https://t.me/ParkBorBot?start=${'z'.repeat(40)}`],
+    ['extra params', `https://t.me/ParkBorBot?start=${TOKEN}&x=1`],
     ['extra path', `https://t.me/a/b?start=${TOKEN}`],
     ['another bot', `https://t.me/OtherBot?start=${TOKEN}`],
-    ['bot name prefix', `https://t.me/HabiParkingBot2?start=${TOKEN}`],
-    ['no start', 'https://t.me/HabiParkingBot'],
+    ['bot name prefix', `https://t.me/ParkBorBot2?start=${TOKEN}`],
+    ['no start', 'https://t.me/ParkBorBot'],
     ['empty', ''],
   ])('rejects %s', (_name, url) => {
     expect(isTrustedBotUrl(url, TOKEN, BOT)).toBe(false);

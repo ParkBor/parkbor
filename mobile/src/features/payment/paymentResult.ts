@@ -2,7 +2,7 @@ import { isResultUrl } from '@/features/payment/webviewPolicy';
 import { isUuid } from '@/lib/contract';
 
 /**
- * `habi://payment/result` is only a "the user came back" SIGNAL. The only thing read from it is a
+ * `parkbor://payment/result` is only a "the user came back" SIGNAL. The only thing read from it is a
  * booking id (when it is a plain UUID); a status, amount or "success" flag in the link is ignored on
  * purpose - the truth is the server booking (webhook), never the redirect.
  */

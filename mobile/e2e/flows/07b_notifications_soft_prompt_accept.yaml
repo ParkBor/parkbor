@@ -1,0 +1,39 @@
+# Accepting the soft prompt opens the OS dialog; allowing it turns notifications on.
+appId: uz.parkbor.app
+name: Notification soft prompt accepted
+tags:
+  - full
+  - needs-hook
+---
+- runFlow:
+    file: ../subflows/launch_fresh.yaml
+    env:
+      NOTIFICATIONS_PERM: unset
+- runFlow:
+    file: ../subflows/login_seeded.yaml
+    env:
+      ROLE: driver
+      INDEX: "6"
+- runScript:
+    file: ../scripts/hook_call.js
+    env:
+      HOOK_PATH: /paid-booking
+      HOOK_BODY: '{"driver_index": 6, "lot": "payments", "start_in_min": 90, "hours": 1}'
+- openLink: parkbor://payment/result?id=${output.hook.booking_id}
+- extendedWaitUntil:
+    visible: "Stay informed about your booking"
+    timeout: 45000
+- tapOn: "Allow"
+# OS dialog (Android 13+ / iOS)
+- tapOn:
+    text: "Allow"
+    optional: true
+- extendedWaitUntil:
+    visible: "Booking QR code"
+    timeout: 30000
+- tapOn: "Back"
+- tapOn: "Profile"
+- tapOn: "Notifications"
+- extendedWaitUntil:
+    visible: "Notifications are on"
+    timeout: 15000

@@ -9,13 +9,16 @@ interface ChipProps {
   /** 'radio' for single choice groups, 'checkbox' for toggles. */
   role?: 'radio' | 'checkbox';
   disabled?: boolean;
+  /** Stable handle for UI tests. */
+  testID?: string;
 }
 
 /** Selectable pill; selection is conveyed by fill AND by accessibility state, not by color only. */
-export function Chip({ label, selected, onPress, role = 'radio', disabled = false }: ChipProps) {
+export function Chip({ label, selected, onPress, role = 'radio', disabled = false, testID }: ChipProps) {
   const p = usePalette();
   return (
     <Pressable
+      testID={testID}
       accessibilityRole={role}
       accessibilityLabel={label}
       accessibilityState={{ selected, checked: selected, disabled }}

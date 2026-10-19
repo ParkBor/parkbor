@@ -1,0 +1,17 @@
+# Log in as a SEEDED account (loadtest_seed.py): ROLE = driver | operator, INDEX (default 0).
+appId: uz.parkbor.app
+env:
+  INDEX: "0"
+---
+- runScript:
+    file: ../scripts/seed_identity.js
+    env:
+      SEED_ROLE: ${ROLE}
+      SEED_INDEX: ${INDEX}
+- runFlow:
+    file: login_as.yaml
+    env:
+      LOGIN_TG_ID: ${output.tgId}
+- extendedWaitUntil:
+    visible: "Nearby parking lots"
+    timeout: 30000

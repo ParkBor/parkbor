@@ -38,12 +38,12 @@ def verify(token, code, client=None):
 
 
 def test_start_returns_token_bot_url_and_expiry(settings):
-    settings.TELEGRAM_BOT_USERNAME = "HabiTestBot"
+    settings.TELEGRAM_BOT_USERNAME = "ParkBorTestBot"
     response = APIClient().post(f"{BASE}/start", {"device_id": "abc"}, format="json")
     assert response.status_code == 200
     body = response.json()
     assert body["expires_in"] == 300
-    assert body["bot_url"] == f"https://t.me/HabiTestBot?start={body['login_token']}"
+    assert body["bot_url"] == f"https://t.me/ParkBorTestBot?start={body['login_token']}"
     assert svc.get_status(body["login_token"]) == "PENDING"
 
 

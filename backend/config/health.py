@@ -6,10 +6,14 @@ timeouts, so a hung dependency answers 503 instead of hanging the probe.
 """
 
 import logging
+import threading
+import time
 
 from django.db import connection, transaction
-from django.http import JsonResponse
-from django.views.decorators.http import require_GET
+from drf_spectacular.utils import extend_schema
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.core.redis_client import get_redis
 
@@ -38,14 +42,60 @@ def check_redis() -> bool:
         return False
 
 
-@require_GET
-def health(request):
+READINESS_CACHE_SECONDS = 3.0
+_cache: dict = {"at": 0.0, "body": None, "status": 200}
+_cache_lock = threading.Lock()
+
+
+def _readiness() -> tuple[dict, int]:
+    """Dependency check, shared by all callers for ``READINESS_CACHE_SECONDS`` so a flood of probes
+    costs one database and one Redis round trip per window, not one per request."""
+    now = time.monotonic()
+    with _cache_lock:
+        if _cache["body"] is not None and now - _cache["at"] < READINESS_CACHE_SECONDS:
+            return _cache["body"], _cache["status"]
     checks = {"database": check_database(), "redis": check_redis()}
     healthy = all(checks.values())
     body = {
         "status": "ok" if healthy else "unavailable",
         "checks": {name: "ok" if ok else "fail" for name, ok in checks.items()},
     }
-    response = JsonResponse(body, status=200 if healthy else 503)
-    response["Cache-Control"] = "no-store"
-    return response
+    status = 200 if healthy else 503
+    with _cache_lock:
+        _cache.update(at=now, body=body, status=status)
+    return body, status
+
+
+def reset_readiness_cache() -> None:
+    with _cache_lock:
+        _cache.update(at=0.0, body=None, status=200)
+
+
+class _OpenView(APIView):
+    """GET only; open to everyone (no token, no throttle, no schema entry)."""
+
+    authentication_classes: list = []
+    permission_classes = [AllowAny]
+    throttle_classes: list = []
+
+
+class HealthView(_OpenView):
+    """Readiness: 200 only when PostgreSQL and Redis answer (cached for a few seconds)."""
+
+    @extend_schema(exclude=True)
+    def get(self, request):
+        body, status = _readiness()
+        response = Response(body, status=status)
+        response["Cache-Control"] = "no-store"
+        return response
+
+
+class LiveView(_OpenView):
+    """Liveness: the process answers HTTP. No I/O at all, so it is the container healthcheck (a
+    Redis outage must not make the orchestrator restart healthy API containers)."""
+
+    @extend_schema(exclude=True)
+    def get(self, request):
+        response = Response({"status": "ok"})
+        response["Cache-Control"] = "no-store"
+        return response

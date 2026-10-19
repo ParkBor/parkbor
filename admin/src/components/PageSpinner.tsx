@@ -6,8 +6,8 @@ import { FULL_HEIGHT_CENTER } from '../lib/styles'
 export function PageSpinner() {
   const { t } = useTranslation()
   return (
-    <div role="status" aria-live="polite" aria-busy="true" aria-label={t('common.loading')} style={FULL_HEIGHT_CENTER}>
+    <output aria-live="polite" aria-busy="true" aria-label={t('common.loading')} style={FULL_HEIGHT_CENTER}>
       <Spin />
-    </div>
+    </output>
   )
 }

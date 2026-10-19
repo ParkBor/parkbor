@@ -7,10 +7,9 @@ from apps.accounts.models import User
 from apps.audit.models import AuditLog
 from apps.bookings.conf import EDITABLE_SETTINGS
 from apps.bookings.models import Booking, BookingEvent
-from apps.bookings.serializers import AwareDateTimeField
 from apps.bookings.state import BookingKind, BookingStatus, OverstayStatus
+from apps.payments.admin_api import AdminPaymentSerializer, AdminRefundSerializer
 from apps.payments.checkout import refund_status_for
-from apps.payments.models import Payment, Refund
 from apps.payments.refunds import OPERATOR_NOTE_LENGTH, clean_note
 
 # --- shared ---------------------------------------------------------------------------------------
@@ -83,55 +82,23 @@ class AdminLotRefSerializer(serializers.Serializer):
     name = serializers.CharField()
 
 
-class AdminPaymentSerializer(serializers.ModelSerializer):
-    """No ``external_id`` / ``provider_ref`` / ``raw_state``: provider internals stay private."""
-
-    booking = serializers.PrimaryKeyRelatedField(read_only=True)
-
-    class Meta:
-        model = Payment
-        fields = [
-            "id",
-            "booking",
-            "provider",
-            "amount",
-            "refunded_amount",
-            "status",
-            "performed_at",
-            "cancelled_at",
-            "created_at",
-        ]
-        read_only_fields = fields
-
-
-class AdminRefundSerializer(serializers.ModelSerializer):
-    payment = serializers.PrimaryKeyRelatedField(read_only=True, allow_null=True)
-    booking = serializers.PrimaryKeyRelatedField(read_only=True)
-
-    class Meta:
-        model = Refund
-        fields = [
-            "id",
-            "payment",
-            "booking",
-            "amount",
-            "status",
-            "reason",
-            "attempts",
-            "last_error",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = fields
+ACTOR_LABELS = ("driver", "operator", "owner", "admin", "system")
 
 
 class BookingEventSerializer(serializers.ModelSerializer):
-    actor = serializers.PrimaryKeyRelatedField(read_only=True, allow_null=True)
+    """The actor is a ROLE label, never a user id: an owner reading a history learns who kind of
+    person acted, not which account."""
+
+    actor = serializers.SerializerMethodField()
 
     class Meta:
         model = BookingEvent
         fields = ["id", "created_at", "from_status", "to_status", "reason", "actor"]
         read_only_fields = fields
+
+    @extend_schema_field(serializers.ChoiceField(choices=list(ACTOR_LABELS), allow_null=True))
+    def get_actor(self, obj) -> str:
+        return obj.actor.role.lower() if obj.actor_id else "system"
 
 
 class AdminBookingSerializer(serializers.ModelSerializer):
@@ -282,8 +249,9 @@ class StatsQuerySerializer(serializers.Serializer):
 
 class RevenueQuerySerializer(StatsQuerySerializer):
     # NB: ``from`` is a keyword, so the view reads it from ``query_params`` and validates here.
-    start = AwareDateTimeField(required=False)
-    end = AwareDateTimeField(required=False)
+    # a value without an offset is read as Asia/Tashkent, like the list filters
+    start = serializers.DateTimeField(required=False)
+    end = serializers.DateTimeField(required=False)
 
 
 class StatsOverviewSerializer(serializers.Serializer):

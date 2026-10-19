@@ -385,7 +385,7 @@ class TestSentryScrubbing:
 
         event = {
             "request": {
-                "url": "https://api.habi.uz/api/v1/payments/click/webhook",
+                "url": "https://api.parkbor.uz/api/v1/payments/click/webhook",
                 "data": "sign_string=abc&click_trans_id=1",
                 "query_string": "x=1",
                 "headers": {"Authorization": "Basic c2VjcmV0", "Content-Type": "text/json"},
@@ -401,7 +401,7 @@ class TestSentryScrubbing:
     def test_other_requests_keep_their_data(self):
         from config.sentry import before_send
 
-        event = {"request": {"url": "https://api.habi.uz/api/v1/bookings", "data": {"a": 1}}}
+        event = {"request": {"url": "https://api.parkbor.uz/api/v1/bookings", "data": {"a": 1}}}
         assert before_send(event, None)["request"]["data"] == {"a": 1}
 
 

@@ -1,0 +1,20 @@
+# Map tab -> the lot whose name matches LOT_NAME (a seeded lot, see README) -> its detail screen.
+# Needs a location near Tashkent (the seed lots sit at 41.31, 69.28).
+appId: uz.parkbor.app
+---
+- setLocation:
+    latitude: 41.3111
+    longitude: 69.2797
+- tapOn: "Map"
+- extendedWaitUntil:
+    visible: "Nearby parking lots"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: ".*${LOT_NAME}.*"
+    timeout: 30000
+- tapOn: ".*${LOT_NAME}.*"
+- tapOn: "Details"
+- extendedWaitUntil:
+    visible: "Free spots by type"
+    timeout: 20000

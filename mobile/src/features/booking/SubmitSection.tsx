@@ -28,6 +28,7 @@ export function SubmitSection({ failure, isPending, canSubmit, onSubmit }: Submi
         </>
       ) : null}
       <Button
+        testID="booking-submit"
         label={isPending ? t('booking.form.submitting') : t('booking.form.submit')}
         loading={isPending}
         disabled={!canSubmit}

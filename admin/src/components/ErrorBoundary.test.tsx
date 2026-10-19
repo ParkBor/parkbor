@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ErrorBoundary, isChunkLoadError } from './ErrorBoundary'
+import { isChunkLoadError } from '../lib/chunkError'
+import { ErrorBoundary } from './ErrorBoundary'
 
 function Boom({ message }: { message: string }): never {
   throw new Error(message)

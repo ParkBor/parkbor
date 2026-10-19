@@ -36,6 +36,7 @@ export default defineConfig({
         'src/features/operator/tabVisibility.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/features/operator/walkInForm.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         // Step 10b (realtime + push): one floor per logic file.
+        'src/lib/notFound.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/features/realtime/appState.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/features/realtime/frameLimiter.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/features/realtime/rejectPolicy.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
@@ -70,7 +71,7 @@ export default defineConfig({
         // NavigationPanels, NavigationScreen), useRoute / useNavigationSession (hook wiring),
         // openExternalNavigator (OS calls) and app/navigate - there are no render tests.
         'src/features/route/{externalNav,instructionText,lotParams,navigationView,rerouting,routeError,routeProgress,routeSchemas,routesApi}.ts',
-        'src/lib/{queryEnv,queryLifecycle}.ts',
+        'src/lib/{queryEnv,queryLifecycle,notFound}.ts',
         // Step 7b (bookings, vehicles, parking details): pure logic only - "logic coverage, NOT UI".
         // NOT covered: every *.tsx screen/component, the hooks (use*.ts: React wiring),
         // qrStore.ts (SecureStore wrapper), app/** routes and the app/_layout wiring; there are

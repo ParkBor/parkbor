@@ -1,0 +1,68 @@
+# Create a booking (spot type, period) -> payment screen -> payment confirmed -> QR.
+# The WebView loads the provider's SANDBOX page from the allowlist (test.paycom.uz / checkout host);
+# 3-D Secure / bank domains are blocked by design (ARCHITECTURE 13.5), so the flow NEVER pays in the
+# page. It stops at the pay screen, then the hook server plays the provider webhook (the server is
+# the source of truth) and the app's "Check payment status" path shows the paid result.
+# Needs: E2E_PAY_LOT_NAME = "LT-payments-<tag>" (STANDARD slots, tariff set).
+appId: uz.parkbor.app
+name: Booking, payment screen, confirmed, QR
+tags:
+  - smoke
+  - needs-testids
+  - needs-hook
+---
+- runFlow: ../subflows/launch_fresh.yaml
+- runFlow:
+    file: ../subflows/login_new_user.yaml
+    env:
+      NOTIFICATIONS: later
+- evalScript: ${output.myTgId = output.tgId}
+- evalScript: ${output.myPlateSpaced = output.plateSpaced}
+- runFlow:
+    file: ../subflows/open_lot_detail.yaml
+    env:
+      LOT_NAME: ${E2E_PAY_LOT_NAME}
+- tapOn: "Book"
+- assertVisible: "Book a spot"
+- tapOn: "2 h"
+- tapOn: "Standard"
+- tapOn: ${output.myPlateSpaced}
+- extendedWaitUntil:
+    visible: "Total"
+    timeout: 20000
+- assertVisible: "The spot is held for 10 minutes.*"
+- tapOn: "Pay and book"
+# Pay screen: header, hold countdown, secure note, the page, the two footer actions.
+- extendedWaitUntil:
+    visible: "Check payment status"
+    timeout: 30000
+- assertVisible: "Payment"
+- assertVisible: "Cancel payment"
+- assertVisible:
+    id: payment-webview
+- takeScreenshot: 05_pay_screen
+# Provider webhook (test-only hook): payment registered + performed server-side.
+- runScript:
+    file: ../scripts/hook_call.js
+    env:
+      HOOK_PATH: /pay-latest
+      HOOK_BODY: '{"telegram_id": ${output.myTgId}}'
+- tapOn: "Check payment status"
+# Either the result screen or (after its 2 s pause) the booking; the soft notification prompt may
+# open in between on a build where notifications are still undetermined.
+- extendedWaitUntil:
+    visible: "Not now|Payment received|Booking QR code"
+    timeout: 45000
+- runFlow:
+    when:
+      visible: "Not now"
+    commands:
+      - tapOn: "Not now"
+- extendedWaitUntil:
+    visible: "Booking QR code"
+    timeout: 30000
+- assertVisible: "Status: Confirmed"
+- assertVisible: "Entry QR code"
+- assertVisible: "Show this code to the operator at the entrance."
+- assertNotVisible: "The QR code activates 2 hours before the start."
+- takeScreenshot: 05_booking_qr

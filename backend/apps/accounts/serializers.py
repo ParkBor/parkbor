@@ -20,6 +20,7 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "language",
             "role",
+            "is_superuser",
             "tg_notifications",
         )
         read_only_fields = fields

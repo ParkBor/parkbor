@@ -11,13 +11,13 @@ from django.test import Client
 
 PROD_ENV = {
     "SECRET_KEY": "x" * 60,
-    "ALLOWED_HOSTS": "api.habi.uz",
+    "ALLOWED_HOSTS": "api.parkbor.uz",
     "DATABASE_URL": "postgis://u:p@db:5432/habi",
     "REDIS_URL": "redis://redis:6379/0",
     "JWT_SIGNING_KEY": "j" * 64,
     "QR_SIGNING_KEY": "q" * 64,
     "TELEGRAM_BOT_TOKEN": "123456:PROD-TOKEN",
-    "TELEGRAM_BOT_USERNAME": "HabiParkingBot",
+    "TELEGRAM_BOT_USERNAME": "parkbor_bot",
     "TELEGRAM_WEBHOOK_SECRET": "w" * 40,
     "PAYME_MERCHANT_ID": "587f72c72cac0d162c722ae2",
     "PAYME_KEY": "p" * 36,
@@ -25,7 +25,7 @@ PROD_ENV = {
     "CLICK_MERCHANT_ID": "46",
     "CLICK_MERCHANT_USER_ID": "4",
     "CLICK_SECRET_KEY": "c" * 16,
-    "HABI_PUBLIC_URL": "https://habi.uz",
+    "HABI_PUBLIC_URL": "https://parkbor.uz",
 }
 SETTINGS_MODULES = [
     "config.settings.base",
@@ -189,8 +189,10 @@ def test_prod_refuses_a_non_postgis_database(monkeypatch, scheme):
 def test_osrm_url_must_be_http_or_https(monkeypatch):
     with pytest.raises(ImproperlyConfigured, match="OSRM_URL"):
         _import_fresh(monkeypatch, "config.settings.base", {"OSRM_URL": "ftp://osrm:5000"})
-    base = _import_fresh(monkeypatch, "config.settings.base", {"OSRM_URL": "https://osrm.habi.uz"})
-    assert base.OSRM_URL == "https://osrm.habi.uz"
+    base = _import_fresh(
+        monkeypatch, "config.settings.base", {"OSRM_URL": "https://osrm.parkbor.uz"}
+    )
+    assert base.OSRM_URL == "https://osrm.parkbor.uz"
 
 
 def test_prod_requires_a_public_url(monkeypatch):
@@ -199,7 +201,7 @@ def test_prod_requires_a_public_url(monkeypatch):
         _import_fresh(monkeypatch, "config.settings.prod", env)
 
 
-@pytest.mark.parametrize("bad", ["http://habi.uz", "habi.uz", "https://habi.uz/?x=1"])
+@pytest.mark.parametrize("bad", ["http://parkbor.uz", "parkbor.uz", "https://parkbor.uz/?x=1"])
 def test_prod_public_url_must_be_https(monkeypatch, bad):
     with pytest.raises(ImproperlyConfigured):
         _import_fresh(monkeypatch, "config.settings.prod", {**PROD_ENV, "HABI_PUBLIC_URL": bad})
@@ -207,9 +209,9 @@ def test_prod_public_url_must_be_https(monkeypatch, bad):
 
 def test_prod_public_url_loses_its_trailing_slash(monkeypatch):
     prod = _import_fresh(
-        monkeypatch, "config.settings.prod", {**PROD_ENV, "HABI_PUBLIC_URL": "https://habi.uz/"}
+        monkeypatch, "config.settings.prod", {**PROD_ENV, "HABI_PUBLIC_URL": "https://parkbor.uz/"}
     )
-    assert prod.HABI_PUBLIC_URL == "https://habi.uz"
+    assert prod.HABI_PUBLIC_URL == "https://parkbor.uz"
 
 
 def test_prod_uses_the_redis_channel_layer_with_bounded_timeouts(monkeypatch):

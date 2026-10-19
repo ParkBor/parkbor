@@ -1,0 +1,26 @@
+# Cold start with NO app data. Env (all optional):
+#   LOCATION_PERM / NOTIFICATIONS_PERM / CAMERA_PERM = allow | deny | unset   (default unset)
+#   E2E_DEV_CLIENT = true  -> connect the Expo dev client to Metro (E2E_METRO_URL) after launch
+appId: uz.parkbor.app
+env:
+  LOCATION_PERM: unset
+  NOTIFICATIONS_PERM: unset
+  CAMERA_PERM: unset
+---
+# SecureStore lives in the iOS keychain, which survives reinstall / clearState.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - clearKeychain
+- launchApp:
+    clearState: true
+    stopApp: true
+    permissions:
+      location: ${LOCATION_PERM}
+      notifications: ${NOTIFICATIONS_PERM}
+      camera: ${CAMERA_PERM}
+- runFlow:
+    when:
+      true: ${typeof E2E_DEV_CLIENT !== 'undefined' && E2E_DEV_CLIENT == 'true'}
+    file: connect_dev_client.yaml

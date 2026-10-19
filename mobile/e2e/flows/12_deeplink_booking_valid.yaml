@@ -1,0 +1,63 @@
+# parkbor://booking/<uuid>: signed in -> the booking; signed out -> welcome (the guard wins);
+# payment return link without a usable id -> the bookings list.
+appId: uz.parkbor.app
+name: Deep link parkbor://booking/<uuid> routing
+tags:
+  - smoke
+  - needs-hook
+---
+- runFlow: ../subflows/launch_fresh.yaml
+- runFlow:
+    file: ../subflows/login_seeded.yaml
+    env:
+      ROLE: driver
+      INDEX: "3"
+- runScript:
+    file: ../scripts/hook_call.js
+    env:
+      HOOK_PATH: /paid-booking
+      HOOK_BODY: '{"driver_index": 3, "lot": "payments", "start_in_min": 75, "hours": 1}'
+- evalScript: ${output.bookingId = output.hook.booking_id}
+# Warm: app running on the map.
+- openLink: parkbor://booking/${output.bookingId}
+- extendedWaitUntil:
+    visible: "Booking QR code"
+    timeout: 20000
+- assertVisible: "Status: Confirmed"
+- assertVisible: ".*${E2E_PAY_LOT_NAME}.*"
+- tapOn: "Back"
+- assertVisible: "Nearby parking lots|My bookings"
+# Upper-case UUID is the same booking.
+- openLink: parkbor://booking/${output.bookingId.toUpperCase()}
+- extendedWaitUntil:
+    visible: "Booking QR code"
+    timeout: 20000
+- tapOn: "Back"
+# Return link from the payment provider carries no status authority and no usable id here.
+- openLink: parkbor://payment/result?status=success
+- extendedWaitUntil:
+    visible: "My bookings"
+    timeout: 20000
+- assertNotVisible: "Payment received"
+# Cold start from a link (plain builds only: a dev client would open its launcher instead).
+- runFlow:
+    when:
+      true: ${typeof E2E_DEV_CLIENT === 'undefined' || E2E_DEV_CLIENT != 'true'}
+    commands:
+      - stopApp
+      - openLink: parkbor://booking/${output.bookingId}
+      - extendedWaitUntil:
+          visible: "Booking QR code"
+          timeout: 45000
+# Signed out: the same link must not show the booking.
+- tapOn: "Back"
+- tapOn: "Profile"
+- tapOn: "Log out"
+- extendedWaitUntil:
+    visible: "Skip|Get started"
+    timeout: 20000
+- openLink: parkbor://booking/${output.bookingId}
+- extendedWaitUntil:
+    visible: "Skip|Get started|Find a free spot fast|Sign in with Telegram"
+    timeout: 20000
+- assertNotVisible: "Booking QR code"

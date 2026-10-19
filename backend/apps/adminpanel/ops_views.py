@@ -12,11 +12,17 @@ from rest_framework.views import APIView
 
 from apps.bookings import conf
 from apps.bookings import services as booking_services
-from apps.core.exceptions import DomainValidationError, NotFoundError
+from apps.core.exceptions import NotFoundError
 from apps.core.pagination import StandardPagination
 from apps.core.permissions import IsSuperAdmin, is_owner, is_super_admin, lot_owner_id
 from apps.core.serializers import error_responses as errors
 from apps.payments import refunds as refund_services
+from apps.payments.admin_api import (
+    AdminPaymentSerializer,
+    AdminRefundSerializer,
+    PaymentFilter,
+    RefundFilter,
+)
 from apps.reviews import selectors as review_selectors
 from apps.reviews import services as review_services
 from apps.reviews.models import ReviewStatus
@@ -27,16 +33,12 @@ from .filters import StableOrderingFilter
 from .ops_filters import (
     AuditLogFilter,
     BookingFilter,
-    PaymentFilter,
-    RefundFilter,
     ReviewFilter,
     UserFilter,
 )
 from .ops_serializers import (
     AdminBookingDetailSerializer,
     AdminBookingSerializer,
-    AdminPaymentSerializer,
-    AdminRefundSerializer,
     AdminUserSerializer,
     AuditLogSerializer,
     BookingCancelSerializer,
@@ -134,7 +136,7 @@ class UserDetailView(APIView):
         responses={200: PagedAdminBookingSerializer, **LIST_ERRORS},
         parameters=[
             OpenApiParameter("from", str, description="Start of the period (ISO 8601 + offset)."),
-            OpenApiParameter("to", str, description="End of the period (inclusive)."),
+            OpenApiParameter("to", str, description="End, EXCLUSIVE (start of the next day)."),
             OpenApiParameter("search", str, description="Licence plate."),
         ],
     )
@@ -232,16 +234,13 @@ class RefundResolveView(APIView):
     def post(self, request, pk):
         body = RefundResolveSerializer(data=request.data)
         body.is_valid(raise_exception=True)
-        try:
-            refund = refund_services.resolve_manual_refund(
-                pk,
-                body.validated_data["outcome"],
-                actor=request.user,
-                note=body.validated_data["note"],
-            )
-        except ValueError as exc:  # defence in depth: the serializer already checked the note
-            raise DomainValidationError("Invalid outcome or note.") from exc
-        return Response(AdminRefundSerializer(refund).data)
+        refund = refund_services.resolve_manual_refund(
+            pk,
+            body.validated_data["outcome"],
+            actor=request.user,
+            note=body.validated_data["note"],
+        )
+        return Response(AdminRefundSerializer(refund, context={"request": request}).data)
 
 
 # --- reviews --------------------------------------------------------------------------------------
@@ -298,8 +297,18 @@ class ReviewPublishView(ReviewModerationView):
 # --- settings and audit ---------------------------------------------------------------------------
 
 
+class IsSuperUser(BasePermission):
+    """The back-up super administrator only (financial policy: refunds, holds)."""
+
+    def has_permission(self, request, view) -> bool:
+        return is_super_admin(request.user) and bool(request.user.is_superuser)
+
+
 class SettingsView(APIView):
-    permission_classes = [IsSuperAdmin]
+    """GET: any ADMIN. PATCH: the super administrator only (it changes refund and hold policy)."""
+
+    def get_permissions(self):
+        return [(IsSuperUser if self.request.method == "PATCH" else IsSuperAdmin)()]
 
     def get_throttles(self):
         throttle = AdminWriteThrottle if self.request.method == "PATCH" else AdminReadThrottle
@@ -310,7 +319,7 @@ class SettingsView(APIView):
         responses={200: SettingsSerializer, **errors(401, 403, 429)},
     )
     def get(self, request):
-        return Response(conf.effective_settings())
+        return Response(conf.effective_settings(fresh=True))
 
     @extend_schema(
         operation_id="admin_settings_update",
@@ -390,7 +399,11 @@ class StatsRevenueView(StatsView):
         parameters=[
             StatsQuerySerializer,
             OpenApiParameter("from", str, description="First day (ISO 8601 + offset)."),
-            OpenApiParameter("to", str, description="Last day (inclusive); default today."),
+            OpenApiParameter(
+                "to",
+                str,
+                description="End, EXCLUSIVE (start of the next day); default today.",
+            ),
         ],
         responses={200: RevenueStatsSerializer, **errors(400, 401, 403, 404, 429)},
     )

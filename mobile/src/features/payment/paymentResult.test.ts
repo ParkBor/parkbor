@@ -5,7 +5,7 @@ import { parsePaymentResultParams, parsePaymentResultUrl } from '@/features/paym
 const ID = 'e4d0c1de-1111-4222-8333-444455556666';
 const OTHER = 'a91c1de0-1111-4222-8333-444455556666';
 
-describe('parsePaymentResultParams (expo-router params of habi://payment/result)', () => {
+describe('parsePaymentResultParams (expo-router params of parkbor://payment/result)', () => {
   it('takes a valid booking id', () => {
     expect(parsePaymentResultParams({ id: ID })).toEqual({ bookingId: ID });
   });
@@ -53,32 +53,33 @@ describe('parsePaymentResultParams (expo-router params of habi://payment/result)
 describe('parsePaymentResultUrl', () => {
   it('returns null for anything that is not the result link', () => {
     expect(parsePaymentResultUrl('https://checkout.paycom.uz/x')).toBeNull();
-    expect(parsePaymentResultUrl('habi://payment/result/x')).toBeNull();
+    expect(parsePaymentResultUrl('parkbor://payment/result/x')).toBeNull();
+    expect(parsePaymentResultUrl('habi://payment/result')).toBeNull(); // retired scheme
     expect(parsePaymentResultUrl('')).toBeNull();
     expect(parsePaymentResultUrl(undefined)).toBeNull();
   });
 
   it('extracts the booking id from the query', () => {
-    expect(parsePaymentResultUrl(`habi://payment/result?id=${ID}`)).toEqual({ bookingId: ID });
-    expect(parsePaymentResultUrl(`habi://payment/result?status=ok&transaction_param=${ID}#x`)).toEqual({ bookingId: ID });
+    expect(parsePaymentResultUrl(`parkbor://payment/result?id=${ID}`)).toEqual({ bookingId: ID });
+    expect(parsePaymentResultUrl(`parkbor://payment/result?status=ok&transaction_param=${ID}#x`)).toEqual({ bookingId: ID });
   });
 
   it('a link without an id is still a valid signal', () => {
-    expect(parsePaymentResultUrl('habi://payment/result')).toEqual({ bookingId: null });
-    expect(parsePaymentResultUrl('habi://payment/result?status=success')).toEqual({ bookingId: null });
+    expect(parsePaymentResultUrl('parkbor://payment/result')).toEqual({ bookingId: null });
+    expect(parsePaymentResultUrl('parkbor://payment/result?status=success')).toEqual({ bookingId: null });
   });
 
   it('survives broken percent-encoding and junk', () => {
-    expect(parsePaymentResultUrl('habi://payment/result?id=%E0%A4%A&x')).toEqual({ bookingId: null });
-    expect(parsePaymentResultUrl('habi://payment/result?&&=&id')).toEqual({ bookingId: null });
+    expect(parsePaymentResultUrl('parkbor://payment/result?id=%E0%A4%A&x')).toEqual({ bookingId: null });
+    expect(parsePaymentResultUrl('parkbor://payment/result?&&=&id')).toEqual({ bookingId: null });
   });
 
   it('decodes an encoded id', () => {
-    expect(parsePaymentResultUrl(`habi://payment/result?id=${encodeURIComponent(ID)}`)).toEqual({ bookingId: ID });
+    expect(parsePaymentResultUrl(`parkbor://payment/result?id=${encodeURIComponent(ID)}`)).toEqual({ bookingId: ID });
   });
 
   it('never carries the status from the link', () => {
-    const signal = parsePaymentResultUrl(`habi://payment/result?id=${ID}&status=CONFIRMED`);
+    const signal = parsePaymentResultUrl(`parkbor://payment/result?id=${ID}&status=CONFIRMED`);
     expect(signal).toEqual({ bookingId: ID });
   });
 });

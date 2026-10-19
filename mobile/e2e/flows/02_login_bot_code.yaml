@@ -1,0 +1,45 @@
+# Telegram bot-code login of an existing (seeded) driver, incl. the two refusal paths.
+# Real Telegram is replaced by the hook server (README "Test-only login path").
+appId: uz.parkbor.app
+name: Bot-code login (not confirmed yet, wrong code, correct code)
+tags:
+  - smoke
+  - needs-hook
+---
+- runFlow: ../subflows/launch_fresh.yaml
+- runScript:
+    file: ../scripts/seed_identity.js
+    env:
+      SEED_ROLE: driver
+      SEED_INDEX: "0"
+- tapOn: "Skip"
+- tapOn: "English"
+- tapOn: "Sign in with Telegram"
+- launchApp:
+    appId: uz.parkbor.app
+    stopApp: false
+- extendedWaitUntil:
+    visible: "Enter the code"
+    timeout: 20000
+- assertVisible: "Only enter this code for a sign-in you just started in this app.*"
+- assertVisible: "Time left: .*"
+- assertVisible: "Reopen the bot"
+# 1) The bot has not confirmed the phone yet: a typed code is refused, nothing is signed in.
+- inputText: "123456"
+- assertVisible: "Confirm your number in the Telegram bot first."
+- eraseText: 6
+# 2) Bot confirms (hook) -> a WRONG code is refused, attempts are counted.
+- runScript:
+    file: ../scripts/hook_call.js
+    env:
+      HOOK_PATH: /login-code
+      HOOK_BODY: '{"telegram_id": ${output.tgId}, "first_name": "Driver"}'
+- inputText: "654321"
+- assertVisible: "Wrong code. Please check and try again."
+- assertVisible: "Attempts left: 4"
+# 3) The right code signs in; the auth guard lands on the map tab.
+- inputText: ${output.hook.code}
+- extendedWaitUntil:
+    visible: "Nearby parking lots"
+    timeout: 30000
+- assertNotVisible: "Enter the code"

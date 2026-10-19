@@ -111,6 +111,15 @@ server {
         include /etc/nginx/snippets/proxy-api.conf;
     }
 
+    # Readiness for external uptime monitors (PostgreSQL + Redis, cached 3 s in the app). Rate limited
+    # like the rest of the API; /health/live is container-internal only and is NOT proxied.
+    location = /health {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-store" always;
+        limit_req zone=api_general burst=5 nodelay;
+        include /etc/nginx/snippets/proxy-api.conf;
+    }
+
     location /api/ {
         include /etc/nginx/snippets/security-headers.conf;
         limit_req zone=api_general burst=60 nodelay;

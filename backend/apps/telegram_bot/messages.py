@@ -6,12 +6,12 @@ SUPPORTED_LANGUAGES = ("uz", "ru", "en")
 MESSAGES: dict[str, dict[str, str]] = {
     "uz": {
         "help": (
-            "Salom! Habi avtoturargoh botiga xush kelibsiz.\n"
-            "Kirish uchun Habi ilovasidagi «Telegram orqali kirish» tugmasini bosing."
+            "Salom! ParkBor avtoturargoh botiga xush kelibsiz.\n"
+            "Kirish uchun ParkBor ilovasidagi «Telegram orqali kirish» tugmasini bosing."
         ),
         "ask_contact": (
-            "Habi ilovasida kirish so'rovi qabul qilindi. "
-            "Faqat Habi ilovasida o'zingiz boshlagan bo'lsangiz davom eting. "
+            "ParkBor ilovasida kirish so'rovi qabul qilindi. "
+            "Faqat ParkBor ilovasida o'zingiz boshlagan bo'lsangiz davom eting. "
             "Telefon raqamingizni yuboring: pastdagi tugmani bosing."
         ),
         "share_button": "Raqamni yuborish",
@@ -22,18 +22,18 @@ MESSAGES: dict[str, dict[str, str]] = {
         "foreign_contact": "Faqat o'zingizning raqamingizni yuborishingiz mumkin.",
         "invalid_phone": "Telefon raqami noto'g'ri. Tugma orqali o'z raqamingizni yuboring.",
         "code_sent": (
-            "Kirish kodingiz: {code} (5 daqiqa amal qiladi). Uni faqat Habi ilovasiga kiriting. "
+            "Kirish kodingiz: {code} (5 daqiqa amal qiladi). Uni faqat ParkBor ilovasiga kiriting. "
             "Kodni hech kimga bermang!"
         ),
     },
     "ru": {
         "help": (
-            "Здравствуйте! Это бот парковок Habi.\n"
-            "Для входа нажмите кнопку «Войти через Telegram» в приложении Habi."
+            "Здравствуйте! Это бот парковок ParkBor.\n"
+            "Для входа нажмите кнопку «Войти через Telegram» в приложении ParkBor."
         ),
         "ask_contact": (
-            "Запрос на вход в приложении Habi получен. "
-            "Продолжайте, только если вы сами начали вход в приложении Habi. "
+            "Запрос на вход в приложении ParkBor получен. "
+            "Продолжайте, только если вы сами начали вход в приложении ParkBor. "
             "Отправьте свой номер телефона: нажмите кнопку ниже."
         ),
         "share_button": "Отправить номер",
@@ -44,18 +44,19 @@ MESSAGES: dict[str, dict[str, str]] = {
         "foreign_contact": "Можно отправить только свой собственный номер.",
         "invalid_phone": "Некорректный номер телефона. Отправьте свой номер кнопкой.",
         "code_sent": (
-            "Ваш код для входа: {code} (действует 5 минут). Вводите его только в приложении Habi. "
+            "Ваш код для входа: {code} (действует 5 минут). "
+            "Вводите его только в приложении ParkBor. "
             "Никому не сообщайте код!"
         ),
     },
     "en": {
         "help": (
-            "Hello! This is the Habi parking bot.\n"
-            'To sign in, tap the "Sign in with Telegram" button in the Habi app.'
+            "Hello! This is the ParkBor parking bot.\n"
+            'To sign in, tap the "Sign in with Telegram" button in the ParkBor app.'
         ),
         "ask_contact": (
-            "We received your sign-in request from the Habi app. "
-            "Continue only if you started this sign-in yourself in the Habi app. "
+            "We received your sign-in request from the ParkBor app. "
+            "Continue only if you started this sign-in yourself in the ParkBor app. "
             "Please share your phone number using the button below."
         ),
         "share_button": "Share phone number",
@@ -65,7 +66,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "foreign_contact": "You can only share your own phone number.",
         "invalid_phone": "Invalid phone number. Share your own number with the button.",
         "code_sent": (
-            "Your login code: {code} (valid for 5 minutes). Enter it only in the Habi app. "
+            "Your login code: {code} (valid for 5 minutes). Enter it only in the ParkBor app. "
             "Do not share it with anyone!"
         ),
     },

@@ -1,10 +1,10 @@
 import { isUuid } from '@/lib/contract';
 
-// A push payload is data from the network: only `habi://booking/<uuid>` is followed. Other
+// A push payload is data from the network: only `parkbor://booking/<uuid>` is followed. Other
 // schemes, hosts, paths, queries and fragments are ignored rather than "fixed up".
 
 const MAX_URL_LENGTH = 200;
-const BOOKING_URL = /^habi:\/\/booking\/([0-9a-f-]{36})\/?$/i;
+const BOOKING_URL = /^parkbor:\/\/booking\/([0-9a-f-]{36})\/?$/i;
 
 export function bookingIdFromUrl(url: unknown): string | null {
   if (typeof url !== 'string' || url.length > MAX_URL_LENGTH) return null;

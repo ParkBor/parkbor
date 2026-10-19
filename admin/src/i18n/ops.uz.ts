@@ -96,6 +96,15 @@ export const opsUz = {
     cancelReason: 'Sabab (ixtiyoriy)',
     cancelConfirm: 'Ha, bekor qilish',
     cancelled: 'Bron bekor qilindi',
+    actor: 'Kim',
+    actors: {
+      driver: 'Haydovchi',
+      operator: 'Operator',
+      owner: 'Egasi',
+      admin: 'Admin',
+      system: 'Tizim',
+    },
+    cancelRefundNote: 'Bekor qilinganda to‘langan summaning 100% i qaytariladi.',
   },
   overstay: {
     title: 'Ortiqcha vaqt (olinmagan)',
@@ -125,6 +134,14 @@ export const opsUz = {
     resolve: 'Hal qilish',
     resolved: 'Qaytarish holati yangilandi',
     resolveTitle: 'Qaytarishni hal qilish',
+    errorCodes: {
+      error: 'Xato',
+      unknown_error: 'Noma’lum xato',
+      retries_exhausted: 'Urinishlar tugadi',
+      operator_failed: 'Operator qaytarmaslikka qaror qildi',
+      click_error: 'Click xatosi',
+      http_error: 'Tarmoq/provayder xatosi',
+    },
     outcomeLabel: 'Natija',
     chooseOutcome: 'Natijani tanlang',
     confirmDone: 'Pul haqiqatan qaytarilganini tasdiqlayman',
@@ -168,6 +185,14 @@ export const opsUz = {
     confirmBlock: '{{name}} bloklansinmi?',
     confirmUnblock: '{{name}} blokdan chiqarilsinmi?',
     confirmRole: '{{name}} roli «{{role}}» ga o‘zgartirilsinmi?',
+    searchHint: 'Username, ism yoki familiya bo‘yicha qidirish',
+    errors: {
+      cannot_modify_self: 'O‘zingizni o‘zgartirib bo‘lmaydi.',
+      super_admin_protected: 'Super admin akkauntini o‘zgartirib bo‘lmaydi.',
+      super_admin_required: 'ADMIN rolini berish, olish yoki ADMIN ni bloklash faqat super admin uchun.',
+      last_admin: 'Bu oxirgi faol admin: uni o‘zgartirib bo‘lmaydi.',
+      owner_has_parkings: 'Egasining avtoturargohlari bor: avval ularni boshqa egaga o‘tkazing yoki o‘chiring.',
+    },
   },
   moderation: {
     title: 'Avtoturargohlar moderatsiyasi',
@@ -186,6 +211,11 @@ export const opsUz = {
     publish: 'E’lon qilish',
   },
   settings: {
+    readOnly: 'Sozlamalarni faqat super admin o‘zgartira oladi. Siz ularni faqat o‘qiy olasiz.',
+    errors: {
+      settings_range_invalid: 'Qiymat ruxsat etilgan oraliqdan tashqarida.',
+      settings_order_invalid: 'Foizlar tartibi noto‘g‘ri: boshlangandan keyin ≤ kech ≤ erta.',
+    },
     title: 'Sozlamalar',
     fields: {
       hold_minutes: 'To‘lov kutish vaqti (daqiqa)',
@@ -217,7 +247,7 @@ export const opsUz = {
     since: 'Biriktirilgan',
     createdAt: 'Yaratilgan',
     expiresAt: 'Amal qilish muddati',
-    revokeInvite: 'Bekor qilish',
+    revokeInvite: 'Kodni bekor qilish',
     validHours: 'Amal qilish (soat, 1–168)',
     createInvite: 'Taklif-kod yaratish',
     limitReached: 'Ochiq takliflar chegarasiga yetildi. Avval eskilarini bekor qiling.',

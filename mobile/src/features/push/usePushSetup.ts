@@ -30,7 +30,7 @@ configureForegroundNotifications();
  * Root-level push wiring: device registration for the signed-in user (re-registered on token
  * change and, at most once a minute, when the app returns to the foreground), unregistration at
  * session end, foreground refresh of booking data and notification taps -> `/booking/<id>` (only
- * for a valid habi://booking/<uuid>, and only once the auth guard has settled).
+ * for a valid parkbor://booking/<uuid>, and only once the auth guard has settled).
  */
 export function usePushSetup(): void {
   const { t } = useTranslation();

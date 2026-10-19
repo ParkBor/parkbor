@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from apps.core.exceptions import NotFoundError
 from apps.core.pagination import StandardPagination
 from apps.core.serializers import error_responses as errors
-from apps.parking.models import ParkingLot
+from apps.parking.models import LotStatus, ParkingLot
 
 from . import selectors, services
 from .serializers import PagedPublicReviewSerializer, PublicReviewSerializer, ReviewCreateSerializer
@@ -29,7 +29,7 @@ class LotReviewsView(APIView):
         responses={200: PagedPublicReviewSerializer, **errors(401, 404, 429)},
     )
     def get(self, request, pk):
-        if not ParkingLot.objects.filter(pk=pk).exists():
+        if not ParkingLot.objects.filter(pk=pk, status=LotStatus.ACTIVE).exists():
             raise NotFoundError("Parking lot not found.")
         paginator = StandardPagination()
         page = paginator.paginate_queryset(selectors.published_for_lot(pk), request, view=self)

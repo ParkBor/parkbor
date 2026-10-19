@@ -1,0 +1,17 @@
+# After a hostile link: no private / privileged screen is showing and the app still responds.
+appId: uz.parkbor.app
+---
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "Booking QR code"
+- assertNotVisible: "Payment received"
+- assertNotVisible: "Check payment status"
+- assertNotVisible: "Car admitted"
+- assertNotVisible: "Collect at the cashier"
+# Either the app's own screens or the router's built-in not-found page.
+- assertVisible: "Map|Bookings|Profile|My bookings|Nearby parking lots|Unmatched Route|.*doesn.t exist.*|Sorry.*"
+# Back to a known screen for the next link.
+- openLink: parkbor:///
+- extendedWaitUntil:
+    visible: "Nearby parking lots"
+    timeout: 20000

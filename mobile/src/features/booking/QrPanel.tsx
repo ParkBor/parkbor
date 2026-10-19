@@ -57,7 +57,7 @@ export function QrPanel({ bookingId, startMs }: { bookingId: string; startMs: nu
       {qr.data ? (
         <>
           {/* White tile in both themes: a dark QR on a dark background does not scan. */}
-          <View style={styles.tile} accessible accessibilityRole="image" accessibilityLabel={t('booking.qr.label')}>
+          <View testID="booking-qr" style={styles.tile} accessible accessibilityRole="image" accessibilityLabel={t('booking.qr.label')}>
             <QRCode value={qr.data.token} size={size} ecl="M" quietZone={8} color="#000000" backgroundColor="#FFFFFF" />
           </View>
           <Text style={{ color: p.textMuted }}>{t('booking.qr.hint')}</Text>

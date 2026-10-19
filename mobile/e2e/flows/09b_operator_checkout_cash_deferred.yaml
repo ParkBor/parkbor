@@ -1,0 +1,43 @@
+# Same as 09 but the cashier chooses "Later (debt)": the car leaves, the debt stays on the server.
+# Only meaningful when the cash step opens (see the note in 09).
+appId: uz.parkbor.app
+name: Operator walk-in and cash checkout (deferred debt)
+tags:
+  - full
+  - needs-testids
+  - needs-hook
+---
+- runFlow: ../subflows/launch_fresh.yaml
+- runFlow:
+    file: ../subflows/login_seeded.yaml
+    env:
+      ROLE: operator
+      INDEX: "2"
+- tapOn: "Operator"
+- tapOn: 'Walk-in \(no booking\)'
+- runScript: ../scripts/new_identity.js
+- tapOn: "Car"
+- tapOn:
+    id: walkin-plate-input
+- inputText: ${output.plate}
+- hideKeyboard
+- tapOn: "Next free slot"
+- tapOn: "Register"
+- extendedWaitUntil:
+    visible: "Registered: .*"
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      text: ${output.plateSpaced}
+    timeout: 20000
+- tapOn:
+    text: "Release"
+    below: ${output.plateSpaced}
+- tapOn: "Release"
+- extendedWaitUntil:
+    visible: "Collect at the cashier"
+    timeout: 20000
+- tapOn: 'Later \(debt\)'
+- extendedWaitUntil:
+    visible: "Car released. The payment stays as a debt"
+    timeout: 20000

@@ -2,15 +2,28 @@ name: mobile
 permissions:
   contents: read
 concurrency:
-  group: mobile-${{ github.ref }}
+  group: mobile-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 on:
+  # E2E (Maestro on an Android emulator) is MANUAL or SCHEDULED only and never gates a PR.
+  workflow_dispatch:
+    inputs:
+      apk_url:
+        description: "HTTPS URL of an Android APK built from the EAS `e2e` profile (eas build --profile e2e --platform android)"
+        required: true
+      tags:
+        description: "Maestro --include-tags value"
+        default: "smoke"
+  schedule:
+    # Weekly, Monday 03:00 UTC; the e2e job additionally needs repository variable E2E_APK_URL.
+    - cron: "0 3 * * 1"
   push:
     paths: ["mobile/**", "packages/**", "pnpm-workspace.yaml", "pnpm-lock.yaml", "package.json", ".npmrc", ".nvmrc", ".github/workflows/mobile.yml"]
   pull_request:
     paths: ["mobile/**", "packages/**", "pnpm-workspace.yaml", "pnpm-lock.yaml", "package.json", ".npmrc", ".nvmrc", ".github/workflows/mobile.yml"]
 jobs:
   lint-test:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,3 +66,129 @@ jobs:
       # Bundle check (Metro + all routes compile) for Android.
       - name: Expo export (Android bundle)
         run: pnpm --filter mobile exec expo export --platform android --output-dir /tmp/expo-dist
+      # Static check of the Maestro flows only (YAML + wiring); it runs nothing on a device.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: E2E flows are well-formed (YAML and wiring, no device)
+        run: |
+          pip install pyyaml
+          pnpm --filter mobile e2e:validate
+
+  # ---------------------------------------------------------------------------------------------
+  # Maestro E2E on an Android emulator. NOT part of the PR gate (see `on:`); UNVERIFIED in CI as of
+  # its creation: no run of this job has ever been executed. Read mobile/e2e/README.md first.
+  # Needs: a downloadable e2e APK (apk_url input, or repo variable E2E_APK_URL for the schedule) and
+  # repo variable MAESTRO_VERSION (pinned CLI release; the installer is NOT piped unpinned).
+  # ---------------------------------------------------------------------------------------------
+  e2e-android:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && vars.E2E_APK_URL != '')
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    services:
+      db:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: habi
+          POSTGRES_PASSWORD: habi
+          POSTGRES_DB: habi
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U habi" --health-interval 5s --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s
+          --health-retries 10
+    env:
+      APK_URL: ${{ github.event.inputs.apk_url || vars.E2E_APK_URL }}
+      E2E_TAGS: ${{ github.event.inputs.tags || 'smoke' }}
+      MAESTRO_VERSION: ${{ vars.MAESTRO_VERSION }}
+      # Backend (dev settings = DEBUG on, which the seed and hook server require).
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DATABASE_URL: postgis://habi:habi@localhost:5432/habi
+      REDIS_URL: redis://localhost:6379/0
+      PAYMENTS_SANDBOX: "true"
+      PAYME_MERCHANT_ID: "000000000000000000000000"
+      PAYMENTS_RETURN_URL: "parkbor://payment/result"
+    steps:
+      - name: Require the pinned Maestro version and an APK URL
+        run: |
+          test -n "$MAESTRO_VERSION" || { echo "set repository variable MAESTRO_VERSION"; exit 1; }
+          case "$APK_URL" in https://*) ;; *) echo "APK_URL must be https"; exit 1;; esac
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements/*.txt
+      - name: Install GDAL/GEOS (GeoDjango)
+        run: sudo apt-get update && sudo apt-get install -y gdal-bin libgdal-dev libgeos-dev
+      - run: pip install -r backend/requirements/dev.txt
+      - name: Per-run secrets (never reused, never printed)
+        run: |
+          {
+            echo "HABI_E2E_HOOK_KEY=$(openssl rand -hex 24)"
+            echo "QR_SIGNING_KEY=$(openssl rand -hex 32)"
+          } >> "$GITHUB_ENV"
+      - name: Migrate, seed, start API and hook server
+        working-directory: backend
+        env:
+          HABI_LOADTEST_SEED: "1"
+          HABI_E2E_HOOK: "1"
+          HABI_E2E_SEED_FILE: ${{ github.workspace }}/loadtest/.secrets/tokens.json
+        run: |
+          python manage.py migrate --noinput
+          # --scan-start-in 15: the check-in window is open ~35 minutes; the run starts right after.
+          python ../loadtest/seed/loadtest_seed.py --drivers 20 --operators 3 --scans 20 --tag e2e --out ../loadtest/.secrets/tokens.json
+          nohup python manage.py runserver 127.0.0.1:8000 --noreload > "$RUNNER_TEMP/api.log" 2>&1 &
+          nohup python ../mobile/e2e/helpers/e2e_hook_server.py --port 8765 > "$RUNNER_TEMP/hook.log" 2>&1 &
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/v1/me || true)
+            [ "$code" = "401" ] && break
+            sleep 2
+          done
+          [ "$code" = "401" ] || { echo "API did not come up"; tail -n 50 "$RUNNER_TEMP/api.log"; exit 1; }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install Maestro (pinned)
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" -o "$RUNNER_TEMP/maestro-install.sh"
+          MAESTRO_VERSION="$MAESTRO_VERSION" bash "$RUNNER_TEMP/maestro-install.sh"
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Download the APK
+        run: curl -fsSL "$APK_URL" -o "$RUNNER_TEMP/parkbor-e2e.apk"
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: "Maestro on an API 34 emulator (Google APIs image, the app uses Google Maps)"
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          APK_PATH: ${{ runner.temp }}/parkbor-e2e.apk
+          REPORT_DIR: ${{ runner.temp }}/e2e
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash mobile/e2e/scripts/ci_run_maestro.sh
+      - name: Upload report, screenshots and server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-e2e
+          path: |
+            ${{ runner.temp }}/e2e
+            ${{ runner.temp }}/api.log
+            ${{ runner.temp }}/hook.log
+          if-no-files-found: warn

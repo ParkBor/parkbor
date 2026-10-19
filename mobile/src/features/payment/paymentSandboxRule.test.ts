@@ -2,29 +2,29 @@ import { describe, expect, it } from 'vitest';
 
 import { isNonProductionApiUrl, isSandboxAllowed } from '@/features/payment/paymentSandbox';
 
-const STAGING = 'https://staging-api.habi.uz/api/v1';
-const PROD = 'https://api.habi.uz/api/v1';
+const STAGING = 'https://staging-api.parkbor.uz/api/v1';
+const PROD = 'https://api.parkbor.uz/api/v1';
 
 describe('isNonProductionApiUrl', () => {
   it.each([
-    'https://staging-api.habi.uz/api/v1',
-    'https://api.staging.habi.uz/api/v1',
+    'https://staging-api.parkbor.uz/api/v1',
+    'https://api.staging.parkbor.uz/api/v1',
     'http://localhost:8000/api/v1',
     'http://127.0.0.1:8000/api/v1',
     'http://10.0.2.2:8000/api/v1',
-    'HTTPS://STAGING-API.HABI.UZ/api/v1',
+    'HTTPS://STAGING-API.PARKBOR.UZ/api/v1',
   ])('%s is a development / staging API', (url) => {
     expect(isNonProductionApiUrl(url)).toBe(true);
   });
 
   it.each([
     PROD,
-    'https://habi.uz/api',
-    'https://api.habi.uz.evil.com/api/v1',
+    'https://parkbor.uz/api',
+    'https://api.parkbor.uz.evil.com/api/v1',
     'https://evil.com/staging',
-    'https://evil.com/?h=staging-api.habi.uz',
-    'https://notstaging-api.habi.uz/',
-    'https://staging.evil@api.habi.uz/',
+    'https://evil.com/?h=staging-api.parkbor.uz',
+    'https://notstaging-api.parkbor.uz/',
+    'https://staging.evil@api.parkbor.uz/',
     '',
     'not a url',
     undefined,

@@ -79,6 +79,7 @@ export default function CompleteProfileScreen() {
         name="firstName"
         render={({ field: { value, onChange, onBlur } }) => (
           <TextInput
+            testID="profile-first-name"
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}

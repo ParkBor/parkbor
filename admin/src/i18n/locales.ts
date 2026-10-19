@@ -4,7 +4,7 @@ import { opsUz } from './ops.uz'
 
 // uz is the primary language; ru and en must keep the same keys (checked in i18n.test.ts).
 export const uz = {
-  app: { title: 'Habi Admin' },
+  app: { title: 'ParkBor CRM' },
   nav: {
     parkings: 'Avtoturargohlar',
     zonesSlots: 'Zona va slotlar',
@@ -69,6 +69,8 @@ export const uz = {
     endpointUnavailable: 'Bu bo‘lim serverda hali mavjud emas (endpoint topilmadi).',
     minutesShort: 'daq.',
     period: 'Davr',
+    periodStarts: 'Boshlanish sanasi bo‘yicha davr',
+    periodCreated: 'Yaratilgan sana bo‘yicha davr',
   },
   forms: {
     parking: 'Avtoturargoh shakli',
@@ -93,6 +95,7 @@ export const uz = {
     nonNegative: 'Manfiy bo‘lmasin',
     range: 'Qiymat ruxsat etilgan oraliqdan tashqarida',
     percentRange: 'Foiz 0 dan 100 gacha bo‘lsin',
+    percentOrder: 'Tartib: boshlangandan keyin ≤ kech ≤ erta bekor qilish foizi',
   },
   parkings: {
     title: 'Avtoturargohlar',
@@ -158,7 +161,7 @@ export const uz = {
 export type Translation = typeof uz
 
 export const ru: Translation = {
-  app: { title: 'Habi Admin' },
+  app: { title: 'ParkBor CRM' },
   nav: {
     parkings: 'Парковки',
     zonesSlots: 'Зоны и места',
@@ -223,6 +226,8 @@ export const ru: Translation = {
     endpointUnavailable: 'Этот раздел на сервере пока недоступен (endpoint не найден).',
     minutesShort: 'мин',
     period: 'Период',
+    periodStarts: 'Период по дате начала',
+    periodCreated: 'Период по дате создания',
   },
   forms: {
     parking: 'Форма парковки',
@@ -247,6 +252,7 @@ export const ru: Translation = {
     nonNegative: 'Не может быть отрицательным',
     range: 'Значение вне допустимого диапазона',
     percentRange: 'Процент от 0 до 100',
+    percentOrder: 'Порядок: после начала ≤ поздняя ≤ ранняя отмена (проценты)',
   },
   parkings: {
     title: 'Парковки',
@@ -305,7 +311,7 @@ export const ru: Translation = {
 }
 
 export const en: Translation = {
-  app: { title: 'Habi Admin' },
+  app: { title: 'ParkBor CRM' },
   nav: { parkings: 'Parking lots', zonesSlots: 'Zones & slots', tariffs: 'Tariffs',
     dashboard: 'Dashboard',
     bookings: 'Bookings',
@@ -367,6 +373,8 @@ export const en: Translation = {
     endpointUnavailable: 'This section is not available on the server yet (endpoint not found).',
     minutesShort: 'min',
     period: 'Period',
+    periodStarts: 'Period by start date',
+    periodCreated: 'Period by creation date',
   },
   forms: {
     parking: 'Parking lot form',
@@ -391,6 +399,7 @@ export const en: Translation = {
     nonNegative: 'Must not be negative',
     range: 'Value is outside the allowed range',
     percentRange: 'Percent must be between 0 and 100',
+    percentOrder: 'Order: after start <= late <= early cancellation percent',
   },
   parkings: {
     title: 'Parking lots',

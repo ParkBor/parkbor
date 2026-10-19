@@ -62,7 +62,7 @@ def test_push_carries_the_deep_link_and_no_personal_data(expo):
     log = make_log(user)
     delivery.deliver(log.pk)
     [message] = expo.messages
-    assert message.data["url"] == f"habi://booking/{log.context['booking_id']}"
+    assert message.data["url"] == f"parkbor://booking/{log.context['booking_id']}"
     assert message.data["event"] == "booking_confirmed"
     text = (message.title + message.body + str(message.data)).lower()
     assert str(user.telegram_id) not in text and "01a" not in text
@@ -75,7 +75,7 @@ def test_telegram_is_the_fallback_when_there_is_no_device(expo, tg):
     assert expo.calls == []
     [sent] = tg.sent
     assert sent["chat_id"] == user.telegram_id
-    assert sent["url"] == f"https://habi.test/b/{log.context['booking_id']}"
+    assert sent["url"] == f"https://parkbor.test/b/{log.context['booking_id']}"
     assert sent["label"] == "Bronni ochish"
     assert fresh(log).channel == "telegram"
 
@@ -374,5 +374,5 @@ def test_push_data_holds_only_event_url_and_booking_id(expo):
     delivery.deliver(log.pk)
     [message] = expo.messages
     assert set(message.data) == {"event", "url", "booking_id"}
-    assert message.data["url"] == f"habi://booking/{log.context['booking_id']}"
+    assert message.data["url"] == f"parkbor://booking/{log.context['booking_id']}"
     assert "01A777BC" not in repr(message) and "+998" not in repr(message)

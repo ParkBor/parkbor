@@ -21,9 +21,9 @@ function renderAt(path: string, auth: AuthState = makeAuth()) {
 }
 
 describe('App shell', () => {
-  it('renders the Habi admin title and the sidebar menu in Uzbek', async () => {
+  it('renders the ParkBor CRM logo and the sidebar menu in Uzbek', async () => {
     renderAt('/tariffs')
-    expect(await screen.findByText('Habi Admin')).toBeInTheDocument()
+    expect(await screen.findByAltText('ParkBor CRM')).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Avtoturargohlar' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Zona va slotlar' })).toBeInTheDocument()
     expect(await screen.findByText('Avtoturargohni tanlang')).toBeInTheDocument()

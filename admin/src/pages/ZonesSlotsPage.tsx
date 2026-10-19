@@ -11,10 +11,12 @@ import { adminApi } from '../lib/api'
 import { errorText } from '../lib/errorText'
 import { fetchAll } from '../lib/fetchAll'
 import type { BulkSlotsFormValues, ZoneFormValues } from '../schemas'
+import { useSingleFlight } from '../lib/useSingleFlight'
 
 export default function ZonesSlotsPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const singleFlight = useSingleFlight()
   const [lotId, setLotId] = useState<string | undefined>()
   const [slotPage, setSlotPage] = useState(1)
   const [slotPageSize, setSlotPageSize] = useState(20)
@@ -100,7 +102,9 @@ export default function ZonesSlotsPage() {
                     render: (_, zone) => (
                       <Popconfirm
                         title={t('common.confirmDelete')}
-                        onConfirm={() => removeZone.mutate(zone.id)}
+                        onConfirm={() =>
+                          void singleFlight(() => removeZone.mutateAsync(zone.id).catch(() => undefined))
+                        }
                       >
                         <Button size="small" danger>
                           {t('common.delete')}

@@ -11,28 +11,31 @@ export type StatusKind =
   | 'review'
   | 'role'
 
-const COLORS: Record<string, string> = {
-  PENDING_PAYMENT: 'gold',
-  CONFIRMED: 'blue',
-  ACTIVE: 'green',
-  OVERSTAY: 'volcano',
-  PENDING: 'gold',
-  PAID: 'green',
-  REFUNDED: 'purple',
-  FAILED: 'red',
-  SENT: 'blue',
-  DONE: 'green',
-  MANUAL: 'orange',
-  pending: 'gold',
-  done: 'green',
-  manual: 'orange',
-  failed: 'red',
-  due: 'red',
-  collected: 'green',
-  PUBLISHED: 'green',
-  ADMIN: 'red',
-  OWNER: 'blue',
-  OPERATOR: 'cyan',
+/** Known server values per kind: only these are looked up in the translations. */
+const KNOWN: Record<StatusKind, Record<string, string>> = {
+  booking: {
+    PENDING_PAYMENT: 'gold',
+    CONFIRMED: 'blue',
+    ACTIVE: 'green',
+    OVERSTAY: 'volcano',
+    COMPLETED: 'default',
+    CANCELLED: 'default',
+    EXPIRED: 'default',
+    NO_SHOW: 'default',
+  },
+  payment: {
+    CREATED: 'default',
+    PENDING: 'gold',
+    PAID: 'green',
+    CANCELLED: 'default',
+    REFUNDED: 'purple',
+    FAILED: 'red',
+  },
+  refund: { PENDING: 'gold', SENT: 'blue', DONE: 'green', FAILED: 'red', MANUAL: 'orange' },
+  refundView: { none: 'default', pending: 'gold', done: 'green', manual: 'orange', failed: 'red' },
+  overstay: { none: 'default', due: 'red', collected: 'green', waived: 'default' },
+  review: { PUBLISHED: 'green', HIDDEN: 'default' },
+  role: { DRIVER: 'default', OPERATOR: 'cyan', OWNER: 'blue', ADMIN: 'red' },
 }
 
 interface StatusTagProps {
@@ -40,13 +43,15 @@ interface StatusTagProps {
   value: string
 }
 
-/** A coloured, translated status. An unknown server value is shown as sanitised plain text. */
+/**
+ * A coloured, translated status. A value the panel does not know is shown as sanitised plain text
+ * and never used to build a translation key.
+ */
 export function StatusTag({ kind, value }: StatusTagProps) {
   const { t } = useTranslation()
-  const text = safeText(value, 40)
-  return (
-    <Tag color={COLORS[value] ?? 'default'}>
-      {t(`status.${kind}.${text}`, { defaultValue: text })}
-    </Tag>
-  )
+  const colors = KNOWN[kind]
+  if (typeof value === 'string' && Object.hasOwn(colors, value)) {
+    return <Tag color={colors[value]}>{t(`status.${kind}.${value}`)}</Tag>
+  }
+  return <Tag>{safeText(value, 40)}</Tag>
 }

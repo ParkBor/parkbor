@@ -132,6 +132,7 @@ export interface BookingEventRow {
   from_status: string
   to_status: string
   reason: string
+  /** Role label of who acted: driver | operator | owner | admin | system (never an id). */
   actor: string | null
 }
 

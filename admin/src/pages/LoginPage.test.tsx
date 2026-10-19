@@ -44,7 +44,7 @@ function renderPage(auth: AuthState, options: PageOptions = {}) {
   return render(options.strict ? <StrictMode>{tree}</StrictMode> : tree)
 }
 
-const BOT = { bot: 'HabiParkingBot' }
+const BOT = { bot: 'ParkBorBot' }
 
 function widgetScript(): HTMLScriptElement | null {
   return document.querySelector<HTMLScriptElement>(SCRIPT_SELECTOR)
@@ -85,7 +85,7 @@ describe('Telegram widget script', () => {
     renderPage(anonymousAuth(), BOT)
     const script = widgetScript()
     expect(script).not.toBeNull()
-    expect(script?.getAttribute('data-telegram-login')).toBe('HabiParkingBot')
+    expect(script?.getAttribute('data-telegram-login')).toBe('ParkBorBot')
     expect(script?.getAttribute('data-onauth')).toMatch(/^[A-Za-z_$][\w$]*\(user\)$/)
     expect(script?.async).toBe(true)
   })
@@ -120,8 +120,8 @@ describe('Telegram widget script', () => {
   })
 
   it('accepts a leading @ in the configured username', () => {
-    renderPage(anonymousAuth(), { bot: '@HabiParkingBot' })
-    expect(widgetScript()?.getAttribute('data-telegram-login')).toBe('HabiParkingBot')
+    renderPage(anonymousAuth(), { bot: '@ParkBorBot' })
+    expect(widgetScript()?.getAttribute('data-telegram-login')).toBe('ParkBorBot')
   })
 
   it('marks the widget area busy until the script has loaded', async () => {

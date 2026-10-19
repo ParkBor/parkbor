@@ -144,8 +144,8 @@ async def test_an_allowed_origin_is_accepted(driver, settings, fake_redis):
 
 
 async def test_a_cors_origin_is_accepted(driver, settings, fake_redis):
-    settings.CORS_ALLOWED_ORIGINS = ["https://admin.habi.uz"]
-    comm = await open_socket(driver, origin="https://admin.habi.uz")
+    settings.CORS_ALLOWED_ORIGINS = ["https://crm.parkbor.uz"]
+    comm = await open_socket(driver, origin="https://crm.parkbor.uz")
     await comm.disconnect()
 
 

@@ -8,9 +8,11 @@ interface ButtonProps {
   variant?: 'primary' | 'telegram' | 'secondary';
   disabled?: boolean;
   loading?: boolean;
+  /** Stable handle for UI tests (Android resource-id / iOS accessibilityIdentifier). */
+  testID?: string;
 }
 
-export function Button({ label, onPress, variant = 'primary', disabled = false, loading = false }: ButtonProps) {
+export function Button({ label, onPress, variant = 'primary', disabled = false, loading = false, testID }: ButtonProps) {
   const p = usePalette();
   const inactive = disabled || loading;
   const background =
@@ -20,6 +22,7 @@ export function Button({ label, onPress, variant = 'primary', disabled = false, 
 
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: inactive, busy: loading }}

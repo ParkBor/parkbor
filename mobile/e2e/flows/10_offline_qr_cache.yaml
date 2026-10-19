@@ -1,0 +1,41 @@
+# The entry QR is stored on the device (keystore) and shown when the network is gone.
+# Android only: Maestro cannot toggle airplane mode on the iOS simulator.
+appId: uz.parkbor.app
+name: Offline QR from the device cache
+tags:
+  - full
+  - android
+  - needs-hook
+onFlowComplete:
+  - setAirplaneMode: disabled
+---
+- runFlow: ../subflows/launch_fresh.yaml
+- runFlow:
+    file: ../subflows/login_seeded.yaml
+    env:
+      ROLE: driver
+      INDEX: "2"
+- runScript:
+    file: ../scripts/hook_call.js
+    env:
+      HOOK_PATH: /paid-booking
+      HOOK_BODY: '{"driver_index": 2, "lot": "payments", "start_in_min": 45, "hours": 1}'
+- tapOn: "Bookings"
+- tapOn: "Upcoming"
+- tapOn: ".*${E2E_PAY_LOT_NAME}.*Confirmed.*"
+- extendedWaitUntil:
+    visible: "Booking QR code"
+    timeout: 20000
+- assertNotVisible: "No internet: showing the saved QR code."
+# Network off, open the booking again: the stored copy is used, with a notice.
+- tapOn: "Back"
+- setAirplaneMode: enabled
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn: ".*${E2E_PAY_LOT_NAME}.*Confirmed.*"
+- extendedWaitUntil:
+    visible: "Booking QR code"
+    timeout: 20000
+- assertVisible: "No internet: showing the saved QR code."
+- takeScreenshot: 10_offline_qr
+- setAirplaneMode: disabled

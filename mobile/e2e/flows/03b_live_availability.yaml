@@ -1,0 +1,31 @@
+# Live availability: while the detail screen is open, someone else books in the same lot; the free
+# count must drop by one WITHOUT leaving or refreshing the screen (WebSocket group lot_<id>,
+# ARCHITECTURE 12; the 15 s polling is the fallback, so the wait allows for it).
+appId: uz.parkbor.app
+name: Lot detail updates live when another driver books
+tags:
+  - full
+  - needs-hook
+---
+- runFlow: ../subflows/launch_fresh.yaml
+- runFlow:
+    file: ../subflows/login_seeded.yaml
+    env:
+      ROLE: driver
+      INDEX: "0"
+- runFlow:
+    file: ../subflows/open_lot_detail.yaml
+    env:
+      LOT_NAME: ${E2E_WS_LOT_NAME}
+- copyTextFrom:
+    text: '\d+ / \d+ free'
+- runScript: ../scripts/expect_one_less.js
+# Another driver (seed index 5) books a slot of the SAME lot for the next hour.
+- runScript:
+    file: ../scripts/hook_call.js
+    env:
+      HOOK_PATH: /paid-booking
+      HOOK_BODY: '{"driver_index": 5, "lot": "ws0", "start_in_min": 5, "hours": 1}'
+- extendedWaitUntil:
+    visible: ${output.lessText}
+    timeout: 40000

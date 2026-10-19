@@ -3,7 +3,7 @@ import { isAllowedPaymentUrl, isSafeHttpsUrl, MAX_PAYMENT_URL_LENGTH } from '@/f
 /**
  * What the payment WebView does with a navigation request:
  * - `allow`  load it;
- * - `result` the provider sent the user back (`habi://payment/result`): do NOT load it, close the
+ * - `result` the provider sent the user back (`parkbor://payment/result`): do NOT load it, close the
  *            WebView and re-fetch the booking from the server;
  * - `block`  drop it. Nothing is ever handed to the OS (no intent:, market:, tel:, sms:, other apps).
  *
@@ -26,10 +26,10 @@ export const MAX_NAVIGATIONS = 30;
 
 const PRINTABLE_ASCII = /^[\x21-\x7E]+$/;
 /** The only link we accept as "back from the provider": exact path, optional query / fragment. */
-const RESULT_LINK = /^[hH][aA][bB][iI]:\/\/payment\/result(?:[?#].*)?$/;
+const RESULT_LINK = /^[pP][aA][rR][kK][bB][oO][rR]:\/\/payment\/result(?:[?#].*)?$/;
 const EMPTY_FRAME = 'about:blank';
 
-/** `habi://payment/result[?query][#fragment]` and nothing that merely starts like it. */
+/** `parkbor://payment/result[?query][#fragment]` and nothing that merely starts like it. */
 export function isResultUrl(url: unknown): url is string {
   return (
     typeof url === 'string' &&

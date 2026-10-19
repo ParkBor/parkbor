@@ -39,7 +39,7 @@ SIMPLE_JWT = {  # noqa: F405
     "SIGNING_KEY": "test-only-jwt-signing-key-0123456789abcdef",
 }
 TELEGRAM_BOT_TOKEN = "123456:TEST-TOKEN"
-TELEGRAM_BOT_USERNAME = "HabiTestBot"
+TELEGRAM_BOT_USERNAME = "ParkBorTestBot"
 TELEGRAM_WEBHOOK_SECRET = "test-webhook-secret"
 # Fake provider credentials: no real payment is ever possible from tests.
 PAYMENTS_SANDBOX = True
@@ -49,10 +49,10 @@ CLICK_SERVICE_ID = "36"
 CLICK_MERCHANT_ID = "46"
 CLICK_MERCHANT_USER_ID = "4"
 CLICK_SECRET_KEY = "test-click-secret"
-PAYMENTS_RETURN_URL = "https://habi.test/payment-return"
+PAYMENTS_RETURN_URL = "https://parkbor.test/payment-return"
 # Parallel postgis tests queue many callbacks on one lot lock (like BOOKING_LOCK_TIMEOUT above).
 PAYMENTS_LOCK_TIMEOUT_SECONDS = 30
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
-HABI_PUBLIC_URL = "https://habi.test"
+HABI_PUBLIC_URL = "https://parkbor.test"
 EXPO_ACCESS_TOKEN = ""
 CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}

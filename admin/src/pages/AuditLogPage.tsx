@@ -1,5 +1,4 @@
 import type { AuditLogParams, AuditLogRow } from '@habi/api-client'
-import { useQuery } from '@tanstack/react-query'
 import { Input, Space, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
@@ -10,8 +9,9 @@ import { PagedTable } from '../components/PagedTable'
 import { adminApi } from '../lib/api'
 import type { ExportColumn } from '../lib/exportXlsx'
 import { fetchAll } from '../lib/fetchAll'
-import { formatDateTime, isUuid, metaText, safeText } from '../lib/format'
+import { formatDateTime, isUuid, metaText, safeText, shortId } from '../lib/format'
 import { type DayRange, toRangeParams } from '../lib/time'
+import { usePagedQuery } from '../lib/usePagedQuery'
 import { useServerTable } from '../lib/useServerTable'
 
 
@@ -35,14 +35,13 @@ export default function AuditLogPage() {
     ...toRangeParams(filters.range),
   }
   const actorInvalid = filters.actor.trim() !== '' && !isUuid(filters.actor.trim())
-  const query = useQuery({
-    queryKey: ['audit-logs', params, table.page, table.pageSize],
-    queryFn: () => adminApi.auditLogs.list({ ...params, page: table.page, page_size: table.pageSize }),
-  })
+  const query = usePagedQuery(['audit-logs', params], table, (paging) =>
+    adminApi.auditLogs.list({ ...params, ...paging }),
+  )
 
   const columns: ColumnsType<AuditLogRow> = [
     { title: t('audit.when'), key: 'when', render: (_, row) => formatDateTime(row.created_at, i18n.language) },
-    { title: t('audit.actor'), key: 'actor', render: (_, row) => (row.actor ? row.actor.slice(0, 8) : t('audit.system')) },
+    { title: t('audit.actor'), key: 'actor', render: (_, row) => (row.actor ? shortId(row.actor) : t('audit.system')) },
     { title: t('audit.action'), key: 'action', render: (_, row) => safeText(row.action, 64) },
     {
       title: t('audit.target'),
@@ -87,7 +86,7 @@ export default function AuditLogPage() {
           value={filters.actor}
           onChange={(event) => table.setFilter('actor', event.target.value)}
         />
-        <DayRangeFilter value={filters.range} onChange={(range) => table.setFilter('range', range)} />
+        <DayRangeFilter basis="created" value={filters.range} onChange={(range) => table.setFilter('range', range)} />
         <ExportButton
           filename="audit-log"
           columns={exportColumns}

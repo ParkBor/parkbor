@@ -192,6 +192,7 @@ function WalkInBody() {
           {errors.vehicleType ? <Text style={{ color: p.error }}>{t('operator.walkIn.vehicleTypeRequired')}</Text> : null}
 
           <PlateField
+            testID="walkin-plate-input"
             label={t('operator.walkIn.plate')}
             value={plate}
             onChange={(value) => {

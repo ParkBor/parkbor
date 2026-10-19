@@ -8,8 +8,8 @@ from apps.accounts.models import User
 from apps.audit.models import AuditLog
 from apps.bookings.models import Booking
 from apps.bookings.state import BookingKind, BookingStatus, OverstayStatus
+from apps.core.filters import RangeFilterSet
 from apps.parking import selectors as parking_selectors
-from apps.payments.models import Payment, PaymentProvider, PaymentStatus, Refund, RefundStatus
 from apps.reviews.models import Review, ReviewStatus
 
 from . import selectors
@@ -27,28 +27,6 @@ def _lots(request):
 
 def _bookings(request):
     return Booking.objects.filter(pk__in=selectors.bookings_for_staff(_user(request)).values("pk"))
-
-
-class RangeFilterSet(django_filters.FilterSet):
-    """``?from=`` / ``?to=`` (ISO 8601 with an offset, both inclusive) on ``range_field``."""
-
-    range_field = "created_at"
-    from_ = django_filters.IsoDateTimeFilter(method="filter_from")
-    to_ = django_filters.IsoDateTimeFilter(method="filter_to")
-
-    def __init__(self, data=None, *args, **kwargs):
-        if data is not None:
-            data = data.copy()
-            for name in ("from", "to"):
-                if name in data:
-                    data[f"{name}_"] = data[name]
-        super().__init__(data, *args, **kwargs)
-
-    def filter_from(self, queryset, name, value):
-        return queryset.filter(**{f"{self.range_field}__gte": value})
-
-    def filter_to(self, queryset, name, value):
-        return queryset.filter(**{f"{self.range_field}__lte": value})
 
 
 class UserFilter(django_filters.FilterSet):
@@ -94,30 +72,6 @@ class BookingFilter(RangeFilterSet):
         return queryset.filter(vehicle_plate__icontains=compact)
 
 
-class PaymentFilter(RangeFilterSet):
-    status = django_filters.ChoiceFilter(choices=PaymentStatus.choices)
-    provider = django_filters.ChoiceFilter(choices=PaymentProvider.choices)
-    booking = django_filters.ModelChoiceFilter(queryset=_bookings)
-
-    class Meta:
-        model = Payment
-        fields: list[str] = []
-
-
-class RefundFilter(django_filters.FilterSet):
-    status = django_filters.ChoiceFilter(choices=RefundStatus.choices)
-    booking = django_filters.ModelChoiceFilter(queryset=_bookings)
-    needs_attention = django_filters.BooleanFilter(method="filter_needs_attention")
-
-    class Meta:
-        model = Refund
-        fields: list[str] = []
-
-    def filter_needs_attention(self, queryset, name, value):
-        attention = selectors.needs_attention_q()
-        return queryset.filter(attention) if value else queryset.exclude(attention)
-
-
 class AuditLogFilter(RangeFilterSet):
     action = django_filters.CharFilter(lookup_expr="exact", max_length=64)
     target_type = django_filters.CharFilter(lookup_expr="exact", max_length=32)
@@ -132,7 +86,7 @@ class AuditLogFilter(RangeFilterSet):
 class ReviewFilter(django_filters.FilterSet):
     status = django_filters.ChoiceFilter(choices=ReviewStatus.choices)
     parking_lot = django_filters.ModelChoiceFilter(queryset=_lots)
-    rating = django_filters.NumberFilter()
+    rating = django_filters.ChoiceFilter(choices=[(n, str(n)) for n in range(1, 6)])
 
     class Meta:
         model = Review

@@ -12,15 +12,16 @@ export function pageOf<T>(results: T[], count = results.length) {
 
 interface RenderOptions {
   role?: UserRole
+  superuser?: boolean
   path?: string
   route?: string
 }
 
 /** Renders a page inside auth, query and router providers (queries do not retry). */
-export function renderPage(element: ReactElement, { role = 'ADMIN', path = '/', route = '/' }: RenderOptions = {}) {
+export function renderPage(element: ReactElement, { role = 'ADMIN', superuser = true, path = '/', route = '/' }: RenderOptions = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <AuthContext.Provider value={makeAuth({ role })}>
+    <AuthContext.Provider value={makeAuth({ role, superuser })}>
       <QueryClientProvider client={client}>
         <MemoryRouter initialEntries={[path]}>
           <Routes>

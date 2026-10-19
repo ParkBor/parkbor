@@ -1,0 +1,84 @@
+# Operator gate with the camera OUT of the picture: camera permission denied, QR entered by hand
+# through the production "Enter the QR by hand" field (no test-only app code needed).
+# Entry -> replay refused -> exit. Uses seed gate booking E2E_SCAN_INDEX (default 0); each seed
+# booking works ONCE, so pass a fresh index per run (README).
+# The booking must be inside the check-in window: entry opens 30 min before start, NO_SHOW after 20 min
+# past it (seed --scan-start-in 15 gives ~35 min of margin).
+appId: uz.parkbor.app
+name: Operator scan check-in and exit via manual QR
+tags:
+  - full
+  - needs-hook
+---
+- runFlow:
+    file: ../subflows/launch_fresh.yaml
+    env:
+      CAMERA_PERM: deny
+- runFlow:
+    file: ../subflows/login_seeded.yaml
+    env:
+      ROLE: operator
+      INDEX: "0"
+- tapOn: "Operator"
+- assertVisible: "Operator mode"
+- assertVisible: ".*${E2E_GATE_LOT_NAME}.*"
+- tapOn: "QR scanner"
+- assertVisible: "Point at the driver.s entry QR"
+- tapOn: "Enter the QR by hand"
+# ---- entry
+- runScript:
+    file: ../scripts/hook_call.js
+    env:
+      HOOK_PATH: /qr
+      HOOK_BODY: '{"scan_index": ${typeof E2E_SCAN_INDEX === "undefined" ? 0 : E2E_SCAN_INDEX}}'
+- evalScript: ${output.entryToken = output.hook.qr_token}
+- tapOn: "QR code text"
+- inputText: ${output.entryToken}
+- hideKeyboard
+- tapOn: "Check"
+- extendedWaitUntil:
+    visible: "Car admitted"
+    timeout: 20000
+- takeScreenshot: 08_checked_in
+- runFlow:
+    when:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+# ---- the same entry code again is refused
+- tapOn: "QR code text"
+- inputText: ${output.entryToken}
+- hideKeyboard
+- tapOn: "Check"
+- extendedWaitUntil:
+    visible: "This code has already been used.*|The car is already inside.*|Outdated code.*|Wrong kind of code.*"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+# ---- exit (the driver's QR is now an EXIT code)
+- tapOn: "Exit"
+- runScript:
+    file: ../scripts/hook_call.js
+    env:
+      HOOK_PATH: /qr
+      HOOK_BODY: '{"scan_index": ${typeof E2E_SCAN_INDEX === "undefined" ? 0 : E2E_SCAN_INDEX}}'
+- tapOn: "QR code text"
+- inputText: ${output.hook.qr_token}
+- hideKeyboard
+- tapOn: "Check"
+# Inside the booked period nothing is due; if the lot bills a minimum, the two-step cash panel opens.
+- extendedWaitUntil:
+    visible: "Car released|Collect at the cashier"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Collect at the cashier"
+    commands:
+      - assertVisible: "The amount comes from the server. Do not recalculate."
+      - tapOn: "Cash taken"
+      - extendedWaitUntil:
+          visible: "Cash taken, car released"
+          timeout: 20000

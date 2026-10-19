@@ -129,7 +129,7 @@ describe('BookingDetailPage', () => {
   })
 
   it('shows not found for a 404', async () => {
-    api.bookings.get.mockRejectedValue(new ApiError(404, null, 'http'))
+    api.bookings.get.mockRejectedValue(new ApiError(404, { detail: 'Not found.' }, 'http'))
     renderPage(<BookingDetailPage />, { path: `/bookings/${BOOKING_ID}`, route })
     expect(await screen.findByText('Topilmadi')).toBeInTheDocument()
   })
@@ -172,6 +172,34 @@ describe('UsersPage', () => {
     renderPage(<UsersPage />)
     expect(await screen.findByText('Ali')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Bloklash' })).toBeNull()
+  })
+
+  it('searches by username or name only (the server has no phone search)', async () => {
+    api.users.list.mockResolvedValue(pageOf([user()]))
+    renderPage(<UsersPage />)
+    await screen.findByText('Bob')
+    const box = screen.getByLabelText('Username, ism yoki familiya bo‘yicha qidirish')
+    await userEvent.type(box, '@bob{enter}')
+    await waitFor(() =>
+      expect(api.users.list).toHaveBeenLastCalledWith(expect.objectContaining({ search: '@bob', page: 1 })),
+    )
+  })
+
+  it.each([
+    ['cannot_modify_self', 403, 'O‘zingizni o‘zgartirib bo‘lmaydi.'],
+    ['super_admin_protected', 403, 'Super admin akkauntini o‘zgartirib bo‘lmaydi.'],
+    ['super_admin_required', 403, /faqat super admin uchun/],
+    ['last_admin', 409, /oxirgi faol admin/],
+    ['owner_has_parkings', 409, /avtoturargohlari bor/],
+  ])('explains the server refusal %s in the UI language', async (code, status, text) => {
+    api.users.list.mockResolvedValue(pageOf([user()]))
+    api.users.update.mockRejectedValue(new ApiError(status, { detail: 'English', code }, 'http'))
+    renderPage(<UsersPage />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Bloklash' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Bloklash' }))
+    expect(await screen.findByText(text)).toBeInTheDocument()
+    expect(screen.queryByText('English')).toBeNull()
   })
 
   it('keeps the list unchanged when the server refuses', async () => {
@@ -253,6 +281,19 @@ describe('SettingsPage', () => {
     await userEvent.type(hold, '15')
     await userEvent.click(screen.getByRole('button', { name: 'Saqlash' }))
     await waitFor(() => expect(api.settings.update).toHaveBeenCalledWith({ ...settings, hold_minutes: 15 }))
+  })
+
+  it('shows the ordering rule after_start <= late <= full without calling the server', async () => {
+    api.settings.get.mockResolvedValue(settings)
+    renderPage(<SettingsPage />)
+    const late = await screen.findByLabelText('Kech bekor qilishda qaytarish (%)')
+    await waitFor(() => expect(late).toHaveValue('50'))
+    const after = screen.getByLabelText('Boshlangandan keyin qaytarish (%)')
+    await userEvent.clear(after)
+    await userEvent.type(after, '80')
+    await userEvent.click(screen.getByRole('button', { name: 'Saqlash' }))
+    expect(await screen.findByText(/Tartib: boshlangandan keyin/)).toBeInTheDocument()
+    expect(api.settings.update).not.toHaveBeenCalled()
   })
 
   it('does not send a percentage above 100', async () => {

@@ -10,7 +10,7 @@ class Command(BaseCommand):
     help = "Register (or with --delete, remove) the Telegram webhook with the secret from env."
 
     def add_arguments(self, parser):
-        parser.add_argument("--base-url", help="Public HTTPS origin, e.g. https://api.habi.uz")
+        parser.add_argument("--base-url", help="Public HTTPS origin, e.g. https://api.parkbor.uz")
         parser.add_argument("--delete", action="store_true", help="Remove the webhook instead.")
 
     def handle(self, *args, **options):

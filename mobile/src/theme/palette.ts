@@ -5,8 +5,15 @@ export interface Palette {
   /** Secondary text; safe on both background and surface. */
   textMuted: string;
   border: string;
+  /** Brand blue (buttons, links, selected state). */
   primary: string;
   onPrimary: string;
+  /** Brand green: decorative fills (logo "Bor", highlights); not for text. */
+  accent: string;
+  /** Brand-green TEXT: >= 4.5:1 on background and surface. */
+  accentText: string;
+  /** Label colour on an `accent` fill. */
+  onAccent: string;
   telegram: string;
   onTelegram: string;
   /** Fills / indicators (not for small text). */
@@ -26,8 +33,13 @@ export const lightPalette: Palette = {
   text: '#111827',
   textMuted: '#4B5563',
   border: '#6B7280',
-  primary: '#1F6FEB',
+  // Brand blue sampled from the logo (#0057B5), contrast on white 6.9:1.
+  primary: '#0057B5',
   onPrimary: '#FFFFFF',
+  // Brand green sampled from the logo (#3CC755) is only 2:1 on white, so text uses a darker shade of it.
+  accent: '#3CC755',
+  accentText: '#177A32',
+  onAccent: '#0B0F17',
   telegram: '#1A78AE',
   onTelegram: '#FFFFFF',
   success: '#16A34A',
@@ -44,8 +56,12 @@ export const darkPalette: Palette = {
   text: '#F3F4F6',
   textMuted: '#9CA3AF',
   border: '#6B7280',
-  primary: '#4C8DF6',
+  // Lightened brand blue: #0057B5 itself is only about 2.6:1 on the dark background.
+  primary: '#4DA3FF',
   onPrimary: '#0B0F17',
+  accent: '#3CC755',
+  accentText: '#3CC755',
+  onAccent: '#0B0F17',
   telegram: '#1A78AE',
   onTelegram: '#FFFFFF',
   success: '#22C55E',

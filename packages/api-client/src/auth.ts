@@ -12,6 +12,8 @@ export interface AuthUser {
   language: string
   role: UserRole
   tg_notifications: boolean
+  /** Read-only. Only a super admin may grant the ADMIN role, block an ADMIN or change settings. */
+  is_superuser?: boolean
 }
 
 /**

@@ -1,4 +1,4 @@
-# Habi load tests (k6)
+# ParkBor load tests (k6)
 
 Five k6 scripts that check the guarantees of `docs/ARCHITECTURE.md` (3.2, 10.3, 12, 18) under load.
 Expected capacity and what to measure first: `docs/PERFORMANCE.md`.

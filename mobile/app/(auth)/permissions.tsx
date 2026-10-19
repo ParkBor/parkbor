@@ -16,13 +16,14 @@ const NOTIFICATION_CHANNEL_ID = 'default';
 type PermissionState = 'unknown' | 'granted' | 'denied';
 
 interface RowProps {
+  testID: string;
   title: string;
   text: string;
   state: PermissionState;
   onAllow: () => void;
 }
 
-function PermissionRow({ title, text, state, onAllow }: RowProps) {
+function PermissionRow({ testID, title, text, state, onAllow }: RowProps) {
   const { t } = useTranslation();
   const p = usePalette();
   return (
@@ -36,7 +37,7 @@ function PermissionRow({ title, text, state, onAllow }: RowProps) {
           <Button variant="secondary" label={t('permissions.openSettings')} onPress={() => void Linking.openSettings()} />
         </>
       )}
-      {state === 'unknown' && <Button label={t('permissions.allow')} onPress={onAllow} />}
+      {state === 'unknown' && <Button testID={testID} label={t('permissions.allow')} onPress={onAllow} />}
     </View>
   );
 }
@@ -75,12 +76,14 @@ export default function PermissionsScreen() {
       </Text>
       <Text style={{ color: p.textMuted }}>{t('permissions.subtitle')}</Text>
       <PermissionRow
+        testID="permissions-allow-location"
         title={t('permissions.locationTitle')}
         text={t('permissions.locationText')}
         state={location}
         onAllow={() => void askLocation()}
       />
       <PermissionRow
+        testID="permissions-allow-notifications"
         title={t('permissions.notificationsTitle')}
         text={t('permissions.notificationsText')}
         state={notifications}

@@ -88,7 +88,7 @@ def test_prod_rejects_a_malformed_ip_allowlist(monkeypatch):
 
 def test_prod_rejects_a_return_url_with_a_semicolon(monkeypatch):
     # the Payme GET checkout format uses ';' as the parameter separator
-    env = {**PROD_ENV, "PAYMENTS_RETURN_URL": "https://habi.uz/p?a=1;b=2"}
+    env = {**PROD_ENV, "PAYMENTS_RETURN_URL": "https://parkbor.uz/p?a=1;b=2"}
     with pytest.raises(ImproperlyConfigured):
         _import_fresh(monkeypatch, "config.settings.prod", env)
 
@@ -125,14 +125,15 @@ def test_prod_cannot_run_with_an_empty_payme_allowlist(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "url", ["http://habi.uz/back", "ftp://x", "javascript:alert(1)", "habi.uz/back", "//habi.uz"]
+    "url",
+    ["http://parkbor.uz/back", "ftp://x", "javascript:alert(1)", "parkbor.uz/back", "//parkbor.uz"],
 )
 def test_prod_return_url_must_be_https_or_a_deep_link(monkeypatch, url):
     with pytest.raises(ImproperlyConfigured):
         _import_fresh(monkeypatch, "config.settings.prod", {**PROD_ENV, "PAYMENTS_RETURN_URL": url})
 
 
-@pytest.mark.parametrize("url", ["https://habi.uz/back", "habi://payment-return"])
+@pytest.mark.parametrize("url", ["https://parkbor.uz/back", "parkbor://payment-return"])
 def test_prod_accepts_https_and_deep_link_return_urls(monkeypatch, url):
     prod = _import_fresh(
         monkeypatch, "config.settings.prod", {**PROD_ENV, "PAYMENTS_RETURN_URL": url}

@@ -515,17 +515,26 @@ def _assert_reservation(payment: Payment) -> None:
         raise ReservationMismatch
 
 
-_CARD_OR_PHONE = re.compile(r"\d{9,}")
+_CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]")
+_EMAIL = re.compile(r"[^\s@]+@[^\s@]+")
+_HANDLE = re.compile(r"(?:^|[\s(\[,;:])@\w")
+MAX_NOTE_DIGITS = 8
 
 
 def clean_note(note: str) -> str:
-    """The operator's note lands in the booking history and the audit log, so it must not carry a
-    phone or card number: nine or more digits (spaces, dashes and dots ignored) or a leading '+'
-    followed by a digit are refused. 200 characters at most."""
-    note = (note or "").strip()
-    squeezed = re.sub(r"[\s.\-()]", "", note)
-    if _CARD_OR_PHONE.search(squeezed) or re.search(r"\+\s*\d", note):
-        raise ValueError("The note looks like it contains a phone or card number.")
+    """The operator's note lands in the booking history and the audit log, so it must not carry
+    personal data: control characters are removed; a note with nine or more digits in total (any
+    separators, any scripts: a phone or card number), a '+' followed by a digit, an e-mail address
+    or an @handle is refused. 200 characters at most."""
+    note = re.sub(r"\s+", " ", _CONTROL.sub(" ", note or "")).strip()
+    digits = re.sub(r"\D", "", note)
+    if (
+        len(digits) > MAX_NOTE_DIGITS
+        or re.search(r"\+\s*\d", note)
+        or _EMAIL.search(note)
+        or _HANDLE.search(note)
+    ):
+        raise ValueError("The note looks like it contains personal data.")
     return note[:OPERATOR_NOTE_LENGTH]
 
 

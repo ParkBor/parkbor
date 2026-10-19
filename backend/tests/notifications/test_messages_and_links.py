@@ -108,13 +108,13 @@ def test_open_button_label_exists_in_every_language():
 
 def test_deep_link_uses_the_app_scheme():
     booking_id = uuid.uuid4()
-    assert links.booking_deep_link(booking_id) == f"habi://booking/{booking_id}"
+    assert links.booking_deep_link(booking_id) == f"parkbor://booking/{booking_id}"
 
 
 def test_universal_link_is_https_on_the_public_host(settings):
-    settings.HABI_PUBLIC_URL = "https://habi.uz/"
+    settings.HABI_PUBLIC_URL = "https://parkbor.uz/"
     booking_id = uuid.uuid4()
-    assert links.booking_universal_link(booking_id) == f"https://habi.uz/b/{booking_id}"
+    assert links.booking_universal_link(booking_id) == f"https://parkbor.uz/b/{booking_id}"
 
 
 def test_universal_link_is_omitted_without_a_public_url(settings):
@@ -131,7 +131,7 @@ def test_links_only_accept_real_uuids():
 
 
 @pytest.mark.parametrize(
-    "good", ["https://habi.uz", "https://habi.uz/", "https://app.habi.uz:8443"]
+    "good", ["https://parkbor.uz", "https://parkbor.uz/", "https://app.parkbor.uz:8443"]
 )
 def test_production_url_accepts_https(good):
     assert links.validate_public_url(good) == good.rstrip("/")
@@ -141,12 +141,12 @@ def test_production_url_accepts_https(good):
     "bad",
     [
         "",
-        "http://habi.uz",
-        "habi.uz",
+        "http://parkbor.uz",
+        "parkbor.uz",
         "https://",
-        "ftp://habi.uz",
-        "https://habi.uz/?a=1",
-        "https://habi.uz/#x",
+        "ftp://parkbor.uz",
+        "https://parkbor.uz/?a=1",
+        "https://parkbor.uz/#x",
     ],
 )
 def test_production_url_rejects_everything_else(bad):

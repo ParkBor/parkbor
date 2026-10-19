@@ -7,6 +7,7 @@ import {
   isUuid,
   metaText,
   safeMultiline,
+  shortId,
   percentValue,
   moneyToMinor,
   safeText,
@@ -129,5 +130,14 @@ describe('safeText line breaks', () => {
   it('safeMultiline keeps line breaks and drops other controls', () => {
     expect(safeMultiline('a' + nl + 'b' + bel + 'c' + cr + nl + 'd')).toBe('a' + nl + 'bc' + nl + 'd')
     expect(safeMultiline(null)).toBe('')
+  })
+})
+
+describe('shortId', () => {
+  it('shortens ids and survives odd values', () => {
+    expect(shortId('123e4567-e89b-12d3-a456-426614174000')).toBe('123e4567')
+    expect(shortId(undefined)).toBe('')
+    expect(shortId(null)).toBe('')
+    expect(shortId(12345678901)).toBe('12345678')
   })
 })

@@ -59,3 +59,22 @@ def _sqlite_without_gist():
         yield
     finally:
         GistIndex.create_sql = original
+
+
+@pytest.fixture(autouse=True)
+def _overrides_need_no_database_in_unit_tests(monkeypatch):
+    """``bookings.conf.get_config()`` reads admin setting overrides from the database (cached).
+    Pure unit tests have no database access: for them the overrides are simply empty."""
+    from apps.bookings import conf
+
+    real = conf.load_overrides
+
+    def tolerant() -> dict:
+        try:
+            return real()
+        except RuntimeError as exc:  # pytest-django: "Database access not allowed"
+            if "Database access not allowed" not in str(exc):
+                raise
+            return {}
+
+    monkeypatch.setattr(conf, "load_overrides", tolerant)

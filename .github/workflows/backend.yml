@@ -83,13 +83,13 @@ jobs:
           # CI-only throwaway values; >=50 chars and >=5 unique chars to satisfy security.W009.
           SECRET_KEY: ci-only-throwaway-key-abcdefghijklmnopqrstuvwxyz-0123456789-ABCDEFGHIJ
           QR_SIGNING_KEY: ci-only-throwaway-qr-key-abcdefghijklmnopqrstuvwxyz-0123456789-ABCDEFGH
-          ALLOWED_HOSTS: api.habi.uz
+          ALLOWED_HOSTS: api.parkbor.uz
           DATABASE_URL: postgis://ci:ci@localhost:5432/ci
           REDIS_URL: redis://localhost:6379/0
           # Every other variable prod.py requires, with throwaway values of the right length.
           JWT_SIGNING_KEY: ci-only-throwaway-jwt-key-abcdefghijklmnopqrstuvwxyz-0123456789
           TELEGRAM_BOT_TOKEN: "123456:CI-ONLY-THROWAWAY-TOKEN"
-          TELEGRAM_BOT_USERNAME: HabiCiBot
+          TELEGRAM_BOT_USERNAME: ParkBorCiBot
           TELEGRAM_WEBHOOK_SECRET: ci-only-throwaway-webhook-secret-0123456789
           PAYME_MERCHANT_ID: ci0merchant0id0000000000
           PAYME_KEY: ci-only-throwaway-payme-key-0123456789ab
@@ -118,11 +118,11 @@ jobs:
           context: backend
           load: true
           push: false
-          tags: habi-backend:ci
+          tags: parkbor-backend:ci
           build-args: RELEASE=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Image smoke test (GDAL, ASGI server, Celery import)
         run: |
-          docker run --rm habi-backend:ci python -c "from django.contrib.gis import gdal; import uvicorn, celery, sentry_sdk, argon2; print('gdal', gdal.gdal_version())"
-          test "$(docker run --rm habi-backend:ci id -u)" != "0"
+          docker run --rm parkbor-backend:ci python -c "from django.contrib.gis import gdal; import uvicorn, celery, sentry_sdk, argon2; print('gdal', gdal.gdal_version())"
+          test "$(docker run --rm parkbor-backend:ci id -u)" != "0"

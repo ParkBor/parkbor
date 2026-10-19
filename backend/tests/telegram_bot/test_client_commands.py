@@ -41,7 +41,9 @@ def test_set_webhook_sends_secret_token_and_allowed_updates():
         seen["body"] = json.loads(request.content)
         return ok()
 
-    make_client(handler).set_webhook("https://api.habi.uz/api/v1/telegram/webhook", WEBHOOK_SECRET)
+    make_client(handler).set_webhook(
+        "https://api.parkbor.uz/api/v1/telegram/webhook", WEBHOOK_SECRET
+    )
     assert seen["body"]["secret_token"] == WEBHOOK_SECRET
     assert seen["body"]["url"].endswith("/telegram/webhook")
     assert seen["body"]["allowed_updates"] == ["message"]
@@ -104,22 +106,22 @@ def test_set_telegram_webhook_command(monkeypatch):
     rec = RecordingClient()
     monkeypatch.setattr(client_module, "get_client", lambda: rec)
     out = StringIO()
-    call_command("set_telegram_webhook", "--base-url", "https://api.habi.uz", stdout=out)
-    assert rec.calls == [("set", "https://api.habi.uz/api/v1/telegram/webhook", WEBHOOK_SECRET)]
+    call_command("set_telegram_webhook", "--base-url", "https://api.parkbor.uz", stdout=out)
+    assert rec.calls == [("set", "https://api.parkbor.uz/api/v1/telegram/webhook", WEBHOOK_SECRET)]
     assert WEBHOOK_SECRET not in out.getvalue()
 
 
 def test_set_telegram_webhook_requires_https(monkeypatch):
     monkeypatch.setattr(client_module, "get_client", lambda: RecordingClient())
     with pytest.raises(CommandError):
-        call_command("set_telegram_webhook", "--base-url", "http://api.habi.uz")
+        call_command("set_telegram_webhook", "--base-url", "http://api.parkbor.uz")
 
 
 def test_set_telegram_webhook_requires_secret(monkeypatch, settings):
     settings.TELEGRAM_WEBHOOK_SECRET = ""
     monkeypatch.setattr(client_module, "get_client", lambda: RecordingClient())
     with pytest.raises(CommandError):
-        call_command("set_telegram_webhook", "--base-url", "https://api.habi.uz")
+        call_command("set_telegram_webhook", "--base-url", "https://api.parkbor.uz")
 
 
 def test_set_telegram_webhook_delete(monkeypatch):

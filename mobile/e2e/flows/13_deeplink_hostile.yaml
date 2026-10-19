@@ -1,0 +1,60 @@
+# Hostile / malformed links must never open private screens, trust a status in the URL or crash the
+# app. Expected landing per ARCHITECTURE 13.x: bad booking ids -> bookings list; unknown paths ->
+# a safe screen (OBSERVED today: expo-router's default "Unmatched Route" page, because app/ has no
+# +not-found.tsx - see TESTID_REQUESTS.md item N1).
+appId: uz.parkbor.app
+name: Hostile and malformed deep links
+tags:
+  - full
+  - security
+  - needs-hook
+---
+- runFlow: ../subflows/launch_fresh.yaml
+- runFlow:
+    file: ../subflows/login_seeded.yaml
+    env:
+      ROLE: driver
+      INDEX: "3"
+# --- bad booking ids: refused, user lands on the bookings list
+- openLink: parkbor://booking/not-a-uuid
+- extendedWaitUntil:
+    visible: "My bookings"
+    timeout: 20000
+- assertNotVisible: "Booking QR code"
+- openLink: parkbor://booking/00000000-0000-0000-0000-00000000000g
+- extendedWaitUntil:
+    visible: "My bookings"
+    timeout: 20000
+- openLink: parkbor://booking/11111111-2222-4333-8444-555555555555/cancel
+- runFlow: ../subflows/assert_safe_landing.yaml
+- openLink: parkbor://booking/%2e%2e%2fme
+- runFlow: ../subflows/assert_safe_landing.yaml
+- openLink: parkbor://booking/../x
+- runFlow: ../subflows/assert_safe_landing.yaml
+# --- unknown host / path / scheme smuggling
+- openLink: parkbor://evil
+- runFlow: ../subflows/assert_safe_landing.yaml
+- openLink: parkbor://evil/booking/11111111-2222-4333-8444-555555555555
+- runFlow: ../subflows/assert_safe_landing.yaml
+- openLink: parkbor://https://evil.example/login
+- runFlow: ../subflows/assert_safe_landing.yaml
+# --- a "success" in the payment return link is never believed
+- openLink: parkbor://payment/result?status=success&amount=100&id=11111111-2222-4333-8444-555555555555
+- extendedWaitUntil:
+    visible: "Could not check the status|Payment not accepted|Payment not confirmed yet|Checking your payment.*|My bookings"
+    timeout: 30000
+- assertNotVisible: "Payment received"
+# --- an https link is not handled by the app (no app links are configured): the app stays as it was.
+# On Android this opens the browser; the flow returns to the app and checks it is still signed in.
+- openLink:
+    link: https://parkbor.uz/booking/11111111-2222-4333-8444-555555555555
+    autoVerify: false
+    browser: false
+- launchApp:
+    appId: uz.parkbor.app
+    stopApp: false
+- runFlow: ../subflows/assert_safe_landing.yaml
+- openLink: parkbor:///
+- extendedWaitUntil:
+    visible: "Nearby parking lots"
+    timeout: 20000

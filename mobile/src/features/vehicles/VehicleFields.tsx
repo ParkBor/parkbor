@@ -34,6 +34,7 @@ export function VehicleFields({
     <View style={styles.root}>
       <Text style={{ color: p.text }}>{t('vehicles.plate')}</Text>
       <TextInput
+        testID="vehicle-plate-input"
         value={plate}
         onChangeText={onPlateChange}
         onBlur={() => {

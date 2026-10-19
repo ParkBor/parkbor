@@ -87,7 +87,7 @@ export function MapScreen() {
     router.push({ pathname: '/parking/[id]', params: { id: parking.id } });
 
   return (
-    <View style={[styles.root, { backgroundColor: p.background }]}>
+    <View testID="map-screen" style={[styles.root, { backgroundColor: p.background }]}>
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}

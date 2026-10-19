@@ -381,7 +381,7 @@ class TestPaymentUrl:
             "merchant_id": ["46"],
             "amount": ["12000.00"],
             "transaction_param": [str(booking.pk)],
-            "return_url": ["https://habi.test/payment-return"],
+            "return_url": ["https://parkbor.test/payment-return"],
         }
 
     def test_secrets_are_not_in_the_url(self, click, booking):

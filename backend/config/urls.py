@@ -3,11 +3,12 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.permissions import AllowAny
 
-from .health import health
+from .health import HealthView, LiveView
 
 # No "admin/" route: the admin panel is the React app.
 urlpatterns = [
-    path("health", health, name="health"),
+    path("health", HealthView.as_view(), name="health"),
+    path("health/live", LiveView.as_view(), name="health-live"),
     path("api/v1/", include("config.api_urls")),
 ]
 

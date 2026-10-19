@@ -1,5 +1,6 @@
-# Habi — avtoturargoh bron qilish tizimi
+# ParkBor — avtoturargoh bron qilish tizimi
 To‘liq arxitektura: docs/ARCHITECTURE.md. Unga zid ish qilma; o‘zgartirish kerak bo‘lsa, avval hujjatni yangila.
+Brend: mobil ilova "ParkBor" (haydovchilar va darvoza operatorlari), veb "ParkBor CRM" (avtoturargoh egalari va adminlar). Logotip va palitra: docs/brand/. Ichki nomlar (papkalar, @habi/* paketlari, env o‘zgaruvchilari) "habi" bo‘lib qoladi.
 
 ## Tuzilma
 - backend/ — Django 5 + DRF + GeoDjango + Channels + Celery (Python 3.12)

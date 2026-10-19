@@ -1,15 +1,17 @@
 import type { AdminBookingDetail, AdminPayment, AdminRefund, BookingEventRow } from '@habi/api-client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button, Descriptions, Input, Modal, Result, Space, Table, Typography, message } from 'antd'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can } from '../components/Can'
-import { QueryError } from '../components/QueryError'
+import { ListError } from '../components/ListError'
 import { StatusTag } from '../components/StatusTag'
 import { adminApi } from '../lib/api'
 import { errorText } from '../lib/errorText'
-import { formatDateTime, formatMoney, isUuid, safeText } from '../lib/format'
+import { actorLabel } from '../lib/actorLabel'
+import { formatDateTime, formatMoney, isUuid, safeText, shortId } from '../lib/format'
+import { useSingleFlight } from '../lib/useSingleFlight'
 
 const CANCELLABLE = ['PENDING_PAYMENT', 'CONFIRMED']
 const MAX_REASON = 200
@@ -26,52 +28,56 @@ function BookingDetail({ id }: { id: string }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [reason, setReason] = useState('')
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const singleFlight = useSingleFlight()
+  // Set when this dialog's cancel succeeded: a late second click (fast server) must not repeat it.
+  const cancelDone = useRef(false)
   const query = useQuery({ queryKey: ['booking', id], queryFn: () => adminApi.bookings.get(id) })
   const cancel = useMutation({
     mutationFn: () => adminApi.bookings.cancel(id, reason.trim() ? { reason: reason.trim() } : {}),
     onSuccess: () => {
       void message.success(t('bookings.cancelled'))
       setReason('')
+      cancelDone.current = true
+      setCancelOpen(false)
       void queryClient.invalidateQueries({ queryKey: ['booking', id] })
       void queryClient.invalidateQueries({ queryKey: ['bookings'] })
     },
     onError: (error) => void message.error(errorText(error, t)),
   })
 
-  if (query.isError) return <QueryError error={query.error} onRetry={() => void query.refetch()} />
+  if (query.isError) return <ListError error={query.error} onRetry={() => void query.refetch()} />
   const booking: AdminBookingDetail | undefined = query.data
   if (!booking) return <Typography.Text>{t('common.loading')}</Typography.Text>
   const when = (iso: string | null) => formatDateTime(iso, i18n.language)
+  const payments = Array.isArray(booking.payments) ? booking.payments : []
+  const refunds = Array.isArray(booking.refunds) ? booking.refunds : []
+  const events = Array.isArray(booking.events) ? booking.events : []
+  const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate('/bookings'))
 
-  function confirmCancel() {
-    Modal.confirm({
-      title: t('bookings.cancelTitle'),
-      content: (
-        <Input.TextArea
-          aria-label={t('bookings.cancelReason')}
-          placeholder={t('bookings.cancelReason')}
-          maxLength={MAX_REASON}
-          onChange={(event) => setReason(event.target.value)}
-        />
-      ),
-      okText: t('bookings.cancelConfirm'),
-      cancelText: t('common.cancel'),
-      okButtonProps: { danger: true },
-      onOk: () => cancel.mutateAsync().catch(() => undefined),
-    })
+  function openCancel() {
+    cancelDone.current = false
+    setReason('')
+    setCancelOpen(true)
+  }
+
+  function closeCancel() {
+    if (cancel.isPending) return
+    setReason('')
+    setCancelOpen(false)
   }
 
   return (
     <Space direction="vertical" style={{ width: '100%' }} size="middle">
       <Space style={{ justifyContent: 'space-between', width: '100%' }}>
         <Typography.Title level={3} style={{ margin: 0 }}>
-          {t('bookings.detailTitle')} {booking.id.slice(0, 8)}
+          {t('bookings.detailTitle')} {shortId(booking.id)}
         </Typography.Title>
         <Space>
-          <Button onClick={() => navigate(-1)}>{t('common.back')}</Button>
+          <Button onClick={goBack}>{t('common.back')}</Button>
           {CANCELLABLE.includes(booking.status) ? (
             <Can action="booking.cancel">
-              <Button danger loading={cancel.isPending} onClick={confirmCancel}>
+              <Button danger onClick={openCancel}>
                 {t('bookings.cancel')}
               </Button>
             </Can>
@@ -85,9 +91,9 @@ function BookingDetail({ id }: { id: string }) {
         <Descriptions.Item label={t('bookings.kind')}>
           {t(`bookings.kinds.${booking.kind}`, { defaultValue: safeText(booking.kind, 20) })}
         </Descriptions.Item>
-        <Descriptions.Item label={t('bookings.lot')}>{safeText(booking.parking_lot.name, 80)}</Descriptions.Item>
+        <Descriptions.Item label={t('bookings.lot')}>{safeText(booking.parking_lot?.name, 80)}</Descriptions.Item>
         <Descriptions.Item label={t('bookings.slot')}>
-          {safeText(booking.slot.code, 20)} ({safeText(booking.slot.zone, 40)})
+          {safeText(booking.slot?.code, 20)} ({safeText(booking.slot?.zone, 40)})
         </Descriptions.Item>
         <Descriptions.Item label={t('bookings.plate')}>{safeText(booking.plate_number, 20)}</Descriptions.Item>
         <Descriptions.Item label={t('bookings.provider')}>
@@ -115,7 +121,7 @@ function BookingDetail({ id }: { id: string }) {
         size="small"
         rowKey="id"
         pagination={false}
-        dataSource={booking.payments}
+        dataSource={payments}
         locale={{ emptyText: t('common.noData') }}
         columns={[
           { title: t('payments.provider'), render: (_, p) => safeText(p.provider, 20) },
@@ -131,7 +137,7 @@ function BookingDetail({ id }: { id: string }) {
         size="small"
         rowKey="id"
         pagination={false}
-        dataSource={booking.refunds}
+        dataSource={refunds}
         locale={{ emptyText: t('common.noData') }}
         columns={[
           { title: t('refunds.status'), render: (_, r) => <StatusTag kind="refund" value={r.status} /> },
@@ -147,14 +153,37 @@ function BookingDetail({ id }: { id: string }) {
         size="small"
         rowKey="id"
         pagination={false}
-        dataSource={booking.events}
+        dataSource={events}
         locale={{ emptyText: t('common.noData') }}
         columns={[
           { title: t('bookings.when'), render: (_, e) => when(e.created_at) },
           { title: t('bookings.transition'), render: (_, e) => `${safeText(e.from_status, 20) || '—'} → ${safeText(e.to_status, 20)}` },
           { title: t('bookings.eventReason'), render: (_, e) => safeText(e.reason, 64) },
+          { title: t('bookings.actor'), render: (_, e) => actorLabel(e.actor, t) },
         ]}
       />
+      <Modal
+        open={cancelOpen}
+        title={t('bookings.cancelTitle')}
+        okText={t('bookings.cancelConfirm')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ danger: true, loading: cancel.isPending }}
+        onOk={() =>
+          void singleFlight(() => (cancelDone.current ? undefined : cancel.mutateAsync().catch(() => undefined)))
+        }
+        onCancel={closeCancel}
+        maskClosable={false}
+        destroyOnHidden
+      >
+        <Typography.Paragraph>{t('bookings.cancelRefundNote')}</Typography.Paragraph>
+        <Input.TextArea
+          aria-label={t('bookings.cancelReason')}
+          placeholder={t('bookings.cancelReason')}
+          maxLength={MAX_REASON}
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+        />
+      </Modal>
     </Space>
   )
 }

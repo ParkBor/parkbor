@@ -10,10 +10,12 @@ import { adminApi } from '../lib/api'
 import { errorText } from '../lib/errorText'
 import { fetchAll } from '../lib/fetchAll'
 import type { TariffFormValues } from '../schemas'
+import { useSingleFlight } from '../lib/useSingleFlight'
 
 export default function TariffsPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const singleFlight = useSingleFlight()
   const [lotId, setLotId] = useState<string | undefined>()
 
   const tariffs = useQuery({
@@ -72,7 +74,7 @@ export default function TariffsPage() {
                   render: (_, tariff) => (
                     <Popconfirm
                       title={t('common.confirmDelete')}
-                      onConfirm={() => remove.mutate(tariff.id)}
+                      onConfirm={() => void singleFlight(() => remove.mutateAsync(tariff.id).catch(() => undefined))}
                     >
                       <Button size="small" danger>
                         {t('common.delete')}

@@ -11,6 +11,7 @@ GEO_STUB = True
 ALLOW_SEED = True
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
 DATABASES = {"default": env.db("DATABASE_URL", default="postgis://habi:habi@localhost:5432/habi")}
+DATABASES["default"].setdefault("OPTIONS", {})["connect_timeout"] = 3
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")  # broker + results
 CHANNEL_REDIS_URL = env("CHANNEL_REDIS_URL", default=with_db(REDIS_URL, DB_CHANNELS))
 CACHE_REDIS_URL = env("CACHE_REDIS_URL", default=with_db(REDIS_URL, DB_CACHE))
@@ -28,7 +29,8 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": CACHE_REDIS_URL,
+        "OPTIONS": {"socket_timeout": 2, "socket_connect_timeout": 2},
     }
 }
-HABI_PUBLIC_URL = env("HABI_PUBLIC_URL", default="https://habi.test")
+HABI_PUBLIC_URL = env("HABI_PUBLIC_URL", default="https://parkbor.test")
 CHANNEL_LAYERS = channel_layers(CHANNEL_REDIS_URL)

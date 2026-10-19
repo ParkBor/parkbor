@@ -45,7 +45,7 @@ export default function ProfileTab() {
         <Text style={[styles.rowTitle, { color: p.text }]}>{t('operator.join.link')}</Text>
         <Text style={{ color: p.textMuted }}>{t('operator.join.linkHint')}</Text>
       </Pressable>
-      <Button variant="secondary" label={t('common.logout')} onPress={() => void authStore.getState().logout()} />
+      <Button testID="logout-button" variant="secondary" label={t('common.logout')} onPress={() => void authStore.getState().logout()} />
     </Screen>
   );
 }

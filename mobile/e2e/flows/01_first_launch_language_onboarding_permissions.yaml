@@ -1,0 +1,53 @@
+# First launch -> 3 onboarding slides -> language pick on the login screen -> bot-code login of a
+# NEW account -> profile + first vehicle -> OS permission prompts -> map.
+# Device locale must be en-US (welcome slides follow the device language; README "Device setup").
+appId: uz.parkbor.app
+name: First launch, language pick, onboarding, permissions
+tags:
+  - smoke
+  - needs-testids
+  - needs-hook
+---
+- runFlow:
+    file: ../subflows/launch_fresh.yaml
+    env:
+      LOCATION_PERM: unset
+      NOTIFICATIONS_PERM: unset
+- assertVisible: "Find a free spot fast"
+- assertVisible: "1 / 3"
+- tapOn: "Next"
+- assertVisible: "Book in one tap"
+- assertVisible: "2 / 3"
+- tapOn: "Next"
+- assertVisible: "Route and QR code"
+- assertVisible: "3 / 3"
+# Last slide: Skip is gone, the button reads "Get started".
+- assertNotVisible: "Skip"
+- tapOn: "Get started"
+# Language pick: Russian then back to English (labels are the language names, always the same).
+- assertVisible: "Sign in with Telegram"
+- tapOn: "Русский"
+- assertVisible: "Войти через Telegram"
+- tapOn: "O.zbekcha"
+- assertVisible: "Telegram orqali kirish"
+- tapOn: "English"
+- assertVisible: "Sign in with Telegram"
+- runScript: ../scripts/new_identity.js
+- runFlow:
+    file: ../subflows/login_as.yaml
+    env:
+      LOGIN_TG_ID: ${output.tgId}
+# New account -> profile step. Empty name is refused before anything is sent.
+- extendedWaitUntil:
+    visible: "Let.s get acquainted"
+    timeout: 20000
+- tapOn: "Save"
+- assertVisible: "Name must be at least 2 characters"
+- runFlow:
+    file: ../subflows/onboarding_new_user.yaml
+    env:
+      NAME: Maestro
+      PLATE: ${output.plate}
+      NOTIFICATIONS: allow
+- assertVisible: "Nearby parking lots"
+- takeScreenshot: 01_map_after_onboarding

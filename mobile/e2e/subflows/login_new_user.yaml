@@ -1,0 +1,17 @@
+# Fresh account (new Telegram id + unique plate) through onboarding to the map.
+# Output for the caller: output.tgId, output.plate, output.plateSpaced.
+appId: uz.parkbor.app
+env:
+  NOTIFICATIONS: later
+---
+- runScript: ../scripts/new_identity.js
+- runFlow:
+    file: login_as.yaml
+    env:
+      LOGIN_TG_ID: ${output.tgId}
+- runFlow:
+    file: onboarding_new_user.yaml
+    env:
+      NAME: Maestro
+      PLATE: ${output.plate}
+      NOTIFICATIONS: ${NOTIFICATIONS}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canAccess, can, visibleFeatures } from './rbac'
+import { can, canAccess, isSuperAdmin, visibleFeatures } from './rbac'
 
 describe('canAccess (UI hint only; the server decides)', () => {
   it('lets ADMIN into everything', () => {
@@ -60,5 +60,15 @@ describe('can (write actions)', () => {
   it('denies unknown roles', () => {
     expect(can(null, 'export')).toBe(false)
     expect(can('DRIVER', 'export')).toBe(false)
+  })
+})
+
+describe('isSuperAdmin', () => {
+  it('needs the ADMIN role AND is_superuser from /me', () => {
+    expect(isSuperAdmin({ role: 'ADMIN', is_superuser: true })).toBe(true)
+    expect(isSuperAdmin({ role: 'ADMIN', is_superuser: false })).toBe(false)
+    expect(isSuperAdmin({ role: 'ADMIN' })).toBe(false)
+    expect(isSuperAdmin({ role: 'OWNER', is_superuser: true })).toBe(false)
+    expect(isSuperAdmin(null)).toBe(false)
   })
 })

@@ -2,6 +2,7 @@ import { Button, Result, Space } from 'antd'
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
+import { isChunkLoadError } from '../lib/chunkError'
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -16,14 +17,6 @@ interface BoundaryProps extends ErrorBoundaryProps {
 interface ErrorBoundaryState {
   error: Error | null
   resetKey?: string
-}
-
-const CHUNK_ERROR = /(Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Loading chunk [\w-]+ failed|ChunkLoadError)/i
-
-/** A lazy chunk that no longer exists (new deploy) or could not be fetched. */
-export function isChunkLoadError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false
-  return error.name === 'ChunkLoadError' || CHUNK_ERROR.test(error.message)
 }
 
 class Boundary extends Component<BoundaryProps, ErrorBoundaryState> {

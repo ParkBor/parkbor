@@ -100,3 +100,10 @@ export function metaText(meta: unknown): string {
     return ''
   }
 }
+
+const SHORT_ID_LENGTH = 8
+
+/** First characters of an id for tables; tolerant of missing or odd server values. */
+export function shortId(id: unknown): string {
+  return safeText(id, SHORT_ID_LENGTH * 4).slice(0, SHORT_ID_LENGTH)
+}

@@ -1,32 +1,38 @@
+import type { LotStatus } from '@habi/api-client'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button, Select, Space, Typography, message } from 'antd'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { LotStatus } from '@habi/api-client'
+import { ListError } from '../components/ListError'
 import { ParkingsTable } from '../components/ParkingsTable'
-import { QueryError } from '../components/QueryError'
 import { adminApi } from '../lib/api'
 import { useRole } from '../lib/auth'
 import { errorText } from '../lib/errorText'
 import type { ModerationAction } from '../lib/moderation'
+import { can } from '../lib/rbac'
+import { usePagedQuery } from '../lib/usePagedQuery'
+import { useServerTable } from '../lib/useServerTable'
+import { useSingleFlight } from '../lib/useSingleFlight'
 
 const STATUSES: LotStatus[] = ['PENDING_REVIEW', 'ACTIVE', 'SUSPENDED']
+
+interface Filters {
+  status?: LotStatus
+}
 
 export default function ParkingsListPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const role = useRole()
   const queryClient = useQueryClient()
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [status, setStatus] = useState<LotStatus | undefined>()
+  const table = useServerTable<Filters>({})
+  const { status } = table.filters
 
-  const query = useQuery({
-    queryKey: ['parkings', { page, pageSize, status }],
-    queryFn: () => adminApi.parkings.list({ page, page_size: pageSize, status }),
-  })
+  const query = usePagedQuery(['parkings', { status }], table, (paging) =>
+    adminApi.parkings.list({ ...paging, status }),
+  )
 
+  const singleFlight = useSingleFlight()
   const moderate = useMutation({
     mutationFn: ({ id, action }: { id: string; action: ModerationAction }) =>
       adminApi.parkings[action](id),
@@ -44,12 +50,10 @@ export default function ParkingsListPage() {
           <Select
             allowClear
             placeholder={t('parkings.status')}
+            aria-label={t('parkings.status')}
             style={{ minWidth: 180 }}
             value={status}
-            onChange={(value: LotStatus | undefined) => {
-              setStatus(value)
-              setPage(1)
-            }}
+            onChange={(value: LotStatus | undefined) => table.setFilter('status', value)}
             options={STATUSES.map((s) => ({ value: s, label: t(`parkings.statuses.${s}`) }))}
           />
           <Button type="primary" onClick={() => navigate('/parkings/new')}>
@@ -57,22 +61,19 @@ export default function ParkingsListPage() {
           </Button>
         </Space>
       </Space>
-      {query.isError ? (
-        <QueryError error={query.error} onRetry={() => void query.refetch()} />
-      ) : null}
+      {query.isError ? <ListError error={query.error} onRetry={() => void query.refetch()} /> : null}
       <ParkingsTable
         rows={query.data?.results ?? []}
         total={query.data?.count ?? 0}
-        page={page}
-        pageSize={pageSize}
+        page={table.page}
+        pageSize={table.pageSize}
         isLoading={query.isLoading}
-        canModerate={role === 'ADMIN'}
-        onPageChange={(nextPage, nextSize) => {
-          setPage(nextPage)
-          setPageSize(nextSize)
-        }}
+        canModerate={can(role, 'lot.moderate')}
+        onPageChange={table.setPage}
         onEdit={(id) => navigate(`/parkings/${id}/edit`)}
-        onModerate={(id, action) => moderate.mutate({ id, action })}
+        onModerate={(id, action) =>
+          void singleFlight(() => moderate.mutateAsync({ id, action }).catch(() => undefined))
+        }
       />
     </Space>
   )

@@ -53,7 +53,7 @@ function harness(overrides: { fetchTicket?: () => Promise<string>; refreshAccess
   const refreshAccess = vi.fn(overrides.refreshAccess ?? (async () => true));
 
   const client = createRealtimeClient({
-    wsUrl: 'wss://api.habi.uz/ws',
+    wsUrl: 'wss://api.parkbor.uz/ws',
     fetchTicket,
     openSocket: (url) => {
       const socket = new FakeSocket(url);
@@ -107,7 +107,7 @@ describe('connecting', () => {
     expect(h.client.getStatus()).toBe('connecting');
     await h.flush();
     expect(h.sockets).toHaveLength(1);
-    expect(h.last().url).toBe('wss://api.habi.uz/ws/availability/?ticket=ticket-1-abcdefghijklmnop');
+    expect(h.last().url).toBe('wss://api.parkbor.uz/ws/availability/?ticket=ticket-1-abcdefghijklmnop');
     h.last().receive({ type: 'ready' });
     expect(h.client.getStatus()).toBe('live');
   });

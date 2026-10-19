@@ -20,7 +20,7 @@
     "slideOf": "{{current}} / {{total}}"
   },
   "login": {
-    "title": "Habi",
+    "title": "ParkBor",
     "subtitle": "Find a spot and book it in one tap",
     "telegramButton": "Sign in with Telegram",
     "terms": "By signing in you agree to the terms",
@@ -43,7 +43,7 @@
     "verifying": "Checking…",
     "startOver": "Start over",
     "attemptsLeft": "Attempts left: {{count}}",
-    "phishingWarning": "Only enter this code for a sign-in you just started in this app. Never share it with anyone, even if they claim to be Habi staff.",
+    "phishingWarning": "Only enter this code for a sign-in you just started in this app. Never share it with anyone, even if they claim to be ParkBor staff.",
     "pasteButton": "Paste from clipboard",
     "pasteEmpty": "No 6-digit code found in the clipboard."
   },
@@ -645,7 +645,7 @@
       "hintEntry": "Point at the driver’s entry QR",
       "hintExit": "Point at the driver’s exit QR",
       "checking": "Checking…",
-      "badQr": "This is not a Habi QR code.",
+      "badQr": "This is not a ParkBor QR code.",
       "next": "Scan next",
       "retry": "Try again",
       "retryIn": "You can retry in {{seconds}} s",
@@ -793,5 +793,10 @@
     "a11y": {
       "result": "Result: {{tone}}. {{reason}}"
     }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "text": "This link does not lead anywhere in ParkBor.",
+    "back": "Go to the app"
   }
 }

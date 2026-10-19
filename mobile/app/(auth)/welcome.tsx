@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { BrandLogo } from '@/components/BrandLogo';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { usePalette } from '@/theme/theme';
@@ -38,8 +39,11 @@ export default function WelcomeScreen() {
 
   return (
     <Screen>
-      <View style={styles.skipRow}>
-        {!isLast && <Button variant="secondary" label={t('common.skip')} onPress={goLogin} />}
+      <View style={styles.header}>
+        <BrandLogo variant="full" width={170} />
+        <View style={styles.skipRow}>
+          {!isLast && <Button variant="secondary" label={t('common.skip')} onPress={goLogin} />}
+        </View>
       </View>
       <ScrollView
         ref={scrollRef}
@@ -70,7 +74,8 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  skipRow: { minHeight: 48, alignItems: 'flex-end' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 56 },
+  skipRow: { minHeight: 48, alignItems: 'flex-end', justifyContent: 'center' },
   slides: { flex: 1 },
   slide: { justifyContent: 'center', gap: 16 },
   title: { fontSize: 28, fontWeight: '700' },

@@ -97,7 +97,7 @@ describe('classifyTicketError', () => {
 
 describe('socketUrl', () => {
   it('builds <ws>/availability/?ticket=<ticket>', () => {
-    expect(socketUrl('wss://api.habi.uz/ws', TICKET)).toBe(`wss://api.habi.uz/ws/availability/?ticket=${TICKET}`);
+    expect(socketUrl('wss://api.parkbor.uz/ws', TICKET)).toBe(`wss://api.parkbor.uz/ws/availability/?ticket=${TICKET}`);
   });
 
   it('tolerates a trailing slash in the base URL', () => {

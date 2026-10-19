@@ -6,8 +6,6 @@ audit`` writes it inside the caller's transaction), so a change without a record
 
 import logging
 
-from django.conf import settings
-from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
@@ -79,7 +77,10 @@ def _check_actor_may_touch(actor: User, target: User, new_role: str | None) -> N
 
 
 def _active_admins_left(excluding: User) -> bool:
-    return User.objects.filter(role=ADMIN, is_active=True).exclude(pk=excluding.pk).exists()
+    """Locks every active ADMIN row first, so two concurrent demotions cannot both see "the other
+    one is still there" and leave nobody."""
+    others = User.objects.select_for_update().filter(role=ADMIN, is_active=True)
+    return bool(list(others.exclude(pk=excluding.pk).values_list("pk", flat=True)))
 
 
 def _end_operator_assignments(user: User, actor: User) -> None:
@@ -152,25 +153,24 @@ def update_user(*, actor: User, user_id, role: str | None = None, is_active: boo
 
 def validate_settings(values: dict[str, int]) -> None:
     """Ranges and cross-field rules over the COMPLETE set of values."""
-    for key, (_, low, high) in conf.EDITABLE_SETTINGS.items():
-        value = values[key]
-        if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
-            raise DomainValidationError(f"{key} must be an integer from {low} to {high}.")
-    if values["cancel_late_percent"] > values["cancel_full_percent"]:
-        raise DomainValidationError("cancel_late_percent must not exceed cancel_full_percent.")
-    if values["cancel_after_start_percent"] > values["cancel_late_percent"]:
-        raise DomainValidationError(
-            "cancel_after_start_percent must not exceed cancel_late_percent."
-        )
+    error = conf.invariant_error(values)
+    if error:
+        code, text = error
+        raise DomainValidationError(text, code)
 
 
 def _current_values() -> dict[str, int]:
     """Effective values read from the database (never the cache: this runs under the lock)."""
-    rows = dict(BookingSetting.objects.select_for_update().values_list("key", "value"))
-    return {
-        key: rows.get(key, getattr(settings, name))
-        for key, (name, _, _) in conf.EDITABLE_SETTINGS.items()
-    }
+    rows = dict(BookingSetting.objects.values_list("key", "value"))
+    return {**conf.env_defaults(), **{k: v for k, v in rows.items() if k in conf.EDITABLE_SETTINGS}}
+
+
+def _lock_settings() -> None:
+    """Serialise every settings update on one sentinel row (it also exists on a fresh install, when
+    there are no override rows to lock yet), so two concurrent PATCHes cannot each pass the
+    cross-field check and together store an inconsistent set. A no-op on SQLite."""
+    BookingSetting.objects.get_or_create(key=conf.LOCK_KEY, defaults={"value": 0})
+    BookingSetting.objects.select_for_update().get(key=conf.LOCK_KEY)
 
 
 @booking_services.retrying
@@ -180,6 +180,7 @@ def update_settings(*, actor: User, changes: dict[str, int]) -> dict[str, int]:
     unknown = sorted(set(changes) - set(conf.EDITABLE_SETTINGS))
     if unknown:
         raise DomainValidationError(f"Unknown setting: {', '.join(unknown)}.")
+    _lock_settings()
     current = _current_values()
     merged = {**current, **changes}
     validate_settings(merged)
@@ -196,7 +197,7 @@ def update_settings(*, actor: User, changes: dict[str, int]) -> dict[str, int]:
             before={key: current[key] for key in changed},
             after=dict(changed),
         )
-        cache.delete(conf.OVERRIDES_CACHE_KEY)
-        transaction.on_commit(lambda: cache.delete(conf.OVERRIDES_CACHE_KEY))
+        conf.invalidate_overrides()
+        transaction.on_commit(conf.invalidate_overrides)
         logger.info("booking settings changed: %s", ", ".join(sorted(changed)))
     return merged

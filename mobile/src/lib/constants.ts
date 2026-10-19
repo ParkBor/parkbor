@@ -1,1 +1,1 @@
-export const APP_NAME = 'Habi';
+export const APP_NAME = 'ParkBor';

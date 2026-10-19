@@ -20,9 +20,10 @@ function envOrDevDefault(name: string, devDefault: string): string {
 }
 
 const config: ExpoConfig = {
-  name: 'Habi',
-  slug: 'habi',
-  scheme: 'habi',
+  name: 'ParkBor',
+  slug: 'parkbor',
+  // Deep links: parkbor://booking/<uuid>, parkbor://payment/result (the old habi:// scheme is NOT accepted).
+  scheme: 'parkbor',
   version: '0.1.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
@@ -30,13 +31,15 @@ const config: ExpoConfig = {
   // Localised iOS permission prompts (the expo-location plugin text below is the Uzbek default).
   locales: { ru: './locales/ru.json', en: './locales/en.json' },
   ios: {
-    bundleIdentifier: 'uz.habi.app',
+    // Placeholder identifiers: the owner may change them (here and in the EAS / store consoles) until the first
+    // store release; after that they are permanent. See docs/brand/README.md.
+    bundleIdentifier: 'uz.parkbor.app',
     // External navigators are detected with Linking.canOpenURL: iOS only answers for declared
     // schemes. Apple Maps (https://maps.apple.com) needs no entry.
     infoPlist: { LSApplicationQueriesSchemes: ['yandexnavi', 'comgooglemaps'] },
   },
   android: {
-    package: 'uz.habi.app',
+    package: 'uz.parkbor.app',
     // Tokens live in the Keystore-backed SecureStore; do not let adb/cloud backup copy app data.
     allowBackup: false,
     // Android uses Google Maps (iOS uses Apple Maps). The key is public-by-design but restricted
@@ -46,6 +49,7 @@ const config: ExpoConfig = {
       googleMaps: { apiKey: resolveGoogleMapsKey(process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY, isProduction) },
     },
     adaptiveIcon: {
+      backgroundColor: '#FFFFFF',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -78,30 +82,32 @@ const config: ExpoConfig = {
     [
       'expo-camera',
       {
-        cameraPermission: 'Habi kameradan faqat kirish va chiqishda QR kodlarni o‘qish uchun foydalanadi. Tasvir saqlanmaydi.',
+        cameraPermission: 'ParkBor kameradan faqat kirish va chiqishda QR kodlarni o‘qish uchun foydalanadi. Tasvir saqlanmaydi.',
         microphonePermission: false,
         recordAudioAndroid: false,
       },
     ],
     [
       'expo-location',
-      { locationWhenInUsePermission: 'Habi yaqin atrofdagi avtoturargohlarni ko‘rsatish uchun joylashuvingizdan foydalanadi.' },
+      { locationWhenInUsePermission: 'ParkBor yaqin atrofdagi avtoturargohlarni ko‘rsatish uchun joylashuvingizdan foydalanadi.' },
     ],
     [
       'expo-splash-screen',
       {
         image: './assets/images/splash-icon.png',
-        imageWidth: 200,
+        imageWidth: 240,
         resizeMode: 'contain',
-        backgroundColor: '#ffffff',
+        // The wordmark's dark blue "Park" needs a light ground, so there is no dark splash variant.
+        backgroundColor: '#FFFFFF',
       },
     ],
   ],
+  web: { favicon: './assets/images/favicon.png' },
   experiments: { typedRoutes: true },
   extra: {
     apiUrl: envOrDevDefault('EXPO_PUBLIC_API_URL', 'http://localhost:8000/api/v1'),
     wsUrl: envOrDevDefault('EXPO_PUBLIC_WS_URL', 'ws://localhost:8000/ws'),
-    telegramBot: envOrDevDefault('EXPO_PUBLIC_TELEGRAM_BOT', 'habi_dev_bot'),
+    telegramBot: envOrDevDefault('EXPO_PUBLIC_TELEGRAM_BOT', 'parkbor_dev_bot'),
     // EAS project id: getExpoPushTokenAsync needs it. Without it the app simply does not register for push.
     ...(process.env.EXPO_PUBLIC_EAS_PROJECT_ID ? { eas: { projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID } } : {}),
     // Payme test checkout (test.paycom.uz) is accepted only when this is true. Never in production:

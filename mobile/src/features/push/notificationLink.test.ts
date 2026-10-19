@@ -11,37 +11,38 @@ import {
 const ID = 'e4d0c1de-1111-4222-8333-444455556666';
 
 describe('bookingIdFromUrl (push data.url is untrusted)', () => {
-  it('accepts exactly habi://booking/<uuid>', () => {
-    expect(bookingIdFromUrl(`habi://booking/${ID}`)).toBe(ID);
-    expect(bookingIdFromUrl(`habi://booking/${ID}/`)).toBe(ID);
-    expect(bookingIdFromUrl(`HABI://booking/${ID}`)).toBe(ID);
+  it('accepts exactly parkbor://booking/<uuid>', () => {
+    expect(bookingIdFromUrl(`parkbor://booking/${ID}`)).toBe(ID);
+    expect(bookingIdFromUrl(`parkbor://booking/${ID}/`)).toBe(ID);
+    expect(bookingIdFromUrl(`PARKBOR://booking/${ID}`)).toBe(ID);
   });
 
   it.each([
     ['another scheme', `https://booking/${ID}`],
-    ['a web universal link', `https://habi.uz/b/${ID}`],
+    ['a web universal link', `https://parkbor.uz/b/${ID}`],
     ['javascript scheme', `javascript:alert(1)//${ID}`],
-    ['another host', `habi://payment/${ID}`],
-    ['another host that merely contains booking', `habi://evil.com/booking/${ID}`],
-    ['userinfo smuggling', `habi://booking@evil.com/${ID}`],
-    ['path suffix', `habi://booking/${ID}/cancel`],
-    ['query', `habi://booking/${ID}?next=/operator`],
-    ['fragment', `habi://booking/${ID}#x`],
-    ['traversal', 'habi://booking/../me'],
-    ['not a uuid', 'habi://booking/123'],
-    ['empty id', 'habi://booking/'],
-    ['no id', 'habi://booking'],
-    ['extra leading space', ` habi://booking/${ID}`],
-    ['newline', `habi://booking/${ID}\n`],
-    ['encoded slash', `habi://booking/${ID}%2Fcancel`],
-    ['huge string', `habi://booking/${ID}${'a'.repeat(5000)}`],
+    ['the retired habi:// scheme', `habi://booking/${ID}`],
+    ['another host', `parkbor://payment/${ID}`],
+    ['another host that merely contains booking', `parkbor://evil.com/booking/${ID}`],
+    ['userinfo smuggling', `parkbor://booking@evil.com/${ID}`],
+    ['path suffix', `parkbor://booking/${ID}/cancel`],
+    ['query', `parkbor://booking/${ID}?next=/operator`],
+    ['fragment', `parkbor://booking/${ID}#x`],
+    ['traversal', 'parkbor://booking/../me'],
+    ['not a uuid', 'parkbor://booking/123'],
+    ['empty id', 'parkbor://booking/'],
+    ['no id', 'parkbor://booking'],
+    ['extra leading space', ` parkbor://booking/${ID}`],
+    ['newline', `parkbor://booking/${ID}\n`],
+    ['encoded slash', `parkbor://booking/${ID}%2Fcancel`],
+    ['huge string', `parkbor://booking/${ID}${'a'.repeat(5000)}`],
     ['empty', ''],
   ])('rejects %s', (_name, url) => {
     expect(bookingIdFromUrl(url)).toBeNull();
   });
 
   it('rejects non-strings', () => {
-    for (const value of [undefined, null, 5, {}, [], [`habi://booking/${ID}`]]) {
+    for (const value of [undefined, null, 5, {}, [], [`parkbor://booking/${ID}`]]) {
       expect(bookingIdFromUrl(value)).toBeNull();
     }
   });
@@ -49,13 +50,13 @@ describe('bookingIdFromUrl (push data.url is untrusted)', () => {
 
 describe('bookingIdFromNotificationData', () => {
   it('reads data.url', () => {
-    expect(bookingIdFromNotificationData({ url: `habi://booking/${ID}` })).toBe(ID);
+    expect(bookingIdFromNotificationData({ url: `parkbor://booking/${ID}` })).toBe(ID);
   });
 
   it('ignores everything else, including a bare booking_id field', () => {
     expect(bookingIdFromNotificationData({ booking_id: ID })).toBeNull();
     expect(bookingIdFromNotificationData(null)).toBeNull();
-    expect(bookingIdFromNotificationData('habi://booking/' + ID)).toBeNull();
+    expect(bookingIdFromNotificationData('parkbor://booking/' + ID)).toBeNull();
     expect(bookingIdFromNotificationData({ url: 5 })).toBeNull();
   });
 });

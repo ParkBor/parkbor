@@ -1,0 +1,54 @@
+# Logout ends the session AND wipes what belongs to it (tokens, cached QR, query cache): a relaunch
+# stays signed out, and the next account cannot reach the previous account's booking.
+appId: uz.parkbor.app
+name: Logout clears session and cached data
+tags:
+  - smoke
+  - needs-hook
+---
+- runFlow: ../subflows/launch_fresh.yaml
+- runFlow:
+    file: ../subflows/login_seeded.yaml
+    env:
+      ROLE: driver
+      INDEX: "4"
+- runScript:
+    file: ../scripts/hook_call.js
+    env:
+      HOOK_PATH: /paid-booking
+      HOOK_BODY: '{"driver_index": 4, "lot": "payments", "start_in_min": 60, "hours": 1}'
+- evalScript: ${output.bookingOfFour = output.hook.booking_id}
+- openLink: parkbor://booking/${output.bookingOfFour}
+- extendedWaitUntil:
+    visible: "Booking QR code"
+    timeout: 20000
+- tapOn: "Back"
+- tapOn: "Profile"
+- tapOn: "Log out"
+- extendedWaitUntil:
+    visible: "Skip|Get started"
+    timeout: 20000
+- assertNotVisible: "Booking QR code"
+# Relaunch WITHOUT clearing data: still signed out.
+- launchApp:
+    appId: uz.parkbor.app
+    stopApp: true
+- runFlow:
+    when:
+      true: ${typeof E2E_DEV_CLIENT !== 'undefined' && E2E_DEV_CLIENT == 'true'}
+    file: ../subflows/connect_dev_client.yaml
+- extendedWaitUntil:
+    visible: "Skip|Get started|Sign in with Telegram"
+    timeout: 30000
+- assertNotVisible: "Nearby parking lots"
+# Another account opens the first account's booking: refused, no QR from a leftover cache.
+- runFlow:
+    file: ../subflows/login_seeded.yaml
+    env:
+      ROLE: driver
+      INDEX: "7"
+- openLink: parkbor://booking/${output.bookingOfFour}
+- extendedWaitUntil:
+    visible: "Not found. It may have been removed or may not belong to you."
+    timeout: 20000
+- assertNotVisible: "Booking QR code"

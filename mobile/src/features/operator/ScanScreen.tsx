@@ -192,6 +192,7 @@ function ScanBody({ focus, access, mode, onRequestPermission }: ScanBodyProps) {
           )}
           {plateCheck.enabled ? (
             <PlateField
+              testID="scan-plate-input"
               label={t('operator.scan.plateLabel')}
               value={plateText}
               onChange={setPlateText}
@@ -242,6 +243,7 @@ function ScanBody({ focus, access, mode, onRequestPermission }: ScanBodyProps) {
         <View style={styles.plate}>
           <Text style={{ color: p.textMuted }}>{t('operator.scan.manualQrHint')}</Text>
           <TextInput
+            testID="operator-qr-manual-input"
             accessibilityLabel={t('operator.scan.manualQrLabel')}
             value={manualText}
             onChangeText={setManualText}

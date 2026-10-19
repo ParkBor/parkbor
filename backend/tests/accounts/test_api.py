@@ -94,7 +94,7 @@ def test_me_get_returns_profile(user):
     assert body["role"] == "DRIVER"
     assert body["language"] == "uz"
     assert "password" not in body
-    assert "is_superuser" not in body
+    assert body["is_superuser"] is False  # exposed read-only for the admin UI (Step 11b)
 
 
 def test_inactive_user_token_rejected(user):

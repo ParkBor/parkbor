@@ -1,6 +1,7 @@
 import { Alert, Button } from 'antd'
 import { useTranslation } from 'react-i18next'
-import { describeError, isNotFound } from '../lib/errors'
+import { errorText } from '../lib/errorText'
+import { isNotFound } from '../lib/errors'
 
 interface QueryErrorProps {
   error: unknown

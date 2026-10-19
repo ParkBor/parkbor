@@ -4,7 +4,6 @@ import type {
   BookingListParams,
   BookingStatus,
 } from '@habi/api-client'
-import { useQuery } from '@tanstack/react-query'
 import { Input, Select, Space, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
@@ -12,8 +11,9 @@ import { Link } from 'react-router-dom'
 import { adminApi } from '../lib/api'
 import type { ExportColumn } from '../lib/exportXlsx'
 import { fetchAll } from '../lib/fetchAll'
-import { formatDateTime, formatMoney, safeText } from '../lib/format'
+import { formatDateTime, formatMoney, isUuid, safeText, shortId } from '../lib/format'
 import { type DayRange, toRangeParams } from '../lib/time'
+import { usePagedQuery } from '../lib/usePagedQuery'
 import { useServerTable } from '../lib/useServerTable'
 import { DayRangeFilter } from './DayRangeFilter'
 import { ExportButton } from './ExportButton'
@@ -66,18 +66,18 @@ export function BookingsView({ title, preset, exportName }: BookingsViewProps) {
   const table = useServerTable<Filters>({ search: '', range: null })
   const params = toParams(table.filters, preset)
 
-  const query = useQuery({
-    queryKey: ['bookings', params, table.page, table.pageSize],
-    queryFn: () => adminApi.bookings.list({ ...params, page: table.page, page_size: table.pageSize }),
-  })
+  const query = usePagedQuery(['bookings', params], table, (paging) =>
+    adminApi.bookings.list({ ...params, ...paging }),
+  )
 
   const columns: ColumnsType<AdminBooking> = [
     {
       title: t('bookings.id'),
       key: 'id',
-      render: (_, row) => <Link to={`/bookings/${encodeURIComponent(row.id)}`}>{row.id.slice(0, 8)}</Link>,
+      render: (_, row) =>
+        isUuid(row.id) ? <Link to={`/bookings/${row.id}`}>{shortId(row.id)}</Link> : shortId(row.id),
     },
-    { title: t('bookings.lot'), key: 'lot', render: (_, row) => safeText(row.parking_lot.name, 80) },
+    { title: t('bookings.lot'), key: 'lot', render: (_, row) => safeText(row.parking_lot?.name, 80) },
     { title: t('bookings.plate'), key: 'plate', render: (_, row) => safeText(row.plate_number, 20) },
     {
       title: t('bookings.status'),
@@ -114,7 +114,7 @@ export function BookingsView({ title, preset, exportName }: BookingsViewProps) {
 
   const exportColumns: ExportColumn<AdminBooking>[] = [
     { header: t('bookings.id'), value: (row) => row.id },
-    { header: t('bookings.lot'), value: (row) => row.parking_lot.name },
+    { header: t('bookings.lot'), value: (row) => row.parking_lot?.name },
     { header: t('bookings.plate'), value: (row) => row.plate_number },
     { header: t('bookings.status'), value: (row) => row.status },
     { header: t('bookings.start'), value: (row) => formatDateTime(row.start, i18n.language) },
@@ -152,11 +152,11 @@ export function BookingsView({ title, preset, exportName }: BookingsViewProps) {
           options={KINDS.map((k) => ({ value: k, label: t(`bookings.kinds.${k}`) }))}
         />
         <ParkingSelect value={table.filters.parking_lot} onChange={(id) => table.setFilter('parking_lot', id)} />
-        <DayRangeFilter value={table.filters.range} onChange={(range) => table.setFilter('range', range)} />
+        <DayRangeFilter basis="starts" value={table.filters.range} onChange={(range) => table.setFilter('range', range)} />
         <Input.Search
           allowClear
           placeholder={t('bookings.plate')}
-          aria-label={t('common.search')}
+          aria-label={t('bookings.plate')}
           style={{ width: 180 }}
           onSearch={(value) => table.setFilter('search', value)}
         />

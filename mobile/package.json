@@ -11,7 +11,11 @@
     "typecheck": "tsc --noEmit",
     "update:production": "node scripts/update-production.js",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "e2e": "maestro test e2e",
+    "e2e:smoke": "maestro test --include-tags=smoke e2e",
+    "e2e:ios": "maestro test --exclude-tags=android e2e",
+    "e2e:validate": "python e2e/scripts/validate_flows.py"
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.2.14",

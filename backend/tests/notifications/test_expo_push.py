@@ -12,7 +12,7 @@ from apps.notifications.channels.expo_push import PushMessage, PushOutcome
 TOKEN = "ExponentPushToken[abc_DEF-123]"
 
 
-def message(token=TOKEN, title="Title", body="Body", url="habi://booking/x"):
+def message(token=TOKEN, title="Title", body="Body", url="parkbor://booking/x"):
     return PushMessage(token=token, title=title, body=body, data={"url": url})
 
 
@@ -60,7 +60,7 @@ def test_a_message_is_sent_to_the_expo_endpoint(http, settings):
             "to": TOKEN,
             "title": "Title",
             "body": "Body",
-            "data": {"url": "habi://booking/x"},
+            "data": {"url": "parkbor://booking/x"},
             "sound": "default",
             "priority": "high",
         }

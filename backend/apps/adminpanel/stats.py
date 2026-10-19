@@ -6,7 +6,10 @@ Definitions (also in the doc):
 * ``revenue`` = online payments (PAID / REFUNDED) by ``performed_at``, net of the refunded amount.
   Cash taken at the gate (walk-ins, overstay) is not included.
 * ``bookings_today`` = bookings created today that are not unpaid / expired.
-* ``occupancy`` = OCCUPIED + RESERVED slots of ACTIVE lots, share of all their slots.
+* ``occupancy`` = OCCUPIED + RESERVED slots of ACTIVE lots, share of their WORKING slots (slots
+  that are OUT_OF_SERVICE are in neither the numerator nor ``total_slots``).
+* ``from`` / ``to`` are rounded to Asia/Tashkent calendar days: the day of ``from`` through the
+  day before ``to`` (``to`` is exclusive).
 """
 
 from dataclasses import dataclass
@@ -14,8 +17,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from zoneinfo import ZoneInfo
 
-from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, QuerySet, Sum, Value
-from django.db.models.functions import Coalesce, TruncDate
+from django.db.models import Count, Q, QuerySet
 from django.utils import timezone
 
 from apps.bookings.models import Booking
@@ -23,9 +25,7 @@ from apps.bookings.state import BookingStatus, OverstayStatus
 from apps.core.exceptions import DomainValidationError
 from apps.core.permissions import is_owner, is_super_admin
 from apps.parking.models import LotStatus, ParkingLot, Slot, SlotStatus
-from apps.payments.models import Payment, PaymentStatus, Refund
-
-from . import selectors
+from apps.payments import admin_api as payments_api
 
 TASHKENT = ZoneInfo("Asia/Tashkent")
 MAX_REVENUE_DAYS = 92
@@ -35,10 +35,6 @@ CENT = Decimal("0.01")
 ZERO = Decimal("0.00")
 OCCUPIED_STATES = (SlotStatus.OCCUPIED, SlotStatus.RESERVED)
 NOT_DEMAND = (BookingStatus.PENDING_PAYMENT, BookingStatus.EXPIRED)
-PAID_STATES = (PaymentStatus.PAID, PaymentStatus.REFUNDED)
-NET_AMOUNT = ExpressionWrapper(
-    F("amount") - F("refunded_amount"), output_field=DecimalField(max_digits=14, decimal_places=2)
-)
 
 
 def money(value) -> str:
@@ -96,22 +92,16 @@ def overview(scope: Scope, now: datetime | None = None) -> dict:
         active=Count("id", filter=Q(status__in=(BookingStatus.ACTIVE, BookingStatus.OVERSTAY))),
         overstay_due=Count("id", filter=Q(overstay_status=OverstayStatus.DUE)),
     )
-    revenue = Payment.objects.filter(
-        booking__slot__zone__parking_lot__in=scope.ids,
-        status__in=PAID_STATES,
-        performed_at__gte=month_start,
-        performed_at__lt=tomorrow_start,
-    ).aggregate(
-        today=Coalesce(Sum(NET_AMOUNT, filter=Q(performed_at__gte=today_start)), Value(ZERO)),
-        month=Coalesce(Sum(NET_AMOUNT), Value(ZERO)),
+    revenue = payments_api.revenue_totals(
+        scope.ids, since=month_start, until=tomorrow_start, today_since=today_start
     )
     active_lots = scope.lots.filter(status=LotStatus.ACTIVE).values("pk")
-    slots = Slot.objects.filter(zone__parking_lot__in=active_lots).aggregate(
-        total=Count("id"), occupied=Count("id", filter=Q(status__in=OCCUPIED_STATES))
+    slots = (
+        Slot.objects.filter(zone__parking_lot__in=active_lots)
+        .exclude(status=SlotStatus.OUT_OF_SERVICE)
+        .aggregate(total=Count("id"), occupied=Count("id", filter=Q(status__in=OCCUPIED_STATES)))
     )
-    refunds = Refund.objects.filter(
-        selectors.needs_attention_q(), booking__slot__zone__parking_lot__in=scope.ids
-    ).count()
+    refunds = payments_api.attention_count(scope.ids)
     return {
         "bookings_today": bookings["today"],
         "bookings_active": bookings["active"],
@@ -130,7 +120,8 @@ def revenue_series(
     scope: Scope, start: datetime | None, end: datetime | None, now: datetime | None = None
 ) -> list[dict]:
     today = (now or timezone.now()).astimezone(TASHKENT).date()
-    last = end.astimezone(TASHKENT).date() if end else today
+    # ``to`` is exclusive (the start of the next day): the last day is the one just before it
+    last = (end - timedelta(microseconds=1)).astimezone(TASHKENT).date() if end else today
     if start:
         first = start.astimezone(TASHKENT).date()
     else:
@@ -139,19 +130,12 @@ def revenue_series(
         raise DomainValidationError("The start of the range must not be later than its end.")
     if (last - first).days + 1 > MAX_REVENUE_DAYS:
         raise DomainValidationError(f"The range may cover at most {MAX_REVENUE_DAYS} days.")
-    rows = (
-        Payment.objects.filter(
-            booking__slot__zone__parking_lot__in=scope.ids,
-            status__in=PAID_STATES,
-            performed_at__gte=local_day_start(first),
-            performed_at__lt=local_day_start(last + timedelta(days=1)),
-        )
-        .annotate(day=TruncDate("performed_at", tzinfo=TASHKENT))
-        .values("day")
-        .annotate(revenue=Sum(NET_AMOUNT), bookings=Count("booking", distinct=True))
-        .order_by("day")
+    by_day = payments_api.daily_revenue(
+        scope.ids,
+        since=local_day_start(first),
+        until=local_day_start(last + timedelta(days=1)),
+        tz=TASHKENT,
     )
-    by_day = {row["day"]: row for row in rows}
     points = []
     for offset in range((last - first).days + 1):
         day = first + timedelta(days=offset)
@@ -170,7 +154,7 @@ def occupancy_rows(scope: Scope) -> list[dict]:
     lots = (
         scope.lots.filter(status=LotStatus.ACTIVE)
         .annotate(
-            total=Count("zones__slots"),
+            total=Count("zones__slots", filter=~Q(zones__slots__status=SlotStatus.OUT_OF_SERVICE)),
             occupied=Count("zones__slots", filter=Q(zones__slots__status__in=OCCUPIED_STATES)),
         )
         .order_by("name", "id")[:MAX_OCCUPANCY_LOTS]

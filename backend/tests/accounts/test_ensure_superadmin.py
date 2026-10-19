@@ -57,9 +57,34 @@ def test_is_idempotent():
     assert User.objects.filter(telegram_id=5).count() == 1
 
 
-def test_requires_at_least_one_id():
+def test_reads_ids_from_the_environment_when_no_option_is_given(monkeypatch):
+    monkeypatch.setenv("SUPERADMIN_TELEGRAM_IDS", "1705098070, 5977250410")
+    call_command("ensure_superadmin", stdout=io.StringIO())
+    assert set(User.objects.filter(is_superuser=True).values_list("telegram_id", flat=True)) == {
+        1705098070,
+        5977250410,
+    }
+
+
+def test_explicit_option_wins_over_the_environment(monkeypatch):
+    monkeypatch.setenv("SUPERADMIN_TELEGRAM_IDS", "111")
+    run(222)
+    assert list(User.objects.values_list("telegram_id", flat=True)) == [222]
+
+
+def test_nothing_configured_is_a_harmless_no_op(monkeypatch):
+    monkeypatch.delenv("SUPERADMIN_TELEGRAM_IDS", raising=False)
+    out = io.StringIO()
+    call_command("ensure_superadmin", stdout=out)
+    assert not User.objects.exists()
+    assert "nothing to do" in out.getvalue()
+
+
+def test_garbage_in_the_environment_fails_loudly(monkeypatch):
+    monkeypatch.setenv("SUPERADMIN_TELEGRAM_IDS", "12,abc")
     with pytest.raises(CommandError):
         call_command("ensure_superadmin")
+    assert not User.objects.exists()
 
 
 def test_rejects_a_non_positive_id():

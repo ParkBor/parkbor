@@ -134,7 +134,7 @@ class ParkingLotSerializer(serializers.ModelSerializer):
             if self.instance is None:
                 attrs["owner"] = user
         elif self.instance is None and "owner" not in attrs:
-            raise serializers.ValidationError({"owner": "This field is required."})
+            attrs["owner"] = user  # an admin who names nobody owns the lot (can hand it over later)
         open_time = attrs.get("open_time", getattr(self.instance, "open_time", None))
         close_time = attrs.get("close_time", getattr(self.instance, "close_time", None))
         if (open_time is None) != (close_time is None):

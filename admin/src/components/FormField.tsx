@@ -23,6 +23,8 @@ interface FormFieldProps<T extends FieldValues, N extends Path<T>> {
   control: Control<T>
   name: N
   label: string
+  /** Helper text under the input. */
+  extra?: string
   render: (props: RenderProps<T, N>) => ReactElement
 }
 
@@ -31,6 +33,7 @@ export function FormField<T extends FieldValues, N extends Path<T>>({
   control,
   name,
   label,
+  extra,
   render,
 }: FormFieldProps<T, N>) {
   const { t, i18n } = useTranslation()
@@ -45,6 +48,7 @@ export function FormField<T extends FieldValues, N extends Path<T>>({
           <Form.Item
             label={label}
             htmlFor={id}
+            extra={extra}
             validateStatus={fieldState.error ? 'error' : undefined}
             help={message ? (i18n.exists(message) ? t(message) : message) : undefined}
           >

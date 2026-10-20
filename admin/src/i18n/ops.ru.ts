@@ -186,6 +186,8 @@ export const opsRu: typeof opsUz = {
     confirmBlock: 'Заблокировать {{name}}?',
     confirmUnblock: 'Разблокировать {{name}}?',
     confirmRole: 'Изменить роль {{name}} на «{{role}}»?',
+    id: 'ID',
+    copyId: 'Скопировать ID',
     searchHint: 'Поиск по username, имени или фамилии',
     errors: {
       cannot_modify_self: 'Нельзя изменить самого себя.',

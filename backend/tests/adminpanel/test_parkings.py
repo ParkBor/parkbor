@@ -39,10 +39,10 @@ def test_owner_cannot_transfer_lot_on_update(owner_a, owner_b, lot_a):
     assert lot_a.owner_id == owner_a.id
 
 
-def test_admin_must_pass_owner_when_creating(admin_user):
+def test_admin_without_owner_owns_the_lot_itself(admin_user):
     response = client_for(admin_user).post(URL, PAYLOAD, format="json")
-    assert response.status_code == 400
-    assert "owner" in response.data
+    assert response.status_code == 201
+    assert str(response.data["owner"]) == str(admin_user.id)
 
 
 def test_admin_creates_lot_for_owner(admin_user, owner_a):

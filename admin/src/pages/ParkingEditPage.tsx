@@ -78,7 +78,7 @@ export default function ParkingEditPage() {
               }
             : undefined
         }
-        requireOwner={!isEdit && role === 'ADMIN'}
+        showOwner={!isEdit && role === 'ADMIN'}
         submitting={save.isPending}
         error={save.error}
         onSubmit={async (values) => {

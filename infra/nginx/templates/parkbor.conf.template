@@ -147,7 +147,7 @@ server {
     # Admin CSP (ARCHITECTURE 14.3). 'unsafe-eval' is required by the Telegram Login Widget
     # (data-onauth); style 'unsafe-inline' by Ant Design. If VITE_TILE_URL points to another tile
     # host, add it to img-src; if the API is on another origin, add it to connect-src.
-    set $admin_csp "default-src 'self'; script-src 'self' https://telegram.org 'unsafe-eval'; frame-src https://oauth.telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'";
+    set $admin_csp "default-src 'self'; script-src 'self' https://telegram.org 'unsafe-eval'; frame-src https://oauth.telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self' https://nominatim.openstreetmap.org; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'";
 
     # The browser calls the API on this origin (VITE_API_URL=/api/v1), so no CORS is needed.
     # Payment and bot webhooks are NOT reachable through the admin host.

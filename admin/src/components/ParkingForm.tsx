@@ -3,6 +3,7 @@ import { Alert, Button, Form, Input, InputNumber, Space } from 'antd'
 import { useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useServerErrors } from '../lib/formErrors'
+import { useAddressAutofill } from '../lib/useAddressAutofill'
 import { safeSubmit } from '../lib/safeSubmit'
 import { parkingSchema, type ParkingFormValues } from '../schemas'
 import { FormField } from './FormField'
@@ -11,8 +12,8 @@ import { MapPicker } from './MapPicker'
 interface ParkingFormProps {
   initialValues?: Partial<ParkingFormValues>
   submitting?: boolean
-  /** ADMIN creating a lot must name the owner. */
-  requireOwner?: boolean
+  /** ADMIN creating a lot may name another owner (optional: empty = the admin owns the lot). */
+  showOwner?: boolean
   /** Failed save (ApiError): messages are bound to the matching fields. */
   error?: unknown
   onSubmit: (values: ParkingFormValues) => void | Promise<void>
@@ -35,13 +36,13 @@ const FIELD_MAP = {
 export function ParkingForm({
   initialValues,
   submitting,
-  requireOwner,
+  showOwner,
   error,
   onSubmit,
   onCancel,
 }: ParkingFormProps) {
-  const { t } = useTranslation()
-  const { control, handleSubmit, setValue, setError, formState } = useForm<ParkingFormValues>({
+  const { t, i18n } = useTranslation()
+  const { control, handleSubmit, setValue, setError, getValues, formState } = useForm<ParkingFormValues>({
     resolver: zodResolver(parkingSchema),
     defaultValues: { ...EMPTY, ...initialValues },
   })
@@ -50,11 +51,13 @@ export function ParkingForm({
   const lng = useWatch({ control, name: 'lng' })
   const hasPoint = typeof lat === 'number' && typeof lng === 'number'
 
+  const fillAddress = useAddressAutofill({
+    language: i18n.language,
+    getAddress: () => getValues('address') ?? '',
+    setAddress: (address) => setValue('address', address, { shouldValidate: true, shouldDirty: true }),
+  })
+
   const submit = handleSubmit((values) => {
-    if (requireOwner && !values.owner) {
-      setError('owner', { message: 'validation.required' })
-      return
-    }
     return safeSubmit(formState.isSubmitting, onSubmit, values, () => undefined)
   })
 
@@ -67,11 +70,12 @@ export function ParkingForm({
         label={t('parkings.name')}
         render={({ value, onChange, id }) => <Input id={id} value={value} onChange={onChange} />}
       />
-      {requireOwner ? (
+      {showOwner ? (
         <FormField
           control={control}
           name="owner"
           label={t('parkings.owner')}
+          extra={t('parkings.ownerHint')}
           render={({ value, onChange, id }) => (
             <Input id={id} value={value ?? ''} onChange={onChange} />
           )}
@@ -89,6 +93,7 @@ export function ParkingForm({
           onChange={(point) => {
             setValue('lat', point.lat, { shouldValidate: true, shouldDirty: true })
             setValue('lng', point.lng, { shouldValidate: true, shouldDirty: true })
+            fillAddress(point.lat, point.lng)
           }}
         />
       </Form.Item>

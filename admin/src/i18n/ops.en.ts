@@ -186,6 +186,8 @@ export const opsEn: typeof opsUz = {
     confirmBlock: 'Block {{name}}?',
     confirmUnblock: 'Unblock {{name}}?',
     confirmRole: 'Change the role of {{name}} to "{{role}}"?',
+    id: 'ID',
+    copyId: 'Copy ID',
     searchHint: 'Search by username, first or last name',
     errors: {
       cannot_modify_self: 'You cannot change yourself.',

@@ -1,17 +1,25 @@
 import { ApiError } from '@habi/api-client'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ParkingForm } from './ParkingForm'
 
 // Leaflet needs a real layout engine; replace the map by a button that "clicks" a point.
 vi.mock('./MapPicker', () => ({
   MapPicker: ({ onChange }: { onChange: (v: { lat: number; lng: number }) => void }) => (
-    <button type="button" onClick={() => onChange({ lat: 41.2755, lng: 69.2034 })}>
-      pick-point
-    </button>
+    <>
+      <button type="button" onClick={() => onChange({ lat: 41.2755, lng: 69.2034 })}>
+        pick-point
+      </button>
+      <button type="button" onClick={() => onChange({ lat: 41.3, lng: 69.3 })}>
+        pick-other
+      </button>
+    </>
   ),
 }))
+
+const geocode = vi.hoisted(() => ({ reverseGeocode: vi.fn() }))
+vi.mock('../lib/reverseGeocode', () => geocode)
 
 describe('ParkingForm', () => {
   it('shows translated validation errors and does not submit an empty form', async () => {
@@ -57,18 +65,86 @@ describe('ParkingForm', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('requires an owner id when an admin creates a lot', async () => {
+  it('shows the owner field as optional with a hint, and submits without an owner', async () => {
     const onSubmit = vi.fn()
     render(
       <ParkingForm
-        requireOwner
+        showOwner
         onSubmit={onSubmit}
         initialValues={{ name: 'A', address: 'B', lat: 41, lng: 69 }}
       />,
     )
+    expect(screen.getByText(/Bo‘sh qoldirsangiz, avtoturargoh sizga biriktiriladi/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Saqlash' }))
-    expect(await screen.findByText('Majburiy maydon')).toBeInTheDocument()
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0].owner ?? '').toBe('')
+  })
+
+  it('still rejects a malformed owner id', async () => {
+    const onSubmit = vi.fn()
+    render(
+      <ParkingForm showOwner onSubmit={onSubmit} initialValues={{ name: 'A', address: 'B', lat: 41, lng: 69 }} />,
+    )
+    await userEvent.type(screen.getByLabelText('Egasi (ID)'), '123')
+    await userEvent.click(screen.getByRole('button', { name: 'Saqlash' }))
+    expect(await screen.findByText('To‘g‘ri ID (UUID) kiriting')).toBeInTheDocument()
     expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  describe('address autofill from the map point', () => {
+    beforeEach(() => geocode.reverseGeocode.mockReset())
+
+    it('fills an empty address after a pick (language, coordinates passed)', async () => {
+      geocode.reverseGeocode.mockResolvedValue('Navoiy 3, Yunusobod')
+      render(<ParkingForm onSubmit={vi.fn()} />)
+      await userEvent.click(screen.getByRole('button', { name: 'pick-point' }))
+      await waitFor(() => expect(screen.getByLabelText('Manzil')).toHaveValue('Navoiy 3, Yunusobod'))
+      expect(geocode.reverseGeocode).toHaveBeenCalledWith(41.2755, 69.2034, expect.objectContaining({ language: 'uz' }))
+    })
+
+    it('never overwrites what the user typed', async () => {
+      geocode.reverseGeocode.mockResolvedValue('Auto address')
+      render(<ParkingForm onSubmit={vi.fn()} />)
+      await userEvent.type(screen.getByLabelText('Manzil'), 'My own address')
+      await userEvent.click(screen.getByRole('button', { name: 'pick-point' }))
+      await waitFor(() => expect(geocode.reverseGeocode).toHaveBeenCalled())
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(screen.getByLabelText('Manzil')).toHaveValue('My own address')
+    })
+
+    it('replaces its own previous value on the next pick, but not after the user edited it', async () => {
+      geocode.reverseGeocode.mockResolvedValueOnce('First auto').mockResolvedValueOnce('Second auto').mockResolvedValueOnce('Third auto')
+      render(<ParkingForm onSubmit={vi.fn()} />)
+      await userEvent.click(screen.getByRole('button', { name: 'pick-point' }))
+      await waitFor(() => expect(screen.getByLabelText('Manzil')).toHaveValue('First auto'))
+      await userEvent.click(screen.getByRole('button', { name: 'pick-other' }))
+      await waitFor(() => expect(screen.getByLabelText('Manzil')).toHaveValue('Second auto'))
+      await userEvent.type(screen.getByLabelText('Manzil'), ' (north gate)')
+      await userEvent.click(screen.getByRole('button', { name: 'pick-point' }))
+      await waitFor(() => expect(geocode.reverseGeocode).toHaveBeenCalledTimes(3))
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(screen.getByLabelText('Manzil')).toHaveValue('Second auto (north gate)')
+    })
+
+    it('leaves the field empty and silent when the lookup fails', async () => {
+      geocode.reverseGeocode.mockResolvedValue(null)
+      render(<ParkingForm onSubmit={vi.fn()} />)
+      await userEvent.click(screen.getByRole('button', { name: 'pick-point' }))
+      await waitFor(() => expect(geocode.reverseGeocode).toHaveBeenCalled())
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(screen.getByLabelText('Manzil')).toHaveValue('')
+      expect(screen.queryByRole('alert')).toBeNull()
+    })
+
+    it('asks only once for quick successive picks (debounce)', async () => {
+      geocode.reverseGeocode.mockResolvedValue('Once')
+      render(<ParkingForm onSubmit={vi.fn()} />)
+      await userEvent.click(screen.getByRole('button', { name: 'pick-point' }))
+      await userEvent.click(screen.getByRole('button', { name: 'pick-other' }))
+      await waitFor(() => expect(screen.getByLabelText('Manzil')).toHaveValue('Once'))
+      expect(geocode.reverseGeocode).toHaveBeenCalledTimes(1)
+      expect(geocode.reverseGeocode).toHaveBeenCalledWith(41.3, 69.3, expect.anything())
+    })
   })
 
   it('shows a server error message', () => {

@@ -187,3 +187,17 @@ describe('period filter labels', () => {
     expect(within(document.body).queryByTitle('Boshlanish sanasi bo‘yicha davr')).toBeNull()
   })
 })
+
+describe('users table id column', () => {
+  it('shows a copyable short id with the full id as its title (to hand a lot to another owner)', async () => {
+    api.users.list.mockResolvedValue(
+      pageOf([
+        { id: '123e4567-e89b-12d3-a456-426614174000', telegram_username: 'bob', first_name: 'Bob', last_name: '', role: 'OWNER', is_active: true, created_at: '2026-10-01T00:00:00Z' },
+      ]),
+    )
+    renderPage(<UsersPage />)
+    const short = await screen.findByText('123e4567')
+    expect(short).toHaveAttribute('title', '123e4567-e89b-12d3-a456-426614174000')
+    expect(screen.getByRole('button', { name: /ID ni nusxalash/ })).toBeInTheDocument()
+  })
+})

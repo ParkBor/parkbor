@@ -9,7 +9,7 @@ import { StatusTag } from '../components/StatusTag'
 import { adminApi } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { userErrorText } from '../lib/errorText'
-import { formatDateTime, safeText } from '../lib/format'
+import { formatDateTime, safeText, shortId } from '../lib/format'
 import { usePagedQuery } from '../lib/usePagedQuery'
 import { isSuperAdmin } from '../lib/rbac'
 import { useServerTable } from '../lib/useServerTable'
@@ -79,6 +79,15 @@ export default function UsersPage() {
   }
 
   const columns: ColumnsType<AdminUser> = [
+    {
+      title: t('users.id'),
+      key: 'id',
+      render: (_, row) => (
+        <Typography.Text copyable={{ text: row.id, tooltips: [t('users.copyId'), t('operators.copied')] }} title={row.id}>
+          {shortId(row.id)}
+        </Typography.Text>
+      ),
+    },
     { title: t('users.name'), key: 'name', render: (_, row) => displayName(row) },
     {
       title: t('users.username'),

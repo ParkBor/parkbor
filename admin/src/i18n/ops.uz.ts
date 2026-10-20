@@ -185,6 +185,8 @@ export const opsUz = {
     confirmBlock: '{{name}} bloklansinmi?',
     confirmUnblock: '{{name}} blokdan chiqarilsinmi?',
     confirmRole: '{{name}} roli «{{role}}» ga o‘zgartirilsinmi?',
+    id: 'ID',
+    copyId: 'ID ni nusxalash',
     searchHint: 'Username, ism yoki familiya bo‘yicha qidirish',
     errors: {
       cannot_modify_self: 'O‘zingizni o‘zgartirib bo‘lmaydi.',

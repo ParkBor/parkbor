@@ -1,3 +1,4 @@
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
@@ -9,6 +10,7 @@ from apps.core.pagination import StandardPagination
 from apps.core.permissions import IsOwnerOfLot, IsSuperAdmin
 from apps.parking import selectors, services
 
+from . import services as admin_services
 from .filters import (
     ParkingLotFilter,
     SlotFilter,
@@ -48,12 +50,28 @@ class ParkingLotViewSet(OperatorStaffMixin, AdminModelViewSet):
     ordering_fields = ["name", "created_at", "status", "total_slots", "free_slots", "rating"]
     scope_selector = staticmethod(selectors.lots_for_user)
 
-    def perform_create(self, serializer):
-        serializer.instance = services.create_lot(data=serializer.validated_data)
+    def get_queryset(self):
+        return super().get_queryset().select_related("owner")  # owner_telegram_id, one join
 
+    def _data_with_owner(self, serializer) -> dict:
+        """validated_data with ``owner_telegram_id`` resolved to the owner account (ADMIN only; the
+        serializer already dropped it for everyone else). Call inside ``transaction.atomic``."""
+        data = dict(serializer.validated_data)
+        telegram_id = data.pop("owner_telegram_id", None)
+        if telegram_id is not None:
+            data["owner"] = admin_services.owner_for_telegram_id(
+                actor=self.request.user, telegram_id=telegram_id
+            )
+        return data
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        serializer.instance = services.create_lot(data=self._data_with_owner(serializer))
+
+    @transaction.atomic
     def perform_update(self, serializer):
         serializer.instance = services.update_lot(
-            lot=serializer.instance, data=serializer.validated_data, actor=self.request.user
+            lot=serializer.instance, data=self._data_with_owner(serializer), actor=self.request.user
         )
 
     def perform_destroy(self, instance):

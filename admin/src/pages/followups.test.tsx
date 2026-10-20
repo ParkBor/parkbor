@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const api = vi.hoisted(() => ({
-  parkings: { list: vi.fn() },
+  parkings: { list: vi.fn(), get: vi.fn(), update: vi.fn(), create: vi.fn() },
   users: { list: vi.fn(), update: vi.fn() },
   settings: { get: vi.fn(), update: vi.fn() },
   bookings: { list: vi.fn(), get: vi.fn() },
@@ -12,6 +12,7 @@ const api = vi.hoisted(() => ({
   payments: { list: vi.fn() },
   auditLogs: { list: vi.fn() },
 }))
+vi.mock('../components/MapPicker', () => ({ MapPicker: () => null }))
 vi.mock('../lib/api', () => ({ adminApi: api, setAccessToken: vi.fn() }))
 
 import { pageOf, renderPage } from '../test/renderPage'
@@ -21,6 +22,7 @@ import BookingsPage from './BookingsPage'
 import PaymentsPage from './PaymentsPage'
 import RefundsPage from './RefundsPage'
 import SettingsPage from './SettingsPage'
+import ParkingEditPage from './ParkingEditPage'
 import UsersPage from './UsersPage'
 
 const settings = {
@@ -199,5 +201,57 @@ describe('users table id column', () => {
     const short = await screen.findByText('123e4567')
     expect(short).toHaveAttribute('title', '123e4567-e89b-12d3-a456-426614174000')
     expect(screen.getByRole('button', { name: /ID ni nusxalash/ })).toBeInTheDocument()
+  })
+})
+
+describe('parking edit: owner by Telegram id', () => {
+  const LOT = '123e4567-e89b-12d3-a456-426614174000'
+  const lot = {
+    id: LOT, owner: 'u1', owner_telegram_id: 555000111, name: 'Lot', address: 'Addr', location: { lat: 41, lng: 69 },
+    area: null, status: 'ACTIVE', open_time: null, close_time: null, total_slots: 0, free_slots: 0, rating: 0, created_at: '',
+  }
+  const route = '/parkings/:id/edit'
+
+  it('prefills the current owner Telegram id and does not resend it when unchanged', async () => {
+    api.parkings.get.mockResolvedValue(lot)
+    api.parkings.update.mockResolvedValue(lot)
+    renderPage(<ParkingEditPage />, { path: `/parkings/${LOT}/edit`, route })
+    expect(await screen.findByDisplayValue('555000111')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Saqlash' }))
+    await waitFor(() => expect(api.parkings.update).toHaveBeenCalledTimes(1))
+    expect('owner_telegram_id' in api.parkings.update.mock.calls[0][1]).toBe(false)
+  })
+
+  it('sends a changed owner as a number (transfer)', async () => {
+    api.parkings.get.mockResolvedValue(lot)
+    api.parkings.update.mockResolvedValue(lot)
+    renderPage(<ParkingEditPage />, { path: `/parkings/${LOT}/edit`, route })
+    const owner = await screen.findByLabelText('Egasi (Telegram ID)')
+    await userEvent.clear(owner)
+    await userEvent.type(owner, '777888999')
+    await userEvent.click(screen.getByRole('button', { name: 'Saqlash' }))
+    await waitFor(() => expect(api.parkings.update).toHaveBeenCalledTimes(1))
+    expect(api.parkings.update.mock.calls[0][1].owner_telegram_id).toBe(777888999)
+  })
+
+  it('shows no owner field to an OWNER', async () => {
+    api.parkings.get.mockResolvedValue({ ...lot, owner_telegram_id: undefined })
+    renderPage(<ParkingEditPage />, { role: 'OWNER', path: `/parkings/${LOT}/edit`, route })
+    await screen.findByDisplayValue('Lot')
+    expect(screen.queryByLabelText('Egasi (Telegram ID)')).toBeNull()
+  })
+
+  it('creates a lot with the owner as owner_telegram_id', async () => {
+    api.parkings.create.mockResolvedValue(lot)
+    renderPage(<ParkingEditPage />, { path: '/parkings/new', route: '/parkings/new' })
+    await userEvent.type(await screen.findByLabelText('Nomi'), 'New')
+    await userEvent.type(screen.getByLabelText('Manzil'), 'Somewhere')
+    await userEvent.type(screen.getByLabelText('Kenglik (lat)'), '41.3')
+    await userEvent.type(screen.getByLabelText('Uzunlik (lng)'), '69.2')
+    await userEvent.type(screen.getByLabelText('Egasi (Telegram ID)'), '123456789')
+    await userEvent.click(screen.getByRole('button', { name: 'Saqlash' }))
+    await waitFor(() => expect(api.parkings.create).toHaveBeenCalledTimes(1))
+    expect(api.parkings.create.mock.calls[0][0]).toMatchObject({ owner_telegram_id: 123456789 })
+    expect('owner' in api.parkings.create.mock.calls[0][0]).toBe(false)
   })
 })

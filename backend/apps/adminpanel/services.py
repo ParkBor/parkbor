@@ -6,7 +6,7 @@ audit`` writes it inside the caller's transaction), so a change without a record
 
 import logging
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
@@ -53,6 +53,62 @@ class LastAdmin(Conflict):
 class OwnerHasParkings(Conflict):
     default_detail = "This owner still has parking lots; reassign or remove them first."
     default_code = "owner_has_parkings"
+
+
+class OwnerRoleNotAllowed(DomainValidationError):
+    default_detail = "This account has a role that cannot own parking lots."
+    default_code = "owner_role_not_allowed"
+
+
+class OwnerInactive(DomainValidationError):
+    default_detail = "This account is blocked."
+    default_code = "owner_inactive"
+
+
+def _owner_account(telegram_id: int) -> User | None:
+    return User.objects.select_for_update().filter(telegram_id=telegram_id).first()
+
+
+@transaction.atomic
+def owner_for_telegram_id(*, actor: User, telegram_id: int) -> User:
+    """The account that may own a lot, found by Telegram id (ADMIN names the owner this way).
+
+    Unknown id: a Telegram-only account is created as OWNER (unusable password), so when that
+    person signs in through Telegram they land on THIS account. DRIVER: promoted to OWNER.
+    OWNER / ADMIN: used as is. Any other role, or a blocked account: refused, nothing changed.
+    Two requests for the same new id make ONE account (the loser re-reads the winner's row)."""
+    user = _owner_account(telegram_id)
+    if user is None:
+        try:
+            with transaction.atomic():
+                user = User.objects.create_user(telegram_id, None, role=OWNER)
+        except IntegrityError:
+            user = _owner_account(telegram_id)  # a concurrent request created it first
+        else:
+            audit(
+                actor=actor,
+                action="user.owner_created",
+                obj_id=user.pk,
+                before={},
+                after={"role": OWNER, "telegram_id": telegram_id, "user": str(user.pk)},
+            )
+            return user
+    if not user.is_active:
+        raise OwnerInactive
+    if user.role in (OWNER, ADMIN):
+        return user
+    if user.role != User.Role.DRIVER:
+        raise OwnerRoleNotAllowed
+    user.role = OWNER
+    user.save(update_fields=["role"])
+    audit(
+        actor=actor,
+        action="user.role_change",
+        obj_id=user.pk,
+        before={"role": User.Role.DRIVER},
+        after={"role": OWNER, "telegram_id": telegram_id, "user": str(user.pk)},
+    )
+    return user
 
 
 # --- users ---------------------------------------------------------------------------------------

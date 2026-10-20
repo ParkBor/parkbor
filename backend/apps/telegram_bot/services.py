@@ -36,4 +36,13 @@ def widget_login(widget_data: dict) -> account_services.LoginResult:
     if user is None or user.role not in WIDGET_ROLES:
         raise RoleNotAllowedError
     account_services.require_active(user)
+    # Fill what the widget knows about a pre-created owner (never overwrites an existing value).
+    username = widget_data.get("username") or ""
+    before = (user.first_name, user.last_name, user.telegram_username)
+    account_services.fill_missing_names(
+        user, widget_data.get("first_name", ""), widget_data.get("last_name", "")
+    )
+    user.telegram_username = user.telegram_username or username[:64]
+    if before != (user.first_name, user.last_name, user.telegram_username):
+        user.save(update_fields=["first_name", "last_name", "telegram_username"])
     return account_services.LoginResult(user=user, is_new=False)

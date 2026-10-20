@@ -1,7 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Alert, Button, Form, Input, InputNumber, Space } from 'antd'
+import { useEffect } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { apiErrorCode } from '../lib/errors'
 import { useServerErrors } from '../lib/formErrors'
 import { useAddressAutofill } from '../lib/useAddressAutofill'
 import { safeSubmit } from '../lib/safeSubmit'
@@ -20,12 +22,14 @@ interface ParkingFormProps {
   onCancel?: () => void
 }
 
+const OWNER_ERROR_CODES = ['owner_role_not_allowed', 'owner_inactive', 'owner_ambiguous']
 const EMPTY: Partial<ParkingFormValues> = { name: '', address: '', open_time: '', close_time: '' }
 // Backend field -> form field (the backend has one `location`, the form has two inputs).
 const FIELD_MAP = {
   name: 'name',
   address: 'address',
-  owner: 'owner',
+  owner: 'owner_telegram_id',
+  owner_telegram_id: 'owner_telegram_id',
   open_time: 'open_time',
   close_time: 'close_time',
   lat: 'lat',
@@ -46,7 +50,16 @@ export function ParkingForm({
     resolver: zodResolver(parkingSchema),
     defaultValues: { ...EMPTY, ...initialValues },
   })
-  const general = useServerErrors(error, setError, FIELD_MAP)
+  const serverGeneral = useServerErrors(error, setError, FIELD_MAP)
+  // A refused owner is explained on the owner input, in the UI language (not as server text).
+  const ownerCode = (() => {
+    const code = apiErrorCode(error)
+    return code !== null && OWNER_ERROR_CODES.includes(code) ? code : null
+  })()
+  useEffect(() => {
+    if (ownerCode) setError('owner_telegram_id', { type: 'server', message: `parkings.ownerErrors.${ownerCode}` })
+  }, [ownerCode, setError])
+  const general = ownerCode ? null : serverGeneral
   const lat = useWatch({ control, name: 'lat' })
   const lng = useWatch({ control, name: 'lng' })
   const hasPoint = typeof lat === 'number' && typeof lng === 'number'
@@ -73,11 +86,11 @@ export function ParkingForm({
       {showOwner ? (
         <FormField
           control={control}
-          name="owner"
+          name="owner_telegram_id"
           label={t('parkings.owner')}
           extra={t('parkings.ownerHint')}
           render={({ value, onChange, id }) => (
-            <Input id={id} value={value ?? ''} onChange={onChange} />
+            <Input id={id} value={value ?? ''} onChange={onChange} inputMode="numeric" />
           )}
         />
       ) : null}

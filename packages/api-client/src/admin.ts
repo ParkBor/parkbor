@@ -27,7 +27,10 @@ export interface LatLng {
 
 export interface ParkingLot {
   id: string
+  /** Owner user id (response only). */
   owner: string
+  /** Read-only; present for super admins. */
+  owner_telegram_id?: number | null
   name: string
   address: string
   location: LatLng
@@ -42,7 +45,8 @@ export interface ParkingLot {
 }
 
 export interface ParkingLotInput {
-  owner?: string
+  /** Telegram id of the owner (ADMIN only; empty = the caller owns the lot). Create and PATCH (transfer). */
+  owner_telegram_id?: number
   name: string
   address: string
   location: LatLng

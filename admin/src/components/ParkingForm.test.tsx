@@ -74,10 +74,36 @@ describe('ParkingForm', () => {
         initialValues={{ name: 'A', address: 'B', lat: 41, lng: 69 }}
       />,
     )
-    expect(screen.getByText(/Bo‘sh qoldirsangiz, avtoturargoh sizga biriktiriladi/)).toBeInTheDocument()
+    expect(screen.getByText(/@userinfobot orqali bilib olinadi/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Saqlash' }))
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
-    expect(onSubmit.mock.calls[0][0].owner ?? '').toBe('')
+    expect(onSubmit.mock.calls[0][0].owner_telegram_id ?? '').toBe('')
+  })
+
+  it('submits the owner as typed digits', async () => {
+    const onSubmit = vi.fn()
+    render(<ParkingForm showOwner onSubmit={onSubmit} initialValues={{ name: 'A', address: 'B', lat: 41, lng: 69 }} />)
+    await userEvent.type(screen.getByLabelText('Egasi (Telegram ID)'), '123456789')
+    await userEvent.click(screen.getByRole('button', { name: 'Saqlash' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0].owner_telegram_id).toBe('123456789')
+  })
+
+  it.each([
+    ['owner_role_not_allowed', /roli avtoturargoh egasi bo‘lishga mos emas/],
+    ['owner_inactive', /hisobi o‘chirilgan/],
+    ['owner_ambiguous', /bir nechta hisob topildi/],
+  ])('explains the server refusal %s on the owner input, not as server text', async (code, text) => {
+    const error = new ApiError(400, { detail: 'English server text', code }, 'http')
+    render(<ParkingForm showOwner onSubmit={vi.fn()} error={error} />)
+    expect(await screen.findByText(text)).toBeInTheDocument()
+    expect(screen.queryByText('English server text')).toBeNull()
+  })
+
+  it('binds a field error on owner_telegram_id to the owner input', async () => {
+    const error = new ApiError(400, { owner_telegram_id: ['Enter a valid id.'] }, 'http')
+    render(<ParkingForm showOwner onSubmit={vi.fn()} error={error} />)
+    expect(await screen.findByText('Enter a valid id.')).toBeInTheDocument()
   })
 
   it('still rejects a malformed owner id', async () => {
@@ -85,9 +111,9 @@ describe('ParkingForm', () => {
     render(
       <ParkingForm showOwner onSubmit={onSubmit} initialValues={{ name: 'A', address: 'B', lat: 41, lng: 69 }} />,
     )
-    await userEvent.type(screen.getByLabelText('Egasi (ID)'), '123')
+    await userEvent.type(screen.getByLabelText('Egasi (Telegram ID)'), 'abc')
     await userEvent.click(screen.getByRole('button', { name: 'Saqlash' }))
-    expect(await screen.findByText('To‘g‘ri ID (UUID) kiriting')).toBeInTheDocument()
+    expect(await screen.findByText('Telegram ID faqat raqamlardan iborat musbat son bo‘lsin')).toBeInTheDocument()
     expect(onSubmit).not.toHaveBeenCalled()
   })
 

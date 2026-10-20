@@ -107,19 +107,22 @@ describe('form accessibility and defaults', () => {
   })
 })
 
-describe('owner id validation', () => {
+describe('owner Telegram id validation', () => {
   const base = { name: 'A', address: 'B', lat: 41, lng: 69, open_time: '', close_time: '' }
 
-  it('accepts a UUID or nothing', () => {
-    const owner = '3f2504e0-4f89-41d3-9a0c-0305e82c3301'
-    expect(parkingSchema.safeParse({ ...base, owner }).success).toBe(true)
-    expect(parkingSchema.safeParse({ ...base, owner: '' }).success).toBe(true)
+  it('accepts digits or nothing', () => {
+    expect(parkingSchema.safeParse({ ...base, owner_telegram_id: '123456789' }).success).toBe(true)
+    expect(parkingSchema.safeParse({ ...base, owner_telegram_id: '999999999999999' }).success).toBe(true)
+    expect(parkingSchema.safeParse({ ...base, owner_telegram_id: '' }).success).toBe(true)
     expect(parkingSchema.safeParse(base).success).toBe(true)
   })
 
-  it('rejects a non-UUID owner', () => {
-    const result = parkingSchema.safeParse({ ...base, owner: '123' })
-    expect(result.success).toBe(false)
-    expect(result.error?.issues[0].message).toBe('validation.uuid')
-  })
+  it.each(['0', '-5', '12.5', '1e5', 'abc', ' 12', '12 ', '3f2504e0-4f89-41d3-9a0c-0305e82c3301', '1234567890123456'])(
+    'rejects %j',
+    (owner_telegram_id) => {
+      const result = parkingSchema.safeParse({ ...base, owner_telegram_id })
+      expect(result.success).toBe(false)
+      expect(result.error?.issues[0].message).toBe('validation.telegramId')
+    },
+  )
 })

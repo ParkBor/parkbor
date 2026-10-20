@@ -6,6 +6,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from apps.core.exceptions import DomainValidationError
 from apps.core.geo import point_to_lnglat, polygon_to_ring
 from apps.core.permissions import ROLE_ADMIN, ROLE_OWNER, is_super_admin
 from apps.parking import selectors
@@ -106,12 +107,20 @@ class ParkingLotSerializer(serializers.ModelSerializer):
     location = LocationField()
     area = AreaField(required=False, allow_null=True)
     owner = _OwnerField(required=False)
+    owner_telegram_id = serializers.IntegerField(
+        write_only=True,
+        required=False,
+        min_value=1,
+        help_text="ADMIN only: name the owner by Telegram id (the account is created or promoted "
+        "to OWNER). Not together with `owner`. Read back as `owner_telegram_id` by ADMIN only.",
+    )
 
     class Meta:
         model = ParkingLot
         fields = [
             "id",
             "owner",
+            "owner_telegram_id",
             "name",
             "address",
             "location",
@@ -131,9 +140,14 @@ class ParkingLotSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         if not is_super_admin(user):
             attrs.pop("owner", None)  # owners can never assign/transfer a lot
+            attrs.pop("owner_telegram_id", None)
             if self.instance is None:
                 attrs["owner"] = user
-        elif self.instance is None and "owner" not in attrs:
+        elif "owner" in attrs and "owner_telegram_id" in attrs:
+            raise DomainValidationError(
+                "Give either owner or owner_telegram_id, not both.", "owner_ambiguous"
+            )
+        elif self.instance is None and "owner" not in attrs and "owner_telegram_id" not in attrs:
             attrs["owner"] = user  # an admin who names nobody owns the lot (can hand it over later)
         open_time = attrs.get("open_time", getattr(self.instance, "open_time", None))
         close_time = attrs.get("close_time", getattr(self.instance, "close_time", None))
@@ -146,6 +160,12 @@ class ParkingLotSerializer(serializers.ModelSerializer):
                 {"close_time": "open_time and close_time must differ; use null/null for 24/7."}
             )
         return attrs
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if is_super_admin(self.context["request"].user):
+            data["owner_telegram_id"] = instance.owner.telegram_id
+        return data
 
 
 class _ImmutableParentMixin:

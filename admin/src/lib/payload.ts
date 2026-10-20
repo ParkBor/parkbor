@@ -8,6 +8,6 @@ export function toPayload(values: ParkingFormValues): ParkingLotInput {
     location: { lat: values.lat, lng: values.lng },
     open_time: values.open_time === '' ? null : values.open_time,
     close_time: values.close_time === '' ? null : values.close_time,
-    ...(values.owner ? { owner: values.owner } : {}),
+    ...(values.owner_telegram_id ? { owner_telegram_id: Number(values.owner_telegram_id) } : {}),
   }
 }

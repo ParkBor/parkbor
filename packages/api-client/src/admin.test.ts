@@ -78,3 +78,16 @@ describe('admin api routes', () => {
     ])
   })
 })
+
+describe('parking owner by Telegram id', () => {
+  it('sends owner_telegram_id as a number in create and PATCH bodies', async () => {
+    const fetchImpl = vi.fn(async () => new Response('{}'))
+    const api = createAdminApi(createHttpClient({ baseUrl: '/api/v1', fetchImpl }))
+    await api.parkings.create({ name: 'A', address: 'B', location: { lat: 1, lng: 2 }, owner_telegram_id: 123456789 })
+    await api.parkings.update('lot', { owner_telegram_id: 987654321 })
+    const bodies = (fetchImpl.mock.calls as unknown as [string, RequestInit][]).map(([, init]) => JSON.parse(init.body as string))
+    expect(bodies[0].owner_telegram_id).toBe(123456789)
+    expect(bodies[1]).toEqual({ owner_telegram_id: 987654321 })
+    expect('owner' in bodies[0]).toBe(false)
+  })
+})

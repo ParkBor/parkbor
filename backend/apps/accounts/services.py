@@ -40,12 +40,20 @@ def login_with_telegram(
         raise AccountDisabledError
     user.phone = phone
     user.telegram_username = username
+    fill_missing_names(user, first_name, last_name)
     try:
         with transaction.atomic():
-            user.save(update_fields=["phone", "telegram_username"])
+            user.save(update_fields=["phone", "telegram_username", "first_name", "last_name"])
     except IntegrityError:
         raise PhoneTakenError from None  # someone claimed the phone since the check above
     return LoginResult(user=user, is_new=False)
+
+
+def fill_missing_names(user: User, first_name: str, last_name: str) -> None:
+    """A pre-created account (an administrator named this Telegram id as a lot owner) has no name
+    yet: the first login fills it. A name the person already has is never overwritten."""
+    user.first_name = user.first_name or first_name or ""
+    user.last_name = user.last_name or last_name or ""
 
 
 def _create_user(telegram_id, phone, username, first_name, last_name) -> LoginResult:

@@ -1,3 +1,4 @@
+import type { ParkingLotInput } from '@habi/api-client'
 import { Alert, Button, Space, Spin, Typography, message } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -9,6 +10,13 @@ import { useRole } from '../lib/auth'
 import { isUuid } from '../lib/format'
 import { toPayload } from '../lib/payload'
 import type { ParkingFormValues } from '../schemas'
+
+/** On edit the owner is sent only when it differs from the current one (that is a transfer). */
+function withoutUnchangedOwner(payload: ParkingLotInput, current: number | null | undefined): ParkingLotInput {
+  if (payload.owner_telegram_id === undefined || payload.owner_telegram_id !== current) return payload
+  const { owner_telegram_id: _same, ...rest } = payload
+  return rest
+}
 
 export default function ParkingEditPage() {
   const { t } = useTranslation()
@@ -29,7 +37,7 @@ export default function ParkingEditPage() {
   const save = useMutation({
     mutationFn: (values: ParkingFormValues) =>
       id
-        ? adminApi.parkings.update(id, toPayload(values))
+        ? adminApi.parkings.update(id, withoutUnchangedOwner(toPayload(values), existing.data?.owner_telegram_id))
         : adminApi.parkings.create(toPayload(values)),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['parkings'] })
@@ -75,10 +83,11 @@ export default function ParkingEditPage() {
                 lng: lot.location.lng,
                 open_time: lot.open_time?.slice(0, 5) ?? '',
                 close_time: lot.close_time?.slice(0, 5) ?? '',
+                owner_telegram_id: lot.owner_telegram_id ? String(lot.owner_telegram_id) : '',
               }
             : undefined
         }
-        showOwner={!isEdit && role === 'ADMIN'}
+        showOwner={role === 'ADMIN'}
         submitting={save.isPending}
         error={save.error}
         onSubmit={async (values) => {

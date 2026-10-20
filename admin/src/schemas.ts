@@ -5,7 +5,8 @@ export const MAX_BULK_SLOTS = 500
 export const MAX_SLOT_NUMBER = 99999
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 const PRICE_RE = /^\d{1,10}(\.\d{1,2})?$/
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// Telegram user ids are positive integers; 15 digits keep the value a safe JavaScript integer.
+const TELEGRAM_ID_RE = /^[1-9]\d{0,14}$/
 export const PREFIX_RE = /^[A-Za-z0-9]{1,10}$/
 
 const optionalTime = z
@@ -26,10 +27,11 @@ export const parkingSchema = z
       .max(180, 'validation.lngRange'),
     open_time: optionalTime,
     close_time: optionalTime,
-    // Only ADMIN assigns an owner (UUID); for OWNER the backend always uses the caller.
-    owner: z
+    // Only ADMIN names an owner, by Telegram id (digits, positive); empty = the caller owns the lot.
+    // Kept as text in the form; payload.ts turns it into a number (<= 15 digits: a safe integer).
+    owner_telegram_id: z
       .string()
-      .refine((value) => value === '' || UUID_RE.test(value), { message: 'validation.uuid' })
+      .refine((value) => value === '' || TELEGRAM_ID_RE.test(value), { message: 'validation.telegramId' })
       .optional(),
   })
   .refine((v) => (v.open_time === '') === (v.close_time === ''), {

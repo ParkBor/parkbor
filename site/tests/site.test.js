@@ -129,6 +129,36 @@ test('guide pages: 3 languages, ordered steps, both parts, links in nav/footer',
   }
 });
 
+test('guide: every step has a figure resolving to an existing file, caption in 3 languages', () => {
+  const suffix = { guide: 'Namunaviy ko‘rinish', 'ru/guide': 'Схематичное изображение', 'en/guide': 'Schematic illustration' };
+  for (const [r, suf] of Object.entries(suffix)) {
+    const html = read(path.join(ROOT, r, 'index.html'));
+    const steps = html.split('<li><h3>').slice(1);
+    assert.strictEqual(steps.length, 17, r);
+    for (const st of steps) {
+      assert.ok(/<figure class="shot[^"]*"><img src="\/assets\/guide\/[^"]+" width="\d+" height="\d+" alt="[^"]+" loading="lazy"><figcaption>/.test(st), r + ': step without figure');
+    }
+    assert.ok(html.includes(suf), r + ' caption suffix');
+  }
+});
+
+test('guide SVG illustrations are safe, well-formed, small', () => {
+  const dir = path.join(ROOT, 'assets', 'guide');
+  const svgs = fs.readdirSync(dir).filter((f) => f.endsWith('.svg'));
+  assert.strictEqual(svgs.length, 60);
+  for (const f of svgs) {
+    const x = read(path.join(dir, f));
+    assert.ok(x.length < 12000, f + ' size');
+    assert.ok(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 \d+ \d+"/.test(x) && x.trim().endsWith('</svg>'), f);
+    assert.ok(/<title>[^<]+<\/title><desc>[^<]+<\/desc>/.test(x), f + ' title/desc');
+    assert.ok(!/<script|foreignObject|href\s*=|\son[a-z]+\s*=|<image|<style|url\(\s*['"]?https?:/i.test(x), f + ' unsafe content');
+    for (const t of ['svg', 'g', 'clipPath', 'text']) {
+      assert.strictEqual((x.match(new RegExp(`<${t}[\\s>]`, 'g')) || []).length, (x.match(new RegExp(`</${t}>`, 'g')) || []).length, f + ' ' + t);
+    }
+  }
+  for (const n of ['01-install', '10-qr', 'crm-04-approve']) for (const l of ['uz', 'ru', 'en']) assert.ok(svgs.includes(`${n}.${l}.svg`));
+});
+
 test('legal pages carry operator placeholder and date', () => {
   for (const r of ['privacy', 'terms'].flatMap((s) => [`${s}/`, `ru/${s}/`, `en/${s}/`])) {
     const html = read(path.join(ROOT, r, 'index.html'));

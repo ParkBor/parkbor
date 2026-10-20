@@ -15,7 +15,7 @@ site/
   favicon.svg, favicon.png, apple-touch-icon.png
   guide/, ru/guide/, en/guide/                       qo‘llanma
   assets/site.css, site.js, parkbor-logo.png, parkbor-mark.png, og-image.png
-  tools/build.mjs, tools/i18n/{uz,ru,en}.mjs        HTML generatori (faqat dasturchi uchun)
+  tools/build.mjs, tools/make-illustrations.mjs, tools/strings.mjs, tools/i18n/{uz,ru,en}.mjs        HTML generatori (faqat dasturchi uchun)
   tests/                                            node --test
 ```
 
@@ -73,23 +73,27 @@ Bosh sahifa (haydovchilar bloki), footer va qo‘llanma sahifasida “Android il
 
 Matnlar `site/tools/i18n/guide.mjs` da (A. haydovchi 10 qadam, B. egasi 7 qadam, muammolar). Sitemap, nav va footerga qo‘shilgan.
 
-### Skrinshotlar
+### Rasmlar (sxematik illyustratsiyalar va haqiqiy skrinshotlar)
 
-Haqiqiy skrinshotlar hali yo‘q. Generator `site/assets/guide/<nom>.webp` (yoki `.png`) faylini **faqat mavjud bo‘lsa** `<figure class="shot"><img width height loading="lazy">` sifatida qo‘shadi; yo‘q bo‘lsa hech narsa chiqmaydi. Fayl nomlari:
+Qo‘llanmadagi har bir qadamda rasm bor. Hozir bular **haqiqiy skrinshot emas**, balki sxematik SVG illyustratsiyalar (sarlavha ostida “Namunaviy ko‘rinish / Схематичное изображение / Schematic illustration”). Ularni `node site/tools/make-illustrations.mjs` yaratadi (60 ta: 20 nom x 3 til, `site/assets/guide/<nom>.<til>.svg`). Matnlar ilova manbalaridan o‘qiladi (`mobile/src/i18n/*.json`, `admin/src/i18n`, `backend/apps/telegram_bot/messages.py`), shuning uchun tugma nomlari o‘zgarsa skriptni qayta ishga tushiring:
 
-- Haydovchi: `01-install`, `02-language`, `03-bot-start`, `04-share-phone`, `05-code`, `06-name`, `07-vehicle`, `08-map`, `09-booking`, `10-qr`
-- CRM: `crm-01-login`, `crm-02-add-lot`, `crm-03-slots`, `crm-04-approve`
+```
+node site/tools/make-illustrations.mjs
+node site/tools/build.mjs
+cd site && node --test
+```
 
-Skrinshotlarni (shu nomlar bilan, png/jpg) biror papkaga tashlang va:
+Nomlar: `01-install`, `02-language`, `03-bot-start`, `04-share-phone`, `05-code`, `06-name`, `07-vehicle`, `08-map`, `09-booking`, `10-qr`, `11-permissions`, `12-bookings`, `13-profile`, `crm-00-userinfo`, `crm-01-login`, `crm-02-add-lot`, `crm-03-slots`, `crm-04-approve`, `crm-05-invite`, `crm-06-reports`. SVG da skriptlar, `foreignObject`, tashqi havolalar yo‘q; QR faqat bezak (skanerlanmaydi).
+
+**Haqiqiy skrinshot ustuvor:** `site/assets/guide/<nom>.webp` (yoki `.png`) mavjud bo‘lsa generator uni (tilga bog‘liq bo‘lmagan holda, sarlavhasiz “schematic” qo‘shimchasi bilan emas) SVG o‘rniga qo‘yadi. Konvertatsiya:
 
 ```
 pip install pillow
 python site/tools/optimize-shots.py <papka>      # eni <=360 px, metadata olib tashlanadi, webp -> site/assets/guide/
 node site/tools/build.mjs
-cd site && node --test
 ```
 
-Alt matni `guide.mjs` dagi har qadamning 4-elementi (3 tilda). Rasm qo‘shilgach `build.mjs` dagi `V` ni oshiring.
+Alt matnlari `site/tools/i18n/guide.mjs` dagi `ALT` da. Rasm qo‘shilgach `build.mjs` dagi `V` ni oshiring.
 
 ## Rang kontrasti (WCAG AA, 4.5:1)
 

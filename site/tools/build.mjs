@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import uz from './i18n/uz.mjs';
 import ru from './i18n/ru.mjs';
 import en from './i18n/en.mjs';
-import { GUIDE, DL } from './i18n/guide.mjs';
+import { GUIDE, DL, ALT, CAPTION_SUFFIX } from './i18n/guide.mjs';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ORIGIN = 'https://parkbor.uz';
@@ -143,16 +143,22 @@ ${PHONES.map(([label, num]) => `<a class="btn ghost" href="tel:${num}">${label}<
 </div></div></section>`;
 }
 
-// A screenshot slot renders only if assets/guide/<name>.webp|png exists at generation time.
-function shot(name, alt) {
-  for (const ext of ['webp', 'png']) {
-    if (existsSync(join(SITE, 'assets', 'guide', `${name}.${ext}`))) {
-      const file = `assets/guide/${name}.${ext}`;
-      const dim = readDims(join(SITE, file));
-      return `<figure class="shot"><img src="/${file}?v=${V}" width="${dim[0]}" height="${dim[1]}" alt="${esc(alt)}" loading="lazy"></figure>`;
-    }
-  }
-  return '';
+// Figure for a guide step: a real screenshot (assets/guide/<name>.webp|png, language-neutral) wins over the
+// generated schematic SVG (assets/guide/<name>.<lang>.svg). Nothing is printed if neither exists.
+function shot(name, l) {
+  const alt = ALT[l.code][name];
+  const real = ['webp', 'png'].map((e) => `assets/guide/${name}.${e}`).find((f) => existsSync(join(SITE, f)));
+  const svgFile = `assets/guide/${name}.${l.code}.svg`;
+  if (!real && !existsSync(join(SITE, svgFile))) return { html: '', wide: false };
+  const file = real || svgFile;
+  const dim = real ? readDims(join(SITE, file)) : svgDims(join(SITE, file));
+  const cap = real ? alt : `${alt}. ${CAPTION_SUFFIX[l.code]}`;
+  return { wide: dim[0] > dim[1], html: `<figure class="shot${dim[0] > dim[1] ? ' wide' : ''}"><img src="/${file}?v=${V}" width="${dim[0]}" height="${dim[1]}" alt="${esc(alt)}" loading="lazy"><figcaption>${esc(cap)}</figcaption></figure>` };
+}
+
+function svgDims(file) {
+  const m = /viewBox="0 0 (\d+) (\d+)"/.exec(readFileSync(file, 'utf8'));
+  return [Number(m[1]), Number(m[2])];
 }
 
 // Width/height from the file header (PNG IHDR or WebP VP8/VP8L/VP8X); falls back to 360x780.
@@ -170,9 +176,13 @@ function readDims(file) {
 
 function guide(l) {
   const g = GUIDE[l.code];
+  const step = ([t, d, names]) => {
+    const figs = names.map((n) => shot(n, l));
+    const wide = figs.some((f) => f.wide) || figs.length > 1 ? ' wide-shots' : '';
+    return `<li><h3>${t}</h3><p>${sub(l, d)}</p><div class="shots${wide}">${figs.map((f) => f.html).join('')}</div></li>`;
+  };
   const part = (p) => `<h2>${p.h}</h2>
-<ol class="guide">${p.steps.map(([t, d, img, alt]) =>
-    `<li><h3>${t}</h3><p>${sub(l, d)}</p>${[].concat(img || []).map((n) => shot(n, alt || t)).join('')}</li>`).join('')}</ol>`;
+<ol class="guide">${p.steps.map(step).join('')}</ol>`;
   const tr = g.trouble.items.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('');
   return `<article class="wrap doc guide-doc">
 <h1>${g.h1}</h1>

@@ -32,7 +32,7 @@ export default {
       ['Mening ma’lumotlarimni kim ko‘radi?', 'Avtoturargoh egasi faqat o‘z avtoturargohlari bo‘yicha bronlarni ko‘radi. Operator darvozada kerakli bron ma’lumotini ko‘radi. Platforma ma’murlari tizimni boshqarish uchun kirish huquqiga ega. Batafsil: <a href="{B}/privacy/">Maxfiylik siyosati</a>.'],
       ['Haydovchi to‘lovni qanday qiladi?', 'Haydovchi bronni ilovada to‘lov provayderi sahifasi orqali to‘laydi. Bank kartasi ma’lumotlari ParkBor’da saqlanmaydi.'],
       ['Operatorlar kerakmi?', 'Darvozada bronlarni QR bilan qabul qilish uchun operator biriktirish mumkin. Egasi operatorni taklif kodi bilan CRM’dan qo‘shadi.'],
-      ['Hisobni qanday o‘chirish mumkin?', 'Haydovchi ilovada Profil, so‘ng Hisobni o‘chirish bo‘limiga kiradi. Shartlar: <a href="{B}/delete-account/">Hisobni o‘chirish</a>.'],
+      ['Hisobni qanday o‘chirish mumkin?', 'Haydovchi ilovada Profil, so‘ng Akkauntni o‘chirish bo‘limiga kiradi. Shartlar: <a href="{B}/delete-account/">Hisobni o‘chirish</a>.'],
     ] },
     contact: { h: 'Bog‘lanish', p: 'Savol yoki hamkorlik bo‘yicha yozing yoki qo‘ng‘iroq qiling. Saytda ma’lumot yig‘uvchi forma yo‘q.', tg: 'Telegram: @habibullo_2313', email: 'E-pochta: parkbooor@gmail.com' },
   },
@@ -94,7 +94,7 @@ export default {
   del: {
     title: 'Hisobni o‘chirish | ParkBor', desc: 'ParkBor ilovasida hisobni qanday o‘chirish, nimalar o‘chiriladi va nimalar hisob-kitob uchun saqlanadi.', h1: 'Hisobni o‘chirish',
     sections: [
-      ['Ilovada o‘chirish (haydovchi)', '<ol><li>ParkBor ilovasini oching va hisobingizga kiring.</li><li><strong>Profil</strong> bo‘limiga o‘ting.</li><li><strong>Hisobni o‘chirish</strong> tugmasini bosing va tasdiqlang.</li></ol><p>Ilovaga kira olmasangiz, pastdagi aloqa bo‘limiga qarang.</p>'],
+      ['Ilovada o‘chirish (haydovchi)', '<ol><li>ParkBor ilovasini oching va hisobingizga kiring.</li><li><strong>Profil</strong> bo‘limiga o‘ting.</li><li><strong>Akkauntni o‘chirish</strong> tugmasini bosing va tasdiqlang.</li></ol><p>Ilovaga kira olmasangiz, pastdagi aloqa bo‘limiga qarang.</p>'],
       ['Qachon o‘chirib bo‘lmaydi', '<ul><li>Faol yoki kelgusi bron bor (to‘lov kutilmoqda, tasdiqlangan, joyda turibdi yoki muddati oshgan).</li><li>Hisob avtoturargohga egalik qiladi. Avval avtoturargohni topshirish yoki o‘chirish kerak.</li><li>Siz platformaning oxirgi faol ma’murisiz.</li></ul><p>Sabab ilovada ko‘rsatiladi. Shartlar bajarilgach, qayta urinib ko‘ring.</p>'],
       ['Nima o‘chiriladi', '<ul><li>Ism, username va telefon raqami tozalanadi.</li><li>Telegram ID almashtiriladi va hisobga bog‘lanmaydi.</li><li>Qurilma bildirishnoma tokenlari o‘chadi, sessiyalar bekor qilinadi.</li><li>Operator sifatida biriktirishlar tugatiladi.</li></ul>'],
       ['Nima saqlanadi', '<p>Bronlar va to‘lovlar hisob-kitob va qonuniy talablar uchun saqlanadi, lekin sizga bog‘lanmagan, shaxssizlantirilgan holda. Bildirishnomalar jurnali 180 kundan keyin o‘chiriladi.</p><p>Xohlasangiz, o‘sha Telegram akkaunt bilan keyin yangi hisob ochishingiz mumkin.</p>'],

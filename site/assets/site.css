@@ -133,8 +133,18 @@ ol.guide { counter-reset: g; list-style: none; padding: 0; }
 ol.guide > li { counter-increment: g; position: relative; padding: 0 0 20px 52px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
 ol.guide > li::before { content: counter(g); position: absolute; left: 0; top: 0; width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; font-weight: 700; }
 ol.guide h3 { margin-bottom: .2em; }
-.shot { display: inline-block; margin: 8px 8px 0 0; }
-.shot img { display: block; max-width: 100%; width: 220px; height: auto; border: 1px solid var(--border); border-radius: 12px; }
+.shots { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+.shot { margin: 0; width: min(100%, 260px); }
+.shot img { display: block; width: 100%; height: auto; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
+.shot figcaption { font-size: .8rem; color: var(--muted); margin-top: 4px; }
+.shot.wide { width: min(100%, 560px); }
+@media (min-width: 760px) {
+  ol.guide > li { display: grid; grid-template-columns: minmax(0, 1fr) 280px; column-gap: 24px; grid-template-rows: auto 1fr; align-items: start; }
+  ol.guide > li > h3, ol.guide > li > p { grid-column: 1; }
+  ol.guide > li > .shots { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; }
+  ol.guide > li > .shots.wide-shots { grid-column: 1 / -1; grid-row: auto; }
+  .guide-doc { max-width: 960px; }
+}
 [hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

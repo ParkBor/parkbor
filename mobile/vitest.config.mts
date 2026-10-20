@@ -39,6 +39,13 @@ export default defineConfig({
         'src/features/map/mapLoadState.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/features/map/mapStyle.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/features/map/maplibreAdapter.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/map/pressGuard.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/map/locationPrompt.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/lib/onboardingStep.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/auth/loginSessionStorage.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/push/pushAvailability.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/features/profile/profileApi.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/theme/layout.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/lib/notFound.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/features/realtime/appState.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
         'src/features/realtime/frameLimiter.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
@@ -66,15 +73,17 @@ export default defineConfig({
       include: [
         'src/lib/{errors,http,refresh,authGuard,timeout,urlPolicy,authApi,secureRefreshStorage,deviceId,tokenLock,pendingRevokes}.ts',
         'src/store/{createAuthStore,createOnboardingStore}.ts',
-        'src/features/auth/{code,schemas,loginLink,createLoginStore,loginStore}.ts',
+        'src/features/auth/{code,schemas,loginLink,loginSessionStorage,createLoginStore,loginStore}.ts',
         // Map: only the pure logic extracted from the hooks (useNearbyParkings / UserLocation are
         // thin wiring over these and are NOT covered), plus app-level query/maps helpers.
-        'src/features/map/{cluster,debounce,filters,format,geo,locationModel,locationWatcher,mapError,mapLoadState,mapStyle,maplibreAdapter,markerColor,parkingText,parkingsApi,schemas,search}.ts',
+        'src/features/map/{cluster,debounce,filters,format,geo,locationModel,locationPrompt,locationWatcher,mapError,mapLoadState,mapStyle,maplibreAdapter,markerColor,parkingText,parkingsApi,pressGuard,schemas,search}.ts',
         // Route/navigation: pure logic only. NOT covered: *.tsx (RouteLayer, RouteNotices,
         // NavigationPanels, NavigationScreen), useRoute / useNavigationSession (hook wiring),
         // openExternalNavigator (OS calls) and app/navigate - there are no render tests.
         'src/features/route/{externalNav,instructionText,lotParams,navigationView,rerouting,routeError,routeProgress,routeSchemas,routesApi}.ts',
-        'src/lib/{queryEnv,queryLifecycle,notFound}.ts',
+        'src/lib/{queryEnv,queryLifecycle,notFound,onboardingStep}.ts',
+        'src/theme/layout.ts',
+        'src/features/profile/profileApi.ts',
         // Step 7b (bookings, vehicles, parking details): pure logic only - "logic coverage, NOT UI".
         // NOT covered: every *.tsx screen/component, the hooks (use*.ts: React wiring),
         // qrStore.ts (SecureStore wrapper), app/** routes and the app/_layout wiring; there are
@@ -103,7 +112,7 @@ export default defineConfig({
         // NotificationSettingsScreen (UI). A real
         // server and a real device are needed to exercise those.
         'src/features/realtime/{appState,backoff,batcher,cacheBridge,cacheUpdates,closePolicy,frameLimiter,geohash,lifecycle,pollFallback,protocol,rateLimit,realtimeClient,rejectPolicy,staleFilter,ticket}.ts',
-        'src/features/push/{deviceRegistrar,logoutToken,notificationLink,permissionPolicy}.ts',
+        'src/features/push/{deviceRegistrar,logoutToken,notificationLink,permissionPolicy,pushAvailability}.ts',
         'config/paymentSandbox.js',
         'src/i18n/{resolveLanguage,languagePreference}.ts',
         'src/theme/palette.ts',

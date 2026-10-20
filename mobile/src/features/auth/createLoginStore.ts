@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { codeSchema } from '@/features/auth/code';
 import { isTrustedBotUrl, isValidLoginToken } from '@/features/auth/loginLink';
+import { parseLoginSession, serializeLoginSession, type LoginSessionSlot } from '@/features/auth/loginSessionStorage';
 import { errorMessageKey, parseApiError } from '@/lib/errors';
 import type { AuthResult, LoginStatus, LoginStatusResponse, StartLoginResponse } from '@/lib/types';
 
@@ -24,9 +25,14 @@ export interface LoginDeps {
   botName: string;
   onAuthenticated: (result: AuthResult) => Promise<void>;
   now: () => number;
+  /** Where the login in progress survives the app being killed (SecureStore). Optional: memory only without it. */
+  sessionSlot?: LoginSessionSlot;
 }
 
-/** Held in memory only; never logged, never persisted, never put in route params. */
+/**
+ * Never logged and never put in route params. Kept in memory and, when a `sessionSlot` is given, also in secure
+ * storage until the login ends (so killing the app while in Telegram does not lose it). The code is never stored.
+ */
 export interface LoginSession {
   loginToken: string;
   botUrl: string;
@@ -40,6 +46,9 @@ export type LoginErrorKey =
   | 'errors.codeExpired'
   | 'errors.notConfirmed'
   | 'errors.accountDisabled'
+  | 'errors.roleNotAllowed'
+  | 'errors.phoneTaken'
+  | 'errors.accountDeletionBlocked'
   | 'errors.server'
   | 'errors.generic'
   | 'errors.attemptsExhausted'
@@ -59,6 +68,8 @@ export interface LoginState {
   /** Why the session ended (shown on the code screen); null while active or after reset. */
   endedReason: LoginErrorKey | null;
   start: () => Promise<ActionResult<void>>;
+  /** Brings back a login that was in progress when the app was killed; false when there is none (or it expired). */
+  restore: () => Promise<boolean>;
   reopenBot: () => Promise<ActionResult<void>>;
   checkStatus: () => Promise<ActionResult<LoginStatus>>;
   submitCode: (code: string) => Promise<ActionResult<{ isNew: boolean }>>;
@@ -85,15 +96,23 @@ function fail(errorKey: LoginErrorKey, fatal = false): Failure {
   return { ok: false, errorKey, fatal };
 }
 
+/** Errors after which this login can never succeed: the user must start over. */
+const TERMINAL_KEYS: ReadonlySet<LoginErrorKey> = new Set(['errors.codeExpired', 'errors.accountDisabled', 'errors.roleNotAllowed', 'errors.phoneTaken']);
+
 function failFrom(error: unknown): Failure {
   const key = errorMessageKey(parseApiError(error));
-  return fail(key, key === 'errors.codeExpired');
+  return fail(key, TERMINAL_KEYS.has(key));
 }
 
 export function createLoginStore(deps: LoginDeps): StoreApi<LoginState> {
   return createStore<LoginState>()((set, get) => {
+    function forget(): void {
+      void Promise.resolve(deps.sessionSlot?.clear()).catch(() => undefined);
+    }
+
     /** Ends the session for good and remembers why. */
     function end(errorKey: LoginErrorKey): Failure {
+      forget();
       set({ ...EMPTY, endedReason: errorKey });
       return fail(errorKey, true);
     }
@@ -120,6 +139,7 @@ export function createLoginStore(deps: LoginDeps): StoreApi<LoginState> {
       } catch {
         return end('errors.generic'); // e.g. secure store refused to persist the tokens
       }
+      forget();
       set({ ...EMPTY });
       return { ok: true, value: { isNew: result.is_new } };
     }
@@ -158,7 +178,28 @@ export function createLoginStore(deps: LoginDeps): StoreApi<LoginState> {
           expiresAt: deps.now() + parsed.data.expires_in * 1000,
         };
         set({ ...EMPTY, session });
+        void Promise.resolve(deps.sessionSlot?.set(serializeLoginSession(session))).catch(() => undefined);
         return open(session);
+      },
+
+      async restore() {
+        if (get().session) return true;
+        const slot = deps.sessionSlot;
+        if (!slot) return false;
+        let raw: string | null = null;
+        try {
+          raw = await slot.get();
+        } catch {
+          return false;
+        }
+        const stored = parseLoginSession(raw, deps.now(), deps.botName);
+        if (!stored) {
+          if (raw !== null) forget(); // expired or untrustworthy leftovers
+          return false;
+        }
+        if (get().session) return true; // a fresh start() won the race
+        set({ ...EMPTY, session: stored });
+        return true;
       },
 
       async reopenBot() {
@@ -196,6 +237,7 @@ export function createLoginStore(deps: LoginDeps): StoreApi<LoginState> {
       },
 
       reset() {
+        forget();
         set({ ...EMPTY });
       },
     };

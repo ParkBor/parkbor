@@ -1,3 +1,4 @@
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -9,6 +10,7 @@ import { useLanguage } from '@/features/map/useLanguage';
 import { RoutePreviewSummary } from '@/features/route/RouteNotices';
 import type { RouteState } from '@/features/route/useRoute';
 import { MIN_TOUCH, usePalette } from '@/theme/theme';
+import { useScreenLayout } from '@/theme/useScreenLayout';
 
 interface ParkingPreviewProps {
   parking: Parking;
@@ -16,6 +18,7 @@ interface ParkingPreviewProps {
   onRoute: (parking: Parking) => void;
   onStart: (parking: Parking) => void;
   onDetails: (parking: Parking) => void;
+  onBook: (parking: Parking) => void;
   /** Route requested for this lot (null = none yet). */
   routeState: RouteState | null;
   onClearRoute: () => void;
@@ -28,17 +31,21 @@ export function ParkingPreview({
   onRoute,
   onStart,
   onDetails,
+  onBook,
   routeState,
   onClearRoute,
 }: ParkingPreviewProps) {
   const { t } = useTranslation();
   const p = usePalette();
   const lang = useLanguage();
+  const { insets } = useScreenLayout();
   const text = describeParking(parking, lang);
   const status = parking.isOpen ? t('map.open') : t('map.closed');
 
   return (
-    <View style={styles.root}>
+    <View style={styles.flex}>
+      {/* The facts scroll when the sheet is short; Details / Book stay below, always reachable. */}
+      <BottomSheetScrollView contentContainerStyle={styles.root}>
       <View style={styles.header}>
         <View style={styles.headerText}>
           <Text accessibilityRole="header" style={[styles.name, { color: p.text }]}>
@@ -87,13 +94,23 @@ export function ParkingPreview({
           <Button label={t('route.start')} onPress={() => onStart(parking)} />
         </View>
       </View>
-      <Button variant="secondary" label={t('map.details')} onPress={() => onDetails(parking)} />
+      </BottomSheetScrollView>
+      <View style={[styles.footer, { borderTopColor: p.border, paddingBottom: 12 + insets.bottom }]}>
+        <View style={styles.action}>
+          <Button variant="secondary" label={t('map.details')} onPress={() => onDetails(parking)} />
+        </View>
+        <View style={styles.action}>
+          <Button label={t('parking.book')} onPress={() => onBook(parking)} />
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   root: { padding: 16, gap: 12 },
+  footer: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingHorizontal: 16, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   headerText: { flex: 1, gap: 2 },
   name: { fontSize: 20, fontWeight: '700' },
@@ -104,6 +121,7 @@ const styles = StyleSheet.create({
   dot: { width: 14, height: 14, borderRadius: 7 },
   free: { fontSize: 16, fontWeight: '700' },
   price: { fontSize: 18, fontWeight: '700' },
-  actions: { flexDirection: 'row', gap: 12 },
-  action: { flex: 1 },
+  // two buttons side by side; they wrap under each other when the screen or the font is too big
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  action: { flex: 1, minWidth: 140 },
 });

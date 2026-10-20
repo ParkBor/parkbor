@@ -4,9 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, useColorScheme, View, type DimensionValue } from 'react-native';
 
 import { Button } from '@/components/Button';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import type { Region } from '@/features/map/geo';
 import { INITIAL_MAP_LOAD, MAP_LOAD_TIMEOUT_MS, reduceMapLoad } from '@/features/map/mapLoadState';
 import { boundsToRegion, regionToBounds } from '@/features/map/maplibreAdapter';
+import { useMapCredit } from '@/features/map/useMapCredit';
 import { getMapConfig } from '@/lib/config';
 import { usePalette } from '@/theme/theme';
 
@@ -19,26 +21,46 @@ interface AppMapProps {
   onUserMove?: () => void;
   onPress?: () => void;
   showsUserLocation?: boolean;
+  /**
+   * Draw the credit line over the map at `attributionBottom`. The map screen turns this off: its bottom sheet
+   * covers that spot, so the sheet's handle carries the credit instead (MapSheet).
+   */
+  showCredit?: boolean;
   /** Distance of the credit line from the bottom edge (keep it above sheets and bars). */
-  attributionBottom: DimensionValue;
+  attributionBottom?: DimensionValue;
   accessibilityLabel?: string;
   children?: ReactNode;
 }
 
 /**
  * The map: MapLibre with an OpenStreetMap vector style chosen by configuration (config.getMapConfig),
- * light or dark with the system theme. Always shows the credit line the data licence requires. If the
- * style cannot be loaded the map area becomes a short notice with "Try again" - everything layered on
- * top of it (lists, filters, sheets) keeps working.
+ * light or dark with the system theme. If the style cannot be configured or loaded, or the native map
+ * crashes, the map area becomes a short notice with "Try again" - everything layered on top of it
+ * (lists, filters, sheets) keeps working.
  */
-export function AppMap({
+export function AppMap(props: AppMapProps) {
+  const { t } = useTranslation();
+  const p = usePalette();
+  return (
+    <ErrorBoundary
+      fallback={(reset) => (
+        <MapUnavailable title={t('map.styleFailedTitle')} text={t('map.styleFailedText')} retryLabel={t('common.retry')} onRetry={reset} background={p.surface} />
+      )}
+    >
+      <MapContent {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function MapContent({
   cameraRef,
   initialRegion,
   onRegionSettled,
   onUserMove,
   onPress,
   showsUserLocation = false,
-  attributionBottom,
+  showCredit = true,
+  attributionBottom = 0,
   accessibilityLabel,
   children,
 }: AppMapProps) {
@@ -46,6 +68,7 @@ export function AppMap({
   const p = usePalette();
   const isDark = useColorScheme() === 'dark';
   const config = useMemo(() => getMapConfig(), []);
+  const credit = useMapCredit();
   const [load, dispatch] = useReducer(reduceMapLoad, INITIAL_MAP_LOAD);
 
   useEffect(() => {
@@ -61,13 +84,21 @@ export function AppMap({
     if (userInteraction) onUserMove?.();
   };
 
+  if (!config.ok) {
+    return (
+      <View style={StyleSheet.absoluteFill}>
+        <MapUnavailable title={t('map.styleFailedTitle')} text={t('map.styleFailedText')} background={p.surface} />
+      </View>
+    );
+  }
+
   return (
     <View style={StyleSheet.absoluteFill} accessibilityLabel={accessibilityLabel}>
       <Map
         key={load.attempt}
         style={StyleSheet.absoluteFill}
         mapStyle={isDark ? config.styles.dark : config.styles.light}
-        // The credit line is drawn by <MapCredit/> below, always visible (not behind an "i" button).
+        // The credit line is drawn by us (below / in the sheet), always visible, not behind an "i" button.
         attribution={false}
         logo={false}
         compass={false}
@@ -84,21 +115,44 @@ export function AppMap({
       </Map>
 
       {load.status === 'failed' ? (
-        <View style={[styles.failed, { backgroundColor: p.surface }]} accessibilityLiveRegion="polite">
-          <Text style={[styles.failedTitle, { color: p.text }]}>{t('map.styleFailedTitle')}</Text>
-          <Text style={[styles.failedText, { color: p.textMuted }]}>{t('map.styleFailedText')}</Text>
-          <Button variant="secondary" label={t('common.retry')} onPress={() => dispatch('retry')} />
-        </View>
+        <MapUnavailable
+          title={t('map.styleFailedTitle')}
+          text={t('map.styleFailedText')}
+          retryLabel={t('common.retry')}
+          onRetry={() => dispatch('retry')}
+          background={p.surface}
+        />
       ) : null}
 
-      <View pointerEvents="none" style={[styles.credit, { bottom: attributionBottom }]}>
-        <Text
-          accessibilityLabel={t('map.attributionLabel', { text: isDark ? config.attribution.dark : config.attribution.light })}
-          style={[styles.creditText, { color: isDark ? '#E5E7EB' : '#111827', backgroundColor: isDark ? 'rgba(11,15,23,0.72)' : 'rgba(255,255,255,0.78)' }]}
-        >
-          {isDark ? config.attribution.dark : config.attribution.light}
-        </Text>
-      </View>
+      {showCredit ? (
+        <View pointerEvents="none" style={[styles.credit, { bottom: attributionBottom }]}>
+          <Text
+            accessibilityLabel={t('map.attributionLabel', { text: credit })}
+            style={[styles.creditText, { color: isDark ? '#E5E7EB' : '#111827', backgroundColor: isDark ? 'rgba(11,15,23,0.72)' : 'rgba(255,255,255,0.78)' }]}
+          >
+            {credit}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+interface MapUnavailableProps {
+  title: string;
+  text: string;
+  retryLabel?: string;
+  onRetry?: () => void;
+  background: string;
+}
+
+function MapUnavailable({ title, text, retryLabel, onRetry, background }: MapUnavailableProps) {
+  const p = usePalette();
+  return (
+    <View style={[styles.failed, { backgroundColor: background }]} accessibilityLiveRegion="polite">
+      <Text style={[styles.failedTitle, { color: p.text }]}>{title}</Text>
+      <Text style={[styles.failedText, { color: p.textMuted }]}>{text}</Text>
+      {retryLabel && onRetry ? <Button variant="secondary" label={retryLabel} onPress={onRetry} /> : null}
     </View>
   );
 }

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@/components/BackHeader';
 import { Button } from '@/components/Button';
 import { formatRating } from '@/features/map/format';
 import { describeParking } from '@/features/map/parkingText';
@@ -15,18 +16,20 @@ import { useSlotAvailability } from '@/features/parking/useSlotAvailability';
 import { useRealtimeGroups } from '@/features/realtime/useRealtime';
 import { firstParam, formatCoordParam } from '@/features/route/lotParams';
 import { usePalette } from '@/theme/theme';
+import { useScreenLayout } from '@/theme/useScreenLayout';
 
 /** parking/[id]: lot facts from the nearby cache + live free spots per type for the next hour. */
 export function ParkingDetailScreen() {
   const { t } = useTranslation();
   const p = usePalette();
+  const { column } = useScreenLayout();
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = firstParam(params.id);
   if (!isValidParkingId(id)) {
     return (
       <SafeAreaView style={[styles.root, { backgroundColor: p.background }]}>
-        <View style={styles.body}>
+        <View style={[styles.body, column]}>
           <Text style={{ color: p.text }}>{t('parking.invalid')}</Text>
           <Button label={t('common.back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))} />
         </View>
@@ -39,6 +42,7 @@ export function ParkingDetailScreen() {
 function ParkingDetail({ lotId }: { lotId: string }) {
   const { t } = useTranslation();
   const p = usePalette();
+  const { column, gutter } = useScreenLayout();
   const router = useRouter();
   const queryClient = useQueryClient();
   const lot = findCachedParking(
@@ -59,7 +63,8 @@ function ParkingDetail({ lotId }: { lotId: string }) {
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: p.background }]}>
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView contentContainerStyle={[styles.body, { padding: gutter }, column]}>
+        <BackHeader />
         <Text accessibilityRole="header" style={[styles.title, { color: p.text }]}>
           {lot?.name ?? t('parking.title')}
         </Text>
@@ -105,6 +110,6 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 6 },
   price: { fontSize: 18, fontWeight: '700' },
   hint: { fontSize: 13 },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  action: { flex: 1 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 8 },
+  action: { flex: 1, minWidth: 140 },
 });

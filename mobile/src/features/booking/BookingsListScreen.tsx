@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
+import { ListSkeleton } from '@/features/map/StateViews';
 import { Chip } from '@/components/Chip';
 import { ErrorText } from '@/components/ErrorText';
 import { Screen } from '@/components/Screen';
@@ -99,7 +100,7 @@ function BookingsFlatList({ list, scope, isLoading }: { list: ListQuery; scope: 
         </>
       }
       ListEmptyComponent={
-        isLoading ? <Text style={{ color: p.textMuted }}>{t('common.loading')}</Text> : <EmptyView scope={scope} />
+        isLoading ? <ListSkeleton /> : <EmptyView scope={scope} />
       }
       ListFooterComponent={
         list.isFetchingNextPage ? (

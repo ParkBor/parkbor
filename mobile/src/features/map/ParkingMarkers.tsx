@@ -13,6 +13,7 @@ import type { LatLng, Region } from '@/features/map/geo';
 import { markerColor, markerFill, markerLabel, readableTextColor, type MarkerKind } from '@/features/map/markerColor';
 import { toLngLat } from '@/features/map/maplibreAdapter';
 import type { Parking } from '@/features/map/schemas';
+import { TIGHT_FONT_MULTIPLIER } from '@/theme/layout';
 import { usePalette } from '@/theme/theme';
 
 const MARKER_SIZE = 48;
@@ -36,7 +37,9 @@ function Badge({ kind, label, isCluster, isSelected }: BadgeProps) {
         isSelected && styles.selected,
       ]}
     >
-      <Text style={[styles.badgeText, { color: readableTextColor(fill) }]}>{label}</Text>
+      <Text maxFontSizeMultiplier={TIGHT_FONT_MULTIPLIER} style={[styles.badgeText, { color: readableTextColor(fill) }]}>
+        {label}
+      </Text>
     </View>
   );
 }

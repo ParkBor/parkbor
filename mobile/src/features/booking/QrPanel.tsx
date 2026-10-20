@@ -3,7 +3,7 @@ import { useIsFocused } from 'expo-router';
 import { allowScreenCaptureAsync, preventScreenCaptureAsync } from 'expo-screen-capture';
 import { useTranslation } from 'react-i18next';
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { Button } from '@/components/Button';
@@ -14,16 +14,19 @@ import { serverClock } from '@/features/booking/serverClock';
 import { useQrBrightness } from '@/features/booking/useQrBrightness';
 import { useQrToken } from '@/features/booking/useQrToken';
 import { usePalette } from '@/theme/theme';
+import { useScreenLayout } from '@/theme/useScreenLayout';
 
 const MAX_QR_SIZE = 320;
-const QR_SIDE_MARGIN = 96;
+const MAX_QR_SHORT = 220;
+/** Card padding + border on both sides of the QR tile. */
+const QR_SIDE_MARGIN = 56;
 const SCREEN_CAPTURE_KEY = 'habi-booking-qr';
 
 /** Mounted only while a QR can be shown (CONFIRMED | ACTIVE). */
 export function QrPanel({ bookingId, startMs }: { bookingId: string; startMs: number }) {
   const { t } = useTranslation();
   const p = usePalette();
-  const { width } = useWindowDimensions();
+  const { innerWidth, isShort } = useScreenLayout();
   const isFocused = useIsFocused();
   const qr = useQrToken(bookingId, true);
   const queryClient = useQueryClient();
@@ -47,7 +50,8 @@ export function QrPanel({ bookingId, startMs }: { bookingId: string; startMs: nu
   useQrBrightness(isFocused && qr.data !== undefined);
 
   const isActive = isQrActive(startMs, serverClock.now());
-  const size = Math.min(MAX_QR_SIZE, Math.max(160, width - QR_SIDE_MARGIN));
+  // Inside the padded, width-capped column; smaller in landscape / split screen so it fits without scrolling far.
+  const size = Math.min(isShort ? MAX_QR_SHORT : MAX_QR_SIZE, Math.max(160, innerWidth - QR_SIDE_MARGIN));
 
   return (
     <View style={[styles.card, { backgroundColor: p.surface, borderColor: p.border }]}>

@@ -163,13 +163,18 @@ export default function CodeScreen() {
         <Button label={t('code.startOver')} onPress={goLogin} />
       ) : (
         <>
+          {/* The bot confirmed and the field is still empty: pasting the code is THE next step. */}
           <Button
             label={isSubmitting ? t('code.verifying') : t('code.verify')}
             loading={isSubmitting}
             disabled={code.length !== CODE_LENGTH}
             onPress={() => void submit(code)}
           />
-          <Button variant="secondary" label={t('code.pasteButton')} onPress={() => void fillFromClipboard(true)} />
+          <Button
+            variant={isConfirmed && code.length !== CODE_LENGTH ? 'primary' : 'secondary'}
+            label={t('code.pasteButton')}
+            onPress={() => void fillFromClipboard(true)}
+          />
           <Text style={[styles.hint, { color: p.textMuted }]}>{t('code.noCode')}</Text>
           <Button
             variant="secondary"

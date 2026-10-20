@@ -3,9 +3,10 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-import { createDeviceRegistrar } from '@/features/push/deviceRegistrar';
+import { createDeviceRegistrar, type SyncResult } from '@/features/push/deviceRegistrar';
 import { currentPushToken } from '@/features/push/logoutToken';
 import { parsePermission, type PermissionState, type PushPermission } from '@/features/push/permissionPolicy';
+import { canEverGetToken, nextAvailability, type PushAvailability } from '@/features/push/pushAvailability';
 import { api } from '@/lib/api';
 
 /**
@@ -60,6 +61,29 @@ function easProjectId(): string | null {
   return typeof id === 'string' && id.length > 0 ? id : null;
 }
 
+let availability: PushAvailability = 'unknown';
+const availabilityListeners = new Set<() => void>();
+
+export const pushAvailabilityStore = {
+  get: (): PushAvailability => availability,
+  subscribe: (listener: () => void): (() => void) => {
+    availabilityListeners.add(listener);
+    return () => void availabilityListeners.delete(listener);
+  },
+};
+
+/** False on a simulator or in a build without an EAS project id: no point in asking for the permission either. */
+export function isPushPossibleOnThisBuild(): boolean {
+  return canEverGetToken({ isDevice: Device.isDevice, hasProjectId: easProjectId() !== null }) && availability !== 'unavailable';
+}
+
+function record(result: SyncResult): void {
+  const next = nextAvailability(availability, result);
+  if (next === availability) return;
+  availability = next;
+  for (const listener of [...availabilityListeners]) listener();
+}
+
 async function readExpoPushToken(): Promise<string | null> {
   // Simulators and emulators without Play Services cannot receive push; so does a build with no EAS project.
   const projectId = easProjectId();
@@ -80,12 +104,12 @@ export const deviceRegistrar = createDeviceRegistrar({
 
 /** Registers this phone for the signed-in user (no-op without permission). */
 export async function syncDevice(userKey: string | null): Promise<void> {
-  await deviceRegistrar.sync(userKey);
+  record(await deviceRegistrar.sync(userKey));
 }
 
 /** Foreground returns: at most one check a minute. */
 export async function syncDeviceThrottled(userKey: string | null): Promise<void> {
-  await deviceRegistrar.syncThrottled(userKey);
+  record(await deviceRegistrar.syncThrottled(userKey));
 }
 
 /** The session ended (the revocation carrying the token is already queued by the auth store). */

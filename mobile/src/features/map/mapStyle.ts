@@ -76,3 +76,22 @@ export function attributionFor(styleUrl: string, extra?: string): string {
   const credit = providerCredit(styleUrl) ?? cleanExtra(extra);
   return credit ? `${OSM_ATTRIBUTION} · ${credit}` : OSM_ATTRIBUTION;
 }
+
+export type MapConfigResult =
+  | { ok: true; styles: MapStyles; attribution: { light: string; dark: string } }
+  /** Misconfigured style: the map shows its failure panel; the credit line stays correct for whatever is shown. */
+  | { ok: false; attribution: { light: string; dark: string } };
+
+/** Style + credit for the configuration; an invalid URL becomes a result, never an exception. */
+export function resolveMapConfig(input: { light?: string; dark?: string; extra?: string; isDev: boolean }): MapConfigResult {
+  try {
+    const styles = resolveMapStyles(input);
+    return {
+      ok: true,
+      styles,
+      attribution: { light: attributionFor(styles.light, input.extra), dark: attributionFor(styles.dark, input.extra) },
+    };
+  } catch {
+    return { ok: false, attribution: { light: OSM_ATTRIBUTION, dark: OSM_ATTRIBUTION } };
+  }
+}

@@ -5,6 +5,7 @@ import {
   DEFAULT_LIGHT_STYLE_URL,
   OSM_ATTRIBUTION,
   attributionFor,
+  resolveMapConfig,
   resolveMapStyles,
   validateMapStyleUrl,
 } from '@/features/map/mapStyle';
@@ -130,5 +131,23 @@ describe('attributionFor', () => {
 
   it('survives garbage', () => {
     expect(attributionFor('not a url')).toBe(OSM_ATTRIBUTION);
+  });
+});
+
+describe('resolveMapConfig (never throws)', () => {
+  it('returns styles and credits for a valid configuration', () => {
+    const result = resolveMapConfig({ isDev: false });
+    expect(result).toMatchObject({ ok: true, styles: { light: DEFAULT_LIGHT_STYLE_URL } });
+    expect(result.attribution.light).toContain(OSM_ATTRIBUTION);
+  });
+
+  it('turns a bad style URL into ok:false with the OSM credit', () => {
+    const result = resolveMapConfig({ light: 'http://evil.example.com/s.json', isDev: false });
+    expect(result).toEqual({ ok: false, attribution: { light: OSM_ATTRIBUTION, dark: OSM_ATTRIBUTION } });
+  });
+
+  it('passes the extra credit through for a custom host', () => {
+    const result = resolveMapConfig({ light: 'https://maps.example.uz/s.json', extra: '© Example', isDev: false });
+    expect(result.attribution.dark).toBe(`${OSM_ATTRIBUTION} · © Example`);
   });
 });

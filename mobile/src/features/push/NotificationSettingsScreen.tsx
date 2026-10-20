@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, Linking, StyleSheet, Text, View } from 'react-native';
 
+import { BackHeader } from '@/components/BackHeader';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { settingsAction, type PushPermission } from '@/features/push/permissionPolicy';
-import { ensureAndroidChannel, readPermission, requestPermission, syncDevice } from '@/features/push/pushRuntime';
+import { ensureAndroidChannel, isPushPossibleOnThisBuild, pushAvailabilityStore, readPermission, requestPermission, syncDevice } from '@/features/push/pushRuntime';
 import { authStore } from '@/store/auth';
 import { usePalette } from '@/theme/theme';
 
@@ -33,7 +34,10 @@ export function NotificationSettingsScreen() {
     };
   }, []);
 
-  const action = permission ? settingsAction(permission) : 'none';
+  // Re-evaluated when a registration attempt learns that this install cannot get a push token.
+  useSyncExternalStore(pushAvailabilityStore.subscribe, pushAvailabilityStore.get);
+  const isPossible = isPushPossibleOnThisBuild();
+  const action = permission && isPossible ? settingsAction(permission) : 'none';
 
   const allow = async (): Promise<void> => {
     await ensureAndroidChannel(t('permissions.notificationsTitle'));
@@ -44,12 +48,15 @@ export function NotificationSettingsScreen() {
   };
 
   return (
-    <Screen>
-      <Text accessibilityRole="header" style={[styles.title, { color: p.text }]}>
-        {t('push.settingsTitle')}
-      </Text>
+    <Screen isScrollable>
+      <BackHeader title={t('push.settingsTitle')} />
       <Text style={{ color: p.textMuted }}>{t('push.settingsHint')}</Text>
-      {permission ? (
+      {!isPossible ? (
+        <View style={[styles.card, { backgroundColor: p.surface, borderColor: p.border }]}>
+          <Text style={{ color: p.warningText }}>{t('push.unavailable')}</Text>
+        </View>
+      ) : null}
+      {permission && isPossible ? (
         <View style={[styles.card, { backgroundColor: p.surface, borderColor: p.border }]}>
           <Text style={{ color: permission.state === 'granted' ? p.successText : p.warningText }}>
             {permission.state === 'granted' ? t('push.settingsOn') : t('push.settingsOff')}

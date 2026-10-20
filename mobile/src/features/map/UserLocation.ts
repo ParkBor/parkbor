@@ -10,6 +10,7 @@ import {
   isReadyToSearch,
   type LocationState,
 } from '@/features/map/locationModel';
+import { locationPrompt } from '@/features/map/locationPrompt';
 import { createLocationWatcher, type Fix } from '@/features/map/locationWatcher';
 
 export type UserLocationState = LocationState | 'loading';
@@ -104,7 +105,8 @@ export function useUserLocation({ isNavigation = false, isPaused = false }: User
     const apply = (next: LocationState): void => {
       if (isMounted) setState(next);
     };
-    void readAccess(true).then(apply);
+    // After "Later" on the permissions screen the system dialog waits for an explicit location action.
+    void readAccess(locationPrompt.mayPromptOnMount()).then(apply);
     // Back from the system settings: pick up a changed permission without prompting.
     const appState = AppState.addEventListener('change', (next) => {
       if (next === 'active') void readAccess(false).then(apply);
@@ -131,7 +133,10 @@ export function useUserLocation({ isNavigation = false, isPaused = false }: User
     return () => clearTimeout(timer);
   }, [state, position, hasWaitedForFix]);
 
-  const requestAccess = useCallback(async () => setState(await readAccess(true)), []);
+  const requestAccess = useCallback(async () => {
+    locationPrompt.clear();
+    setState(await readAccess(true));
+  }, []);
   const openSettings = useCallback(() => {
     void Linking.openSettings();
   }, []);

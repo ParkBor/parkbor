@@ -228,3 +228,40 @@ describe('parseCancelPreview', () => {
     expect(() => parseCancelPreview({ can_cancel: 'yes', refund_percent: 10, refund_amount: '5.00' })).toThrow(ContractError);
   });
 });
+
+describe('walk-in bookings without a registered vehicle', () => {
+  it.each([
+    ['null id and type', { id: null, plate_number: 'A123', type: null }],
+    ['null id/type and no plate', { id: null, type: null }],
+    ['null plate', { id: null, plate_number: null, type: null }],
+    ['an empty object', {}],
+    ['no vehicle at all', null],
+  ])('parses %s', (_name, vehicle) => {
+    const booking = parseBooking(rawBooking({ vehicle }));
+    expect(booking.vehicle.id).toBeNull();
+    expect(booking.vehicle.type).toBeNull();
+    expect(typeof booking.vehicle.plateNumber).toBe('string');
+  });
+
+  it('keeps the plate when the walk-in has one', () => {
+    expect(parseBooking(rawBooking({ vehicle: { id: null, plate_number: '01A123BC', type: null } })).vehicle).toEqual({
+      id: null,
+      plateNumber: '01A123BC',
+      type: null,
+    });
+  });
+
+  it('an absent vehicle gives an empty plate (screens hide the row)', () => {
+    expect(parseBooking(rawBooking({ vehicle: null })).vehicle.plateNumber).toBe('');
+  });
+
+  it('a page with a walk-in among normal bookings still parses completely', () => {
+    const page = parseBookingPage(rawPage([rawBooking(), rawBooking({ id: 'f1a0c1de-1111-4222-8333-444455556666', vehicle: { id: null, type: null } })]));
+    expect(page.results).toHaveLength(2);
+    expect(page.skippedCount).toBe(0);
+  });
+
+  it('a malformed vehicle id (not null, not a uuid) is still refused', () => {
+    expect(() => parseBooking(rawBooking({ vehicle: { id: 'nope', plate_number: 'A1', type: 'CAR' } }))).toThrow(ContractError);
+  });
+});

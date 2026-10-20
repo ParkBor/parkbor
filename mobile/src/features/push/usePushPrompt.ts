@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert } from 'react-native';
 
 import { decideNotificationPrompt } from '@/features/push/permissionPolicy';
-import { ensureAndroidChannel, readPermission, requestPermission, syncDevice } from '@/features/push/pushRuntime';
+import { ensureAndroidChannel, isPushPossibleOnThisBuild, readPermission, requestPermission, syncDevice } from '@/features/push/pushRuntime';
 import { authStore } from '@/store/auth';
 
 let hasAskedThisRun = false;
@@ -16,7 +16,8 @@ let hasAskedThisRun = false;
 export function useNotificationPrompt(isMoment: boolean): void {
   const { t } = useTranslation();
   useEffect(() => {
-    if (!isMoment) return;
+    // No promise we cannot keep: simulator / build without push credentials -> no soft prompt.
+    if (!isMoment || !isPushPossibleOnThisBuild()) return;
     let isCancelled = false;
     void readPermission().then((permission) => {
       if (isCancelled || decideNotificationPrompt({ permission, hasAskedThisRun, isMoment }) === 'skip') return;

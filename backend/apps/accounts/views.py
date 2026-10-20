@@ -15,6 +15,7 @@ from apps.accounts.serializers import (
     ProfileUpdateSerializer,
     UserSerializer,
 )
+from apps.accounts.throttling import AccountDeleteThrottle
 from apps.core.exceptions import UserNotFoundError
 from apps.core.serializers import ErrorSerializer
 from apps.core.throttling import AuthenticatedUserThrottle
@@ -39,6 +40,26 @@ class MeView(APIView):
         serializer.is_valid(raise_exception=True)
         user = services.update_profile(request.user, serializer.validated_data)
         return Response(UserSerializer(user).data)
+
+    @extend_schema(
+        operation_id="me_delete",
+        summary="Delete my account (anonymised; bookings and payments are kept for accounting)",
+        request=None,
+        responses={
+            204: OpenApiResponse(description="Account anonymised and signed out."),
+            409: ErrorSerializer,
+            429: OpenApiResponse(description="Too many requests."),
+        },
+    )
+    def delete(self, request):
+        services.delete_account(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def get_throttles(self):
+        throttle = (
+            AccountDeleteThrottle if self.request.method == "DELETE" else AuthenticatedUserThrottle
+        )
+        return [throttle()]
 
 
 class DevicesView(APIView):

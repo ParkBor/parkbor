@@ -11,6 +11,7 @@ import { useFiltersStore } from '@/features/map/filtersStore';
 import { FiltersSheet } from '@/features/map/FiltersSheet';
 import type { LatLng, Region } from '@/features/map/geo';
 import { DEFAULT_CENTER } from '@/features/map/locationModel';
+import { createPressGuard } from '@/features/map/pressGuard';
 import { boundsOfPath, runCamera } from '@/features/map/maplibreAdapter';
 import { MapControls } from '@/features/map/MapControls';
 import { MapSheet, SHEET_DEFAULT_INDEX } from '@/features/map/MapSheet';
@@ -49,7 +50,10 @@ export function MapScreen() {
     if (bounds) runCamera(() => cameraRef.current?.fitBounds(bounds, { padding: ROUTE_FIT_PADDING, duration: ROUTE_FIT_MS, easing: 'ease' }));
   }, [routePath]);
 
+  // A marker tap must not be undone by the map-level tap that can follow it.
+  const [pressGuard] = useState(() => createPressGuard(() => Date.now()));
   const select = (parking: Parking): void => {
+    pressGuard.markTapped();
     setSelectedId(parking.id);
     sheetRef.current?.snapToIndex(SHEET_DEFAULT_INDEX);
   };
@@ -93,9 +97,11 @@ export function MapScreen() {
         cameraRef={cameraRef}
         initialRegion={camera.initialRegion}
         showsUserLocation={location.state === 'granted'}
-        attributionBottom={ATTRIBUTION_BOTTOM}
+        showCredit={false}
         onUserMove={camera.markMoved}
-        onPress={() => setSelectedId(null)}
+        onPress={() => {
+          if (pressGuard.shouldHandleMapPress()) setSelectedId(null);
+        }}
         onRegionSettled={regionSettled}
       >
         <ParkingMarkers
@@ -103,7 +109,10 @@ export function MapScreen() {
           region={camera.region}
           selectedId={selected?.id ?? null}
           onSelect={select}
-          onZoomTo={camera.zoomTo}
+          onZoomTo={(region) => {
+            pressGuard.markTapped();
+            camera.zoomTo(region);
+          }}
         />
         {activeRoute && routeState.route ? <RouteLayer route={routeState.route} /> : null}
       </AppMap>
@@ -130,6 +139,7 @@ export function MapScreen() {
         onRoute={showRoute}
         onStart={startNavigation}
         onDetails={openDetails}
+        onBook={(parking) => router.push({ pathname: '/booking/new', params: { lotId: parking.id } })}
         routeState={activeRoute ? routeState : null}
         onClearRoute={() => setRouteRequest(null)}
         onOpenFilters={() => setIsFiltersOpen(true)}
@@ -141,7 +151,5 @@ export function MapScreen() {
 
 const ROUTE_FIT_PADDING = { top: 80, right: 40, bottom: 320, left: 40 };
 const ROUTE_FIT_MS = 500;
-/** The credit line sits just above the collapsed bottom sheet (18 % of the screen). */
-const ATTRIBUTION_BOTTOM = '19%';
 
 const styles = StyleSheet.create({ root: { flex: 1 } });

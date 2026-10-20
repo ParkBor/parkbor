@@ -7,7 +7,8 @@
     "retry": "Qayta urinish",
     "loading": "Yuklanmoqda…",
     "logout": "Chiqish",
-    "offline": "Internet yo‘q. Ulanishni tekshirib, qayta urinib ko‘ring."
+    "offline": "Internet yo‘q. Ulanishni tekshirib, qayta urinib ko‘ring.",
+    "cancel": "Bekor qilish"
   },
   "welcome": {
     "slide1Title": "Bo‘sh joyni tez toping",
@@ -53,7 +54,21 @@
     "firstName": "Ism",
     "firstNamePlaceholder": "Masalan, Ali",
     "save": "Saqlash",
-    "saving": "Saqlanmoqda…"
+    "saving": "Saqlanmoqda…",
+    "editName": "Ism",
+    "nameMissing": "Ismingizni kiriting",
+    "language": "Til",
+    "languageCurrent": "Hozirgi: {{language}}",
+    "logoutTitle": "Chiqasizmi?",
+    "logoutText": "Qayta kirish uchun Telegram kerak bo‘ladi.",
+    "deleteTitle": "Akkauntni o‘chirish",
+    "deleteHint": "Akkaunt va ma’lumotlarni o‘chirish",
+    "deleteText": "Akkaunt o‘chirilsa, profilingiz, avtomobillaringiz va bronlar tarixi ParkBor’dan o‘chadi. Buni qaytarib bo‘lmaydi.",
+    "deleteBlockedHint": "Faol bronlari yoki avtoturargohlari bor akkauntni ular yakunlanmaguncha yoki bekor qilinmaguncha o‘chirib bo‘lmaydi.",
+    "deleteButton": "Akkauntimni o‘chirish",
+    "deleteConfirmTitle": "Akkaunt o‘chirilsinmi?",
+    "deleteConfirmText": "Barcha ma’lumotlaringiz butunlay o‘chiriladi.",
+    "deleteConfirmButton": "O‘chirish"
   },
   "permissions": {
     "title": "Ruxsatlar",
@@ -77,7 +92,8 @@
     "settingsTitle": "Bildirishnomalar",
     "settingsHint": "Bron tugashidan oldingi eslatmalar va bron o‘zgarishlari haqida xabarlar.",
     "settingsOn": "Bildirishnomalar yoqilgan",
-    "settingsOff": "Bu qurilmada bildirishnomalar o‘chiq"
+    "settingsOff": "Bu qurilmada bildirishnomalar o‘chiq",
+    "unavailable": "Bu telefonda yoki ushbu ilova versiyasida push-bildirishnomalar mavjud emas. Muhim xabarlar Telegram orqali yuboriladi."
   },
   "tabs": {
     "map": "Xarita",
@@ -96,7 +112,10 @@
     "accountDisabled": "Akkauntingiz bloklangan.",
     "server": "Serverda xatolik. Birozdan so‘ng qayta urinib ko‘ring.",
     "cannotOpenTelegram": "Telegram ochilmadi. Telegram o‘rnatilganini tekshiring.",
-    "generic": "Xatolik yuz berdi. Qayta urinib ko‘ring."
+    "generic": "Xatolik yuz berdi. Qayta urinib ko‘ring.",
+    "roleNotAllowed": "Bu akkaunt bilan ilovaga kirib bo‘lmaydi. Haydovchi yoki darvoza operatori akkauntidan foydalaning.",
+    "phoneTaken": "Bu telefon raqami boshqa akkauntda ishlatilgan.",
+    "accountDeletionBlocked": "Faol bronlar yoki avtoturargohlar bor akkauntni o‘chirib bo‘lmaydi. Avval ularni yakunlang yoki bekor qiling."
   },
   "validation": {
     "codeInvalid": "6 ta raqam kiriting",
@@ -801,5 +820,9 @@
     "title": "Sahifa topilmadi",
     "text": "Bu havola ParkBor ichida hech qayerga olib bormaydi.",
     "back": "Ilovaga o‘tish"
+  },
+  "errorBoundary": {
+    "title": "Nimadir xato ketdi",
+    "text": "Ekranni ko‘rsatib bo‘lmadi. Qayta urinib ko‘ring; takrorlansa, ilovani qayta ishga tushiring."
   }
 }

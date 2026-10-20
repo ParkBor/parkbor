@@ -375,3 +375,110 @@ describe('login store: reset', () => {
     expect(store.getState()).toMatchObject({ session: null, failedAttempts: 0, isConfirmed: false });
   });
 });
+
+describe('login store: the login survives the app being killed', () => {
+  function withSlot(initial: string | null = null, nowRef = { value: NOW }) {
+    const slot = { value: initial as string | null, get: vi.fn(), set: vi.fn(), clear: vi.fn() };
+    slot.get.mockImplementation(async () => slot.value);
+    slot.set.mockImplementation(async (v: string) => void (slot.value = v));
+    slot.clear.mockImplementation(async () => void (slot.value = null));
+    const api = {
+      start: vi.fn().mockResolvedValue({ login_token: TOKEN, bot_url: BOT_URL, expires_in: 300 }),
+      status: vi.fn().mockResolvedValue({ status: 'PENDING' }),
+      verify: vi.fn().mockResolvedValue(AUTH),
+    };
+    const store = createLoginStore({
+      api,
+      openUrl: vi.fn().mockResolvedValue(undefined),
+      getDeviceId: async () => 'device-1',
+      botName: 'ParkBorBot',
+      onAuthenticated: vi.fn().mockResolvedValue(undefined),
+      now: () => nowRef.value,
+      sessionSlot: slot,
+    });
+    return { store, slot, api, nowRef };
+  }
+
+  it('start() stores the session (token, bot link, expiry) and nothing else', async () => {
+    const { store, slot } = withSlot();
+    await store.getState().start();
+    expect(JSON.parse(slot.value ?? '{}')).toEqual({ loginToken: TOKEN, botUrl: BOT_URL, expiresAt: NOW + 300_000 });
+  });
+
+  it('restore() brings the session back after a "restart" (new store, same slot)', async () => {
+    const first = withSlot();
+    await first.store.getState().start();
+    const second = withSlot(first.slot.value);
+    expect(second.store.getState().session).toBeNull();
+    expect(await second.store.getState().restore()).toBe(true);
+    expect(second.store.getState().session).toEqual({ loginToken: TOKEN, botUrl: BOT_URL, expiresAt: NOW + 300_000 });
+    expect(second.store.getState().isConfirmed).toBe(false);
+  });
+
+  it('restore() ignores and clears an expired session', async () => {
+    const first = withSlot();
+    await first.store.getState().start();
+    const second = withSlot(first.slot.value, { value: NOW + 301_000 });
+    expect(await second.store.getState().restore()).toBe(false);
+    expect(second.store.getState().session).toBeNull();
+    expect(second.slot.value).toBeNull();
+  });
+
+  it('restore() refuses and clears a tampered slot (untrusted bot link)', async () => {
+    const tampered = JSON.stringify({ loginToken: TOKEN, botUrl: `https://evil.com/ParkBorBot?start=${TOKEN}`, expiresAt: NOW + 1000 });
+    const { store, slot } = withSlot(tampered);
+    expect(await store.getState().restore()).toBe(false);
+    expect(slot.value).toBeNull();
+  });
+
+  it('restore() with nothing stored, a failing slot, or a live session changes nothing', async () => {
+    expect(await withSlot().store.getState().restore()).toBe(false);
+    const broken = withSlot();
+    broken.slot.get.mockRejectedValue(new Error('keystore'));
+    expect(await broken.store.getState().restore()).toBe(false);
+    const live = withSlot();
+    await live.store.getState().start();
+    expect(await live.store.getState().restore()).toBe(true);
+  });
+
+  it('the stored session is cleared on success, reset and a terminal error', async () => {
+    const ok = withSlot();
+    await ok.store.getState().start();
+    await ok.store.getState().submitCode('123456');
+    expect(ok.slot.value).toBeNull();
+
+    const reset = withSlot();
+    await reset.store.getState().start();
+    reset.store.getState().reset();
+    expect(reset.slot.value).toBeNull();
+
+    const dead = withSlot();
+    await dead.store.getState().start();
+    dead.api.verify.mockRejectedValue(httpError(410, 'login_expired'));
+    await dead.store.getState().submitCode('123456');
+    expect(dead.slot.value).toBeNull();
+  });
+
+  it('a failing slot never breaks the login itself', async () => {
+    const { store, slot } = withSlot();
+    slot.set.mockRejectedValue(new Error('keystore'));
+    slot.clear.mockRejectedValue(new Error('keystore'));
+    expect((await store.getState().start()).ok).toBe(true);
+    expect((await store.getState().submitCode('123456')).ok).toBe(true);
+  });
+});
+
+describe('login store: terminal errors force "start over"', () => {
+  it.each([
+    [403, 'role_not_allowed', 'errors.roleNotAllowed'],
+    [409, 'phone_taken', 'errors.phoneTaken'],
+    [403, 'account_disabled', 'errors.accountDisabled'],
+  ])('%i %s -> %s, session ended', async (status, code, key) => {
+    const ctx = await started();
+    ctx.api.verify.mockRejectedValue(httpError(status, code));
+    const r = await ctx.store.getState().submitCode('123456');
+    expect(r).toMatchObject({ ok: false, errorKey: key, fatal: true });
+    expect(ctx.store.getState().endedReason).toBe(key);
+    expect(ctx.store.getState().session).toBeNull();
+  });
+});

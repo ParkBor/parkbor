@@ -13,6 +13,7 @@ import { SORT_MODES, type Parking } from '@/features/map/schemas';
 import { ListSkeleton, MessageView } from '@/features/map/StateViews';
 import { useLanguage } from '@/features/map/useLanguage';
 import { MIN_TOUCH, usePalette } from '@/theme/theme';
+import { useScreenLayout } from '@/theme/useScreenLayout';
 
 interface ParkingSheetProps {
   parkings: readonly Parking[];
@@ -83,6 +84,7 @@ export function ParkingSheet({
   const { t } = useTranslation();
   const p = usePalette();
   const lang = useLanguage();
+  const { insets } = useScreenLayout();
   const sort = useFiltersStore((s) => s.filters.sort);
   const hasActiveFilters = useFiltersStore((s) => activeFilterCount(s.filters) > 0);
 
@@ -140,7 +142,7 @@ export function ParkingSheet({
       renderItem={({ item }: { item: Parking }) => <ParkingRow parking={item} onSelect={onSelect} />}
       ListHeaderComponent={header}
       ListEmptyComponent={empty}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}
       keyboardShouldPersistTaps="handled"
     />
   );

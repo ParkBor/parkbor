@@ -17,6 +17,9 @@ export type ErrorKey =
   | 'errors.codeExpired'
   | 'errors.notConfirmed'
   | 'errors.accountDisabled'
+  | 'errors.roleNotAllowed'
+  | 'errors.phoneTaken'
+  | 'errors.accountDeletionBlocked'
   | 'errors.server'
   | 'errors.generic';
 
@@ -45,6 +48,9 @@ export function errorMessageKey(info: ApiErrorInfo): ErrorKey {
   if (info.code === 'login_expired' || info.status === 410) return 'errors.codeExpired';
   if (info.code === 'login_not_confirmed') return 'errors.notConfirmed';
   if (info.code === 'account_disabled') return 'errors.accountDisabled';
+  if (info.code === 'role_not_allowed') return 'errors.roleNotAllowed';
+  if (info.code === 'phone_taken') return 'errors.phoneTaken';
+  if (info.code === 'account_deletion_blocked') return 'errors.accountDeletionBlocked';
   if (info.status !== undefined && info.status >= 500) return 'errors.server';
   return 'errors.generic';
 }

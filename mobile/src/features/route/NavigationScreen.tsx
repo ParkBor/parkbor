@@ -3,7 +3,7 @@ import type { CameraRef } from '@maplibre/maplibre-react-native';
 import { Marker } from '@maplibre/maplibre-react-native';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,8 +44,8 @@ const KEEP_AWAKE_TAG = 'habi-navigation';
 /** Panels float over the map: edge padding keeps the fitted route between them. */
 const FIT_PADDING = { top: 240, right: 40, bottom: 260, left: 40 };
 const FIT_MS = 500;
-/** Keeps the credit line above the bottom bar. */
-const ATTRIBUTION_BOTTOM = 150;
+/** Space between the bottom bar and the map credit line. */
+const CREDIT_GAP = 6;
 
 type NavParams = RawLotParams & { fromLat?: string | string[]; fromLng?: string | string[] };
 
@@ -126,6 +126,8 @@ function ActiveNavigation({ lot, initialOrigin, onExit }: ActiveProps) {
   const lang = useLanguage();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<CameraRef>(null);
+  // The bottom bar grows with the font size and the gesture/nav bar: the map credit is measured from its top.
+  const [barHeight, setBarHeight] = useState(0);
   const fittedRoute = useRef<Route | null>(null);
 
   const session = useNavigationSession(lot, initialOrigin);
@@ -189,7 +191,7 @@ function ActiveNavigation({ lot, initialOrigin, onExit }: ActiveProps) {
         accessibilityLabel={t('nav.mapLabel')}
         initialRegion={regionAround(lot.location, LOT_VIEW_RADIUS_M)}
         showsUserLocation={location.state === 'granted'}
-        attributionBottom={ATTRIBUTION_BOTTOM + insets.bottom}
+        attributionBottom={barHeight + CREDIT_GAP}
       >
         {route ? <RouteLayer route={route} /> : null}
         <Marker id="lot" lngLat={toLngLat(lot.location)} anchor="bottom" accessibilityLabel={lot.name}>
@@ -225,7 +227,7 @@ function ActiveNavigation({ lot, initialOrigin, onExit }: ActiveProps) {
         ) : null}
       </View>
 
-      <View style={styles.bottom}>
+      <View style={styles.bottom} onLayout={(event) => setBarHeight(event.nativeEvent.layout.height)}>
         <BottomBar
           remaining={remaining}
           lang={lang}

@@ -49,7 +49,7 @@ export function BookingSummary({ booking }: { booking: Booking }) {
           value={t('booking.detail.slotValue', { code: booking.slot.code, zone: booking.slot.zone, floor: booking.slot.floor })}
         />
         <Row label={t('booking.detail.time')} value={whenLabel(booking.startMs, booking.endMs)} />
-        <Row label={t('booking.detail.vehicle')} value={formatPlate(booking.vehicle.plateNumber)} />
+        {booking.vehicle.plateNumber ? <Row label={t('booking.detail.vehicle')} value={formatPlate(booking.vehicle.plateNumber)} /> : null}
         <Row label={t('booking.detail.amount')} value={money(booking.amount)} />
         {!ZERO_MONEY.test(booking.paidAmount) ? <Row label={t('booking.detail.paid')} value={money(booking.paidAmount)} /> : null}
       </View>

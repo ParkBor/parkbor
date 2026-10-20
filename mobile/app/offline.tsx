@@ -11,7 +11,7 @@ export default function OfflineScreen() {
   const { t } = useTranslation();
   const p = usePalette();
   return (
-    <Screen>
+    <Screen isScrollable>
       <View style={styles.body}>
         <Text accessibilityRole="header" style={[styles.title, { color: p.text }]}>
           {t('offline.title')}

@@ -7,7 +7,8 @@
     "retry": "Try again",
     "loading": "Loading…",
     "logout": "Log out",
-    "offline": "No internet. Check your connection and try again."
+    "offline": "No internet. Check your connection and try again.",
+    "cancel": "Cancel"
   },
   "welcome": {
     "slide1Title": "Find a free spot fast",
@@ -53,7 +54,21 @@
     "firstName": "First name",
     "firstNamePlaceholder": "e.g. Ali",
     "save": "Save",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "editName": "Name",
+    "nameMissing": "Add your name",
+    "language": "Language",
+    "languageCurrent": "Current: {{language}}",
+    "logoutTitle": "Log out?",
+    "logoutText": "You will need to sign in with Telegram again.",
+    "deleteTitle": "Delete account",
+    "deleteHint": "Remove your account and data",
+    "deleteText": "Deleting the account removes your profile, vehicles and booking history from ParkBor. This cannot be undone.",
+    "deleteBlockedHint": "An account with active bookings or parking lots cannot be deleted until they are finished or cancelled.",
+    "deleteButton": "Delete my account",
+    "deleteConfirmTitle": "Delete the account?",
+    "deleteConfirmText": "All your data will be removed for good.",
+    "deleteConfirmButton": "Delete"
   },
   "permissions": {
     "title": "Permissions",
@@ -77,7 +92,8 @@
     "settingsTitle": "Notifications",
     "settingsHint": "Reminders before your booking ends and changes to it.",
     "settingsOn": "Notifications are on",
-    "settingsOff": "Notifications are off on this device"
+    "settingsOff": "Notifications are off on this device",
+    "unavailable": "Push notifications are not available on this phone or in this build. Important updates are still sent to you in Telegram."
   },
   "tabs": {
     "map": "Map",
@@ -96,7 +112,10 @@
     "accountDisabled": "Your account is disabled.",
     "server": "Server error. Please try again later.",
     "cannotOpenTelegram": "Could not open Telegram. Make sure it is installed.",
-    "generic": "Something went wrong. Please try again."
+    "generic": "Something went wrong. Please try again.",
+    "roleNotAllowed": "This account cannot sign in to the app. Use the account of a driver or a gate operator.",
+    "phoneTaken": "This phone number is already used by another account.",
+    "accountDeletionBlocked": "The account cannot be deleted while it has active bookings or parking lots. Finish or cancel them first."
   },
   "validation": {
     "codeInvalid": "Enter 6 digits",
@@ -801,5 +820,9 @@
     "title": "Page not found",
     "text": "This link does not lead anywhere in ParkBor.",
     "back": "Go to the app"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "text": "The screen could not be shown. Try again; if it keeps happening, restart the app."
   }
 }

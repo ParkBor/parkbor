@@ -25,6 +25,7 @@ import { findCachedParking, isValidParkingId } from '@/features/parking/parkingV
 import { firstParam } from '@/features/route/lotParams';
 import { useVehicles } from '@/features/vehicles/useVehicles';
 import { usePalette } from '@/theme/theme';
+import { useScreenLayout } from '@/theme/useScreenLayout';
 
 const NOW_TICK_MS = 30_000;
 const VEHICLE_PROBLEMS: readonly DraftProblem[] = ['no_vehicle', 'vehicle_slot_mismatch'];
@@ -73,6 +74,7 @@ function useBookingForm(lotId: string, preselected: SlotType | undefined) {
 function BookingForm({ lotId, preselected }: { lotId: string; preselected: SlotType | undefined }) {
   const { t } = useTranslation();
   const p = usePalette();
+  const { column, gutter } = useScreenLayout();
   const router = useRouter();
   const form = useBookingForm(lotId, preselected);
   const { nowMs, vehicles, list, state, problems, periodProblem, quote, providers, setProviders, canSubmit, create, submit } = form;
@@ -80,7 +82,7 @@ function BookingForm({ lotId, preselected }: { lotId: string; preselected: SlotT
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: p.background }]}>
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.body, { padding: gutter }, column]} keyboardShouldPersistTaps="handled">
         <FormHeader lotId={lotId} />
         <PeriodPicker draft={draft} nowMs={nowMs} onChange={state.change} />
         {periodProblem ? <ErrorText message={t(`booking.error.${periodProblem}`)} /> : null}

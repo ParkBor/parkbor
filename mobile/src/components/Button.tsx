@@ -5,7 +5,7 @@ import { MIN_TOUCH, usePalette } from '@/theme/theme';
 interface ButtonProps {
   label: string;
   onPress: () => void;
-  variant?: 'primary' | 'telegram' | 'secondary';
+  variant?: 'primary' | 'telegram' | 'secondary' | 'danger';
   disabled?: boolean;
   loading?: boolean;
   /** Stable handle for UI tests (Android resource-id / iOS accessibilityIdentifier). */
@@ -16,9 +16,9 @@ export function Button({ label, onPress, variant = 'primary', disabled = false, 
   const p = usePalette();
   const inactive = disabled || loading;
   const background =
-    variant === 'telegram' ? p.telegram : variant === 'primary' ? p.primary : 'transparent';
+    variant === 'telegram' ? p.telegram : variant === 'primary' ? p.primary : variant === 'danger' ? p.error : 'transparent';
   const color =
-    variant === 'telegram' ? p.onTelegram : variant === 'primary' ? p.onPrimary : p.primary;
+    variant === 'telegram' ? p.onTelegram : variant === 'primary' ? p.onPrimary : variant === 'danger' ? p.onError : p.primary;
 
   return (
     <Pressable

@@ -50,7 +50,7 @@ export function BookingCard({ booking, onPress, onPay }: BookingCardProps) {
         <Text style={{ color: p.textMuted }}>
           {t('booking.detail.slotValue', { code: booking.slot.code, zone: booking.slot.zone, floor: booking.slot.floor })}
         </Text>
-        <Text style={{ color: p.textMuted }}>{formatPlate(booking.vehicle.plateNumber)}</Text>
+        {booking.vehicle.plateNumber ? <Text style={{ color: p.textMuted }}>{formatPlate(booking.vehicle.plateNumber)}</Text> : null}
       </View>
       {amount ? <Text style={[styles.amount, { color: p.text }]}>{amount}</Text> : null}
       </Pressable>

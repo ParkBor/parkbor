@@ -56,11 +56,15 @@ const bookingSchema = z.object({
     name: z.string().max(200),
     address: z.string().max(400),
   }),
-  vehicle: z.object({
-    id: uuidSchema,
-    plate_number: z.string().min(1).max(32),
-    type: z.string().max(32),
-  }),
+  // A walk-in booking may have no registered vehicle: {id: null, type: null} (plate may be missing too).
+  vehicle: z
+    .object({
+      id: uuidSchema.nullable().optional(),
+      plate_number: z.string().max(32).nullable().optional(),
+      type: z.string().max(32).nullable().optional(),
+    })
+    .nullable()
+    .optional(),
   start: instantSchema,
   end: instantSchema,
   amount: moneySchema,
@@ -81,7 +85,8 @@ export interface Booking {
   status: BookingStatus;
   slot: { id: string; code: string; zone: string; floor: number };
   parkingLot: { id: string; name: string; address: string };
-  vehicle: { id: string; plateNumber: string; type: string };
+  /** `id` / `type` are null for a walk-in without a registered vehicle; `plateNumber` is '' when unknown. */
+  vehicle: { id: string | null; plateNumber: string; type: string | null };
   startMs: number;
   endMs: number;
   /** Decimal strings; money is never converted to a float. */
@@ -109,7 +114,7 @@ function toBooking(raw: z.infer<typeof bookingSchema>): Booking {
     status: raw.status,
     slot: { id: raw.slot.id, code: raw.slot.code, zone: raw.slot.zone, floor: raw.slot.floor },
     parkingLot: { id: raw.parking_lot.id, name: raw.parking_lot.name, address: raw.parking_lot.address },
-    vehicle: { id: raw.vehicle.id, plateNumber: raw.vehicle.plate_number, type: raw.vehicle.type },
+    vehicle: { id: raw.vehicle?.id ?? null, plateNumber: raw.vehicle?.plate_number ?? '', type: raw.vehicle?.type ?? null },
     startMs: raw.start,
     endMs: raw.end,
     amount: raw.amount,

@@ -212,3 +212,41 @@ def nearby_candidates(
             )
         )
     return lots
+
+
+# --- driver lot detail (GET /parkings/{id}) ----------------------------------------------------
+
+
+def active_lot_detail(lot_id) -> dict | None:
+    """Public facts of one ACTIVE lot with its slot types (free / total / price per hour), in a
+    constant number of queries. None for a missing lot AND for a lot that is not ACTIVE (the same
+    answer, so ids cannot be probed). No owner, no staff, no contact data."""
+    row = (
+        ParkingLot.objects.filter(pk=lot_id, status=LotStatus.ACTIVE)
+        .values("id", *_NEARBY_FIELDS[1:])
+        .first()
+    )
+    if row is None:
+        return None
+    counts = (
+        Slot.objects.filter(zone__parking_lot_id=lot_id)
+        .order_by()
+        .values("type")
+        .annotate(total=Count("id"), free=Count("id", filter=Q(status=SlotStatus.FREE)))
+    )
+    prices = {t.slot_type: t.price_per_hour for t in Tariff.objects.filter(parking_lot_id=lot_id)}
+    lng, lat = point_to_lnglat(row["location"])
+    types = [
+        {
+            "type": c["type"],
+            "free_slots": c["free"],
+            "total_slots": c["total"],
+            "price_per_hour": prices.get(c["type"]),
+        }
+        for c in sorted(counts, key=lambda c: c["type"])
+    ]
+    return {**row, "lat": lat, "lng": lng, "slot_types": types, "price_per_hour": _cheapest(prices)}
+
+
+def _cheapest(prices: dict) -> Decimal | None:
+    return min(prices.values()) if prices else None

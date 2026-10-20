@@ -2,22 +2,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Tabs } from 'expo-router';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text } from 'react-native';
 
+import { Icon } from '@/components/Icon';
 import { operatorStore } from '@/features/operator/operatorSession';
 import { operatorTabVisible, shouldFetchOperatorLots } from '@/features/operator/tabVisibility';
 import { useOperatorLots } from '@/features/operator/useOperatorLots';
 import { useRoleRefresh } from '@/features/operator/useRoleRefresh';
 import { useAuthStore } from '@/store/auth';
 import { usePalette } from '@/theme/theme';
-
-function TabGlyph({ glyph }: { glyph: string }) {
-  return (
-    <Text accessible={false} style={{ fontSize: 20 }}>
-      {glyph}
-    </Text>
-  );
-}
 
 // The Operator tab exists only for staff roles (operatorTabVisible). Hiding it is a convenience:
 // every operator endpoint checks role and lot on the server.
@@ -44,19 +36,21 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: p.textMuted,
         tabBarStyle: { backgroundColor: p.background, borderTopColor: p.border },
         tabBarLabelStyle: { fontSize: 12 },
+        // The bar has a fixed height: large system fonts would clip the labels (the glyphs stay readable).
+        tabBarAllowFontScaling: false,
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: t('tabs.map'), tabBarButtonTestID: 'tab-map', tabBarIcon: () => <TabGlyph glyph="🗺" /> }}
+        options={{ title: t('tabs.map'), tabBarButtonTestID: 'tab-map', tabBarIcon: ({ color }) => <Icon name="map" color={color} /> }}
       />
       <Tabs.Screen
         name="bookings"
-        options={{ title: t('tabs.bookings'), tabBarButtonTestID: 'tab-bookings', tabBarIcon: () => <TabGlyph glyph="🎫" /> }}
+        options={{ title: t('tabs.bookings'), tabBarButtonTestID: 'tab-bookings', tabBarIcon: ({ color }) => <Icon name="ticket" color={color} /> }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: t('tabs.profile'), tabBarButtonTestID: 'tab-profile', tabBarIcon: () => <TabGlyph glyph="👤" /> }}
+        options={{ title: t('tabs.profile'), tabBarButtonTestID: 'tab-profile', tabBarIcon: ({ color }) => <Icon name="user" color={color} /> }}
       />
       <Tabs.Screen
         name="operator"
@@ -65,7 +59,7 @@ export default function TabsLayout() {
           tabBarButtonTestID: 'tab-operator',
           // href: null removes the tab (and its route) from the bar for non-staff accounts.
           href: showOperator ? undefined : null,
-          tabBarIcon: () => <TabGlyph glyph="🛂" />,
+          tabBarIcon: ({ color }) => <Icon name="shield" color={color} />,
         }}
       />
     </Tabs>

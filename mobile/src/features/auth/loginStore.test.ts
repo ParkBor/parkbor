@@ -11,14 +11,20 @@ const mocks = vi.hoisted(() => ({
   verify: vi.fn(),
   setSession: vi.fn(),
   setStep: vi.fn(),
+  updateLanguage: vi.fn(),
 }));
 
 vi.mock('react-native', () => ({ Linking: { openURL: mocks.openURL } }));
 vi.mock('@/lib/authApi', () => ({
   authApi: { start: mocks.start, status: mocks.status, verify: mocks.verify },
 }));
+vi.mock('@/features/profile/profileService', () => ({ profileApi: { updateLanguage: mocks.updateLanguage } }));
+vi.mock('@/i18n', () => ({ default: { language: 'ru' } }));
 vi.mock('@/lib/deviceId', () => ({ getDeviceId: async () => 'device-1' }));
-vi.mock('@/lib/config', () => ({ getTelegramBot: () => 'ParkBorBot' }));
+vi.mock('@/lib/config', () => ({ getTelegramBotOrEmpty: () => 'ParkBorBot' }));
+vi.mock('@/lib/secureRefreshStorage', () => ({
+  secureSlot: () => ({ get: async () => null, set: async () => undefined, clear: async () => undefined }),
+}));
 vi.mock('@/store/auth', () => ({
   authStore: { getState: () => ({ setSession: mocks.setSession }) },
 }));
@@ -39,6 +45,7 @@ beforeEach(() => {
     expires_in: 300,
   });
   mocks.openURL.mockResolvedValue(undefined);
+  mocks.updateLanguage.mockResolvedValue(undefined);
   mocks.setStep.mockImplementation((s: unknown) => calls.push(`step:${String(s)}`));
   mocks.setSession.mockImplementation(async () => {
     calls.push('setSession');
@@ -71,10 +78,26 @@ describe('loginStore wiring', () => {
     expect(mocks.setSession).toHaveBeenCalledWith({ access: 'a', refresh: 'r', user: USER });
   });
 
+  it('a new account gets the language chosen on this phone saved on the server', async () => {
+    mocks.updateLanguage.mockResolvedValue(undefined);
+    mocks.verify.mockResolvedValue({ access: 'a', refresh: 'r', user: USER, is_new: true });
+    await loginStore.getState().start();
+    await loginStore.getState().submitCode('482913');
+    expect(mocks.updateLanguage).toHaveBeenCalledExactlyOnceWith('ru');
+  });
+
+  it('a failing language save never breaks the sign-in', async () => {
+    mocks.updateLanguage.mockRejectedValue(new Error('offline'));
+    mocks.verify.mockResolvedValue({ access: 'a', refresh: 'r', user: USER, is_new: true });
+    await loginStore.getState().start();
+    await expect(loginStore.getState().submitCode('482913')).resolves.toMatchObject({ ok: true });
+  });
+
   it('for an existing user skips onboarding', async () => {
     mocks.verify.mockResolvedValue({ access: 'a', refresh: 'r', user: USER, is_new: false });
     await loginStore.getState().start();
     await loginStore.getState().submitCode('482913');
     expect(calls).toEqual(['setSession']);
+    expect(mocks.updateLanguage).not.toHaveBeenCalled(); // an existing account keeps its own language
   });
 });

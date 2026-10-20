@@ -15,6 +15,7 @@ import { canShowQr } from '@/features/booking/statusView';
 import { useBooking } from '@/features/booking/useBookings';
 import { loadState } from '@/lib/loadState';
 import { usePalette } from '@/theme/theme';
+import { useScreenLayout } from '@/theme/useScreenLayout';
 
 /** booking/[id]: status, slot, time, amount, timer, QR (CONFIRMED | ACTIVE) and actions. */
 export function BookingDetailScreen() {
@@ -34,6 +35,7 @@ function BookingDetail({ id }: { id: string }) {
   const { t } = useTranslation();
   const p = usePalette();
   const router = useRouter();
+  const { column, gutter } = useScreenLayout();
   const query = useBooking(id);
   const booking = query.data;
   const state = loadState({
@@ -46,7 +48,7 @@ function BookingDetail({ id }: { id: string }) {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: p.background }]}>
       <ScrollView
-        contentContainerStyle={styles.body}
+        contentContainerStyle={[styles.body, { padding: gutter }, column]}
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} />}
       >
         <Text accessibilityRole="header" style={[styles.title, { color: p.text }]}>

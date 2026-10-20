@@ -108,5 +108,6 @@ const styles = StyleSheet.create({
   noticeTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center' },
   noticeText: { fontSize: 16, textAlign: 'center' },
   frameWrap: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
-  frame: { width: 240, height: 240, borderWidth: 4, borderRadius: 24 },
+  // a square that never exceeds the camera area (small phones, landscape)
+  frame: { width: '70%', maxWidth: 240, aspectRatio: 1, borderWidth: 4, borderRadius: 24 },
 });

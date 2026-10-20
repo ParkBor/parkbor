@@ -96,6 +96,8 @@ const config: ExpoConfig = {
         resizeMode: 'contain',
         // The wordmark's dark blue "Park" needs a light ground, so there is no dark splash variant.
         backgroundColor: '#FFFFFF',
+        // Android 12+ draws the splash icon inside a circle: the wide logo would be cut, so it gets the pin alone.
+        android: { image: './assets/images/splash-icon-android.png', imageWidth: 200, backgroundColor: '#FFFFFF' },
       },
     ],
   ],

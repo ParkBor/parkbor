@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { LocationBanner } from '@/features/map/LocationBanner';
 import type { UserLocationState } from '@/features/map/UserLocation';
+import { TIGHT_FONT_MULTIPLIER } from '@/theme/layout';
 import { MIN_TOUCH, usePalette } from '@/theme/theme';
 
 interface FloatingButtonProps {
@@ -23,10 +24,14 @@ function FloatingButton({ glyph, label, badge = 0, onPress }: FloatingButtonProp
       onPress={onPress}
       style={[styles.fab, { backgroundColor: p.background, borderColor: p.border }]}
     >
-      <Text style={[styles.fabGlyph, { color: p.text }]}>{glyph}</Text>
+      <Text maxFontSizeMultiplier={TIGHT_FONT_MULTIPLIER} style={[styles.fabGlyph, { color: p.text }]}>
+        {glyph}
+      </Text>
       {badge > 0 ? (
         <View style={[styles.badge, { backgroundColor: p.primary }]}>
-          <Text style={[styles.badgeText, { color: p.onPrimary }]}>{badge}</Text>
+          <Text maxFontSizeMultiplier={TIGHT_FONT_MULTIPLIER} style={[styles.badgeText, { color: p.onPrimary }]}>
+            {badge}
+          </Text>
         </View>
       ) : null}
     </Pressable>
@@ -53,7 +58,10 @@ export function MapControls(props: MapControlsProps) {
   const { filterCount } = props;
 
   return (
-    <View pointerEvents="box-none" style={[styles.overlay, { paddingTop: insets.top + 8 }]}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.overlay, { paddingTop: insets.top + 8, paddingLeft: Math.max(12, insets.left), paddingRight: Math.max(12, insets.right) }]}
+    >
       <View pointerEvents="box-none" style={styles.topRow}>
         <View style={styles.banner}>
           <LocationBanner
@@ -85,7 +93,7 @@ export function MapControls(props: MapControlsProps) {
 }
 
 const styles = StyleSheet.create({
-  overlay: { ...StyleSheet.absoluteFill, paddingHorizontal: 12 },
+  overlay: { ...StyleSheet.absoluteFill },
   topRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   banner: { flex: 1 },
   fabColumn: { gap: 8, marginLeft: 'auto' },
@@ -104,7 +112,7 @@ const styles = StyleSheet.create({
     top: -2,
     right: -2,
     minWidth: 20,
-    height: 20,
+    minHeight: 20,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',

@@ -528,3 +528,18 @@ def test_openapi_schema_has_zero_warnings():
     from django.core.management import call_command
 
     call_command("spectacular", "--fail-on-warn", "--file", os.devnull)
+
+
+def test_vehicle_shape_of_a_booking_without_a_vehicle_row_is_pinned():
+    """A walk-in (no account, no Vehicle row) serialises as {id: null, plate_number, type: null};
+    the apps accept the nulls. Walk-ins never reach a driver list, but the shape is a contract."""
+    from types import SimpleNamespace
+
+    from apps.bookings.serializers import BookingSerializer
+
+    booking = SimpleNamespace(vehicle_id=None, vehicle=None, vehicle_plate="01A123BC")
+    assert BookingSerializer().get_vehicle(booking) == {
+        "id": None,
+        "plate_number": "01A123BC",
+        "type": None,
+    }

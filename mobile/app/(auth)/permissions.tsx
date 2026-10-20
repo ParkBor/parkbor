@@ -8,6 +8,7 @@ import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { syncDevice } from '@/features/push/pushRuntime';
 import { authStore } from '@/store/auth';
+import { locationPrompt } from '@/features/map/locationPrompt';
 import { useOnboardingStore } from '@/store/onboarding';
 import { usePalette } from '@/theme/theme';
 
@@ -49,10 +50,14 @@ export default function PermissionsScreen() {
   const [notifications, setNotifications] = useState<PermissionState>('unknown');
 
   const askLocation = async () => {
-    const res = await Location.requestForegroundPermissionsAsync();
-    setLocation(res.granted ? 'granted' : 'denied');
+    try {
+      const res = await Location.requestForegroundPermissionsAsync();
+      setLocation(res.granted ? 'granted' : 'denied');
+    } catch {
+      setLocation('denied'); // the native call failed: show the settings route instead of crashing
+    }
   };
-  const askNotifications = async () => {
+  const askNotificationsUnsafe = async () => {
     // Android 13+ only shows the permission prompt once a channel exists.
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNEL_ID, {
@@ -66,11 +71,23 @@ export default function PermissionsScreen() {
     const { user } = authStore.getState();
     if (res.granted && user) void syncDevice(String(user.id));
   };
+  const askNotifications = async () => {
+    try {
+      await askNotificationsUnsafe();
+    } catch {
+      setNotifications('denied'); // the native call failed: offer the settings route instead of crashing
+    }
+  };
   // Clearing the step lets the auth guard route to (tabs).
   const finish = () => useOnboardingStore.getState().setStep(null);
+  // "Later": leave without asking; the map does not show the location dialog until the user opens a location action.
+  const later = () => {
+    locationPrompt.defer();
+    finish();
+  };
 
   return (
-    <Screen>
+    <Screen isScrollable>
       <Text accessibilityRole="header" style={[styles.title, { color: p.text }]}>
         {t('permissions.title')}
       </Text>
@@ -91,7 +108,7 @@ export default function PermissionsScreen() {
       />
       <View style={styles.spacer} />
       <Button label={t('permissions.finish')} onPress={finish} />
-      <Button variant="secondary" label={t('permissions.later')} onPress={finish} />
+      <Button variant="secondary" label={t('permissions.later')} onPress={later} />
     </Screen>
   );
 }

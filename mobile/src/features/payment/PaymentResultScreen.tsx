@@ -63,7 +63,7 @@ function PaymentResult({ id }: { id: string }) {
   }, [phase, id, router]);
 
   return (
-    <Screen>
+    <Screen isScrollable>
       <Text accessibilityRole="header" style={[styles.title, { color: p.text }]}>
         {t('payment.result.title')}
       </Text>

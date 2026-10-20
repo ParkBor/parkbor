@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isNonProductionApiUrl, isSandboxAllowed } from '@/features/payment/paymentSandbox';
+import { isNonProductionApiUrl, isNonProductionChannel, isSandboxAllowed } from '@/features/payment/paymentSandbox';
 
 const STAGING = 'https://staging-api.parkbor.uz/api/v1';
 const PROD = 'https://api.parkbor.uz/api/v1';
@@ -35,6 +35,16 @@ describe('isNonProductionApiUrl', () => {
   });
 });
 
+describe('isNonProductionChannel', () => {
+  it.each(['development', 'preview', 'staging', 'e2e', 'E2E', ' preview '])('%s is a test profile', (channel) => {
+    expect(isNonProductionChannel(channel)).toBe(true);
+  });
+
+  it.each(['production', '', 'prod', 'previews', undefined, null, 5])('%s is not', (channel) => {
+    expect(isNonProductionChannel(channel)).toBe(false);
+  });
+});
+
 describe('isSandboxAllowed (two factors: a flag AND a non-production API)', () => {
   const base = { isDev: false, flag: true, apiUrl: STAGING, channel: 'preview' };
 
@@ -47,8 +57,19 @@ describe('isSandboxAllowed (two factors: a flag AND a non-production API)', () =
     expect(isSandboxAllowed({ ...base, channel: '' })).toBe(true);
   });
 
-  it('the flag alone is not enough: a production API keeps it off (OTA update with a stray flag)', () => {
-    expect(isSandboxAllowed({ ...base, apiUrl: PROD })).toBe(false);
+  it('the flag alone is not enough: a production API keeps it off (OTA update with a stray flag, no build profile)', () => {
+    expect(isSandboxAllowed({ ...base, channel: '', apiUrl: PROD })).toBe(false);
+    expect(isSandboxAllowed({ ...base, channel: undefined, apiUrl: PROD })).toBe(false);
+  });
+
+  it('an explicit preview / development / e2e profile plus the flag allows it on ANY test host', () => {
+    for (const channel of ['preview', 'development', 'e2e', 'e2e-ios-simulator', ' Preview ']) {
+      expect(isSandboxAllowed({ ...base, channel, apiUrl: 'https://my-test-server.example.com/api/v1' }), channel).toBe(true);
+    }
+  });
+
+  it('a non-production profile without the flag stays off', () => {
+    expect(isSandboxAllowed({ ...base, flag: false, apiUrl: 'https://my-test-server.example.com/api/v1' })).toBe(false);
   });
 
   it('a staging API alone is not enough', () => {

@@ -31,7 +31,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <Screen>
+    <Screen isScrollable>
       <View style={styles.hero}>
         <BrandLogo variant="full" width={280} />
         <Text style={[styles.subtitle, { color: p.text }]}>{t('login.subtitle')}</Text>

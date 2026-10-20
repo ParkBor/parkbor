@@ -1,13 +1,15 @@
 import { focusManager, onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Network from 'expo-network';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { I18nextProvider } from 'react-i18next';
-import { AppState, StyleSheet } from 'react-native';
+import { I18nextProvider, useTranslation } from 'react-i18next';
+import { AppState, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { Button } from '@/components/Button';
+import { loginStore } from '@/features/auth/loginStore';
 import { qrCache } from '@/features/booking/qrStore';
 import { bookingKeeper } from '@/features/booking/bookingKeeper';
 import { bindKeeperToSession } from '@/features/booking/idempotencyKey';
@@ -19,13 +21,34 @@ import { startRealtime } from '@/features/realtime/realtimeSession';
 import { clearLastPayment } from '@/features/payment/lastPayment';
 import { initI18n, restoreSavedLanguage } from '@/i18n';
 import { resolveRedirect } from '@/lib/authGuard';
+import { resumedOnboardingStep } from '@/lib/onboardingStep';
 import { wireFocus, wireOnline } from '@/lib/queryEnv';
 import { onSessionEnd } from '@/lib/sessionEnd';
 import { bindQueryClientToSession } from '@/lib/queryLifecycle';
 import { authStore, useAuthStore } from '@/store/auth';
 import { useOnboardingStore } from '@/store/onboarding';
 
-const styles = StyleSheet.create({ root: { flex: 1 } });
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  crash: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12, backgroundColor: '#FFFFFF' },
+  crashTitle: { fontSize: 22, fontWeight: '700', color: '#111827', textAlign: 'center' },
+  crashText: { fontSize: 16, color: '#4B5563', textAlign: 'center' },
+});
+
+/**
+ * expo-router renders this when a screen throws while rendering. No error text is shown (it can carry data);
+ * "Try again" re-renders the route. Plain colours on purpose: the theme itself may be what failed.
+ */
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.crash} accessibilityRole="alert">
+      <Text style={styles.crashTitle}>{t('errorBoundary.title')}</Text>
+      <Text style={styles.crashText}>{t('errorBoundary.text')}</Text>
+      <Button label={t('common.retry')} onPress={() => void retry()} />
+    </View>
+  );
+}
 
 const i18n = initI18n();
 initPaymentEnv();
@@ -36,6 +59,13 @@ function useAuthGuard(): void {
   const segments = useSegments();
   const status = useAuthStore((s) => s.status);
   const onboarding = useOnboardingStore((s) => s.step);
+  const user = useAuthStore((s) => s.user);
+
+  // The step is in memory: if the app was killed mid-onboarding, a signed-in user without a name resumes it.
+  useEffect(() => {
+    const resumed = resumedOnboardingStep({ step: onboarding, isAuthenticated: status === 'authenticated', user });
+    if (resumed !== onboarding) useOnboardingStore.getState().setStep(resumed);
+  }, [status, onboarding, user]);
 
   useEffect(() => {
     const target = resolveRedirect({ status, segments, onboarding });
@@ -53,6 +83,8 @@ export default function RootLayout() {
   useEffect(() => {
     void restoreSavedLanguage();
     void authStore.getState().bootstrap();
+    // A login that was in progress when Android killed the app (the user was in Telegram) comes back.
+    void loginStore.getState().restore();
   }, []);
 
   useAuthGuard();

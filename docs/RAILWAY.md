@@ -208,6 +208,11 @@ Railway foydalanuvchilari esa bir-biriga zid natijalar yozgan (mijoz yuborgan qi
   ```
   `403` — soxta qiymat qabul qilinmadi (yaxshi). `200` (JSON-RPC xatosi) — Payme IP’si soxtalashtirilishi mumkin: **zudlik bilan** `NUM_PROXIES` ni tuzating va Railway qo‘llab-quvvatlashiga yozing.
 - Payme sandbox’dan haqiqiy test chaqiruv kelganda `403` bo‘lsa (to‘g‘ri IP rad etilsa), zanjirda qo‘shimcha hop bor: `NUM_PROXIES=2` qiling va yuqoridagi soxta-IP sinovini `X-Forwarded-For: 185.234.113.1` hamda `X-Forwarded-For: 185.234.113.1, 10.0.0.1` bilan qaytaring (ikkalasi ham `403` bo‘lishi shart).
+- **Kirish throttle'i mijoz IP'siga bog'liq.** `POST /auth/telegram/*` (10/daq), `status` (60/daq) va token yangilash (30/daq) **mijoz IP'si bo'yicha** hisoblanadi (login'da foydalanuvchi hali yo'q). `NUM_PROXIES` noto'g'ri bo'lsa ikki xil buzilish bor: haqiqiy zanjirdan KICHIK bo'lsa, hamma foydalanuvchilar bitta proksi IP'sini ulashadi va 10/daq limit butun mamlakatga umumiy bo'lib qoladi (hamma uchun login to'xtaydi); KATTA bo'lsa mijoz `X-Forwarded-For` ni o'zi yozib limitni aylanib o'tadi. Tekshirish (deploydan keyin, bir marta): har safar BOSHQA soxta qiymat bilan 11 ta so'rov yuboring:
+  ```bash
+  for n in $(seq 1 11); do curl -s -o /dev/null -w '%{http_code} ' -X POST https://api.parkbor.uz/api/v1/auth/telegram/start        -H 'Content-Type: application/json' -H "X-Forwarded-For: 203.0.113.$n" -d '{}'; done; echo
+  ```
+  To'g'ri: soxta qiymat e'tiborsiz qolib, hammasi sizning haqiqiy IP'ingiz ostida sanaladi - oxirgi(lar)i `429`. Hech qachon `429` chiqmasa - soxta qiymat o'qilyapti (`NUM_PROXIES` katta): kamaytiring. `NUM_PROXIES` kichikligini boshqa tarmoqdan bilib olasiz: bir qurilmadan limitga yetgach, boshqa tarmoqdagi (masalan telefon, mobil internet) qurilmadan ham `429` kelsa, ikkalasi bir IP ostida - `NUM_PROXIES` ni 1 ga oshirib qayta sinang (hop sonini `X-Real-IP` va o'z IP'ingiz bilan solishtirib ham tasdiqlash mumkin). Natijani shu bo'limga yozib qo'ying.
 - IP-allowlist ilovada — himoyaning bir qatlami; asosiysi Payme Basic-auth kaliti va Click imzosi.
 
 ## 9. WebSocket

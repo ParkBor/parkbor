@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
+import { BackHeader } from '@/components/BackHeader';
 import { Button } from '@/components/Button';
 import { ErrorText } from '@/components/ErrorText';
 import { Screen } from '@/components/Screen';
+import { ListSkeleton } from '@/features/map/StateViews';
 import { classifyVehicleError } from '@/features/vehicles/vehicleErrors';
 import { formatPlate } from '@/features/vehicles/vehiclePlate';
 import type { Vehicle } from '@/features/vehicles/schemas';
@@ -42,9 +44,7 @@ export function VehicleListScreen() {
 
   return (
     <Screen>
-      <Text accessibilityRole="header" style={[styles.title, { color: p.text }]}>
-        {t('vehicles.title')}
-      </Text>
+      <BackHeader title={t('vehicles.title')} />
       <ErrorText message={actionError ? t(actionError) : null} />
       {loadErrorKey && items.length === 0 ? (
         <View style={styles.center}>
@@ -59,7 +59,7 @@ export function VehicleListScreen() {
           refreshControl={<RefreshControl refreshing={vehicles.isRefetching} onRefresh={() => void vehicles.refetch()} />}
           ListEmptyComponent={
             vehicles.isPending ? (
-              <Text style={{ color: p.textMuted }}>{t('common.loading')}</Text>
+              <ListSkeleton />
             ) : (
               <View style={styles.center}>
                 <Text style={[styles.emptyTitle, { color: p.text }]}>{t('vehicles.empty')}</Text>

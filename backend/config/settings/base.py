@@ -102,6 +102,8 @@ REST_FRAMEWORK = {
         # Provider callbacks, per client IP: wide, because Payme/Click call from a few addresses
         # and retry; it only stops floods (the signature/auth check is the real gate).
         "payment_webhook": "600/min",
+        "parking_detail": "120/min",  # GET /parkings/{id}, per user
+        "account_delete": "5/hour",  # DELETE /me, per user
         "review_write": "10/hour",  # POST /parkings/{id}/reviews, per user
         "review_read": "120/min",  # GET /parkings/{id}/reviews, per user
         "admin_read": "120/min",  # GET /admin/* operations lists and stats, per user

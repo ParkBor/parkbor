@@ -20,7 +20,7 @@ export default function NotFoundScreen() {
   const status = useAuthStore((s) => s.status);
   const onboarding = useOnboardingStore((s) => s.step);
   return (
-    <Screen>
+    <Screen isScrollable>
       <Text accessibilityRole="header" style={[styles.title, { color: p.text }]}>
         {t('notFound.title')}
       </Text>

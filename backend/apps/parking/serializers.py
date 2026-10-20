@@ -132,3 +132,50 @@ def present_search(search: NearbySearchResult) -> dict:
         "radius_used_m": search.radius_used_m,
         "count": len(rows),
     }
+
+
+class SlotTypeAvailabilitySerializer(serializers.Serializer):
+    type = serializers.CharField()
+    free_slots = serializers.IntegerField(help_text="Slots of this type that are FREE right now.")
+    total_slots = serializers.IntegerField()
+    price_per_hour = serializers.DecimalField(max_digits=12, decimal_places=2, allow_null=True)
+
+
+class ParkingDetailSerializer(serializers.Serializer):
+    """Same fields as a nearby item (minus distance / route / score) plus the slot types."""
+
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+    address = serializers.CharField()
+    location = NearbyLocationSerializer()
+    free_slots = serializers.IntegerField()
+    total_slots = serializers.IntegerField()
+    price_per_hour = serializers.DecimalField(
+        max_digits=12, decimal_places=2, allow_null=True, help_text="Cheapest tariff."
+    )
+    rating = serializers.FloatField(allow_null=True)
+    is_open = serializers.BooleanField()
+    open_time = serializers.TimeField(allow_null=True)
+    close_time = serializers.TimeField(allow_null=True)
+    slot_types = SlotTypeAvailabilitySerializer(many=True)
+
+
+def present_detail(detail: dict, *, now=None) -> dict:
+    from django.utils import timezone
+
+    from .ranking import is_open_now
+
+    return {
+        "id": detail["id"],
+        "name": detail["name"],
+        "address": detail["address"],
+        "location": {"lat": detail["lat"], "lng": detail["lng"]},
+        "free_slots": detail["free_slots"],
+        "total_slots": detail["total_slots"],
+        "price_per_hour": detail["price_per_hour"],
+        "rating": detail["rating"] or None,  # 0 means "no reviews yet"
+        "is_open": is_open_now(detail["open_time"], detail["close_time"], now or timezone.now()),
+        "open_time": detail["open_time"],
+        "close_time": detail["close_time"],
+        "slot_types": detail["slot_types"],
+    }

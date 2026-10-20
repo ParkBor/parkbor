@@ -1,10 +1,12 @@
 """Account write operations: Telegram login, profile, devices, token lifecycle."""
 
 import logging
+import uuid
 from dataclasses import dataclass
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -12,6 +14,7 @@ from apps.accounts import selectors
 from apps.accounts.models import Device, User
 from apps.core.exceptions import (
     AccountDisabledError,
+    Conflict,
     InvalidRefreshTokenError,
     PhoneTakenError,
 )
@@ -158,3 +161,85 @@ def logout(user: User, raw_refresh: str, expo_push_token: str | None = None) -> 
 
 def remove_device(user: User, expo_push_token: str) -> None:
     Device.objects.filter(user=user, expo_push_token=expo_push_token).delete()
+
+
+# --- account deletion (DELETE /me) ---------------------------------------------------------------
+
+BLOCKING_BOOKING_STATUSES = ("PENDING_PAYMENT", "CONFIRMED", "ACTIVE", "OVERSTAY")
+_TOMBSTONE_BITS = 62
+
+
+class AccountDeletionBlocked(Conflict):
+    default_detail = "Finish or cancel your bookings (and hand over your parking lots) first."
+    default_code = "account_deletion_blocked"
+
+
+def _deletion_blocker(user: User) -> bool:
+    """True when the account may not go away yet: live bookings, own parking lots, or it is the
+    last active administrator."""
+    from apps.bookings.models import Booking
+    from apps.parking.models import ParkingLot
+
+    if Booking.objects.filter(user=user, status__in=BLOCKING_BOOKING_STATUSES).exists():
+        return True
+    if ParkingLot.objects.filter(owner=user).exists():
+        return True
+    return (
+        user.role == User.Role.ADMIN
+        and not User.objects.filter(role=User.Role.ADMIN, is_active=True)
+        .exclude(pk=user.pk)
+        .exists()
+    )
+
+
+def _tombstone_telegram_id() -> int:
+    """A NEGATIVE number (real Telegram ids are positive) that frees the real id: the same person
+    can sign up again later as a brand-new account."""
+    while True:
+        candidate = -(uuid.uuid4().int >> (128 - _TOMBSTONE_BITS)) - 1
+        if not User.objects.filter(telegram_id=candidate).exists():
+            return candidate
+
+
+@transaction.atomic
+def delete_account(user: User) -> None:
+    """Anonymise (never hard-delete: bookings and payments stay for accounting) and sign out.
+
+    Name, username and phone are cleared, the Telegram id becomes a tombstone, the account is
+    blocked, push tokens go, refresh tokens are blacklisted, operator assignments end. Open
+    WebSockets close at their next account re-check (``is_active``)."""
+    from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+
+    from apps.parking.models import OperatorAssignment
+    from apps.parking.services import audit
+
+    locked = User.objects.select_for_update().get(pk=user.pk)
+    if _deletion_blocker(locked):
+        raise AccountDeletionBlocked
+    role = locked.role
+    locked.first_name = locked.last_name = locked.telegram_username = ""
+    locked.phone = None
+    locked.telegram_id = _tombstone_telegram_id()
+    locked.is_active = False
+    locked.set_unusable_password()
+    locked.save(
+        update_fields=[
+            "first_name", "last_name", "telegram_username", "phone", "telegram_id", "is_active",
+            "password",
+        ]
+    )  # fmt: skip
+    Device.objects.filter(user=locked).delete()
+    OperatorAssignment.objects.filter(operator=locked, revoked_at__isnull=True).update(
+        revoked_at=timezone.now(), revoked_by=locked
+    )
+    pending = OutstandingToken.objects.filter(user=locked, blacklistedtoken__isnull=True)
+    BlacklistedToken.objects.bulk_create(
+        [BlacklistedToken(token=token) for token in pending], ignore_conflicts=True
+    )
+    audit(
+        actor=locked,
+        action="user.self_deleted",
+        obj_id=locked.pk,
+        before={"role": role, "is_active": True},
+        after={"is_active": False},
+    )

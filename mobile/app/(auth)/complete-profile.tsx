@@ -15,13 +15,14 @@ import { profileSchema, type ProfileForm } from '@/features/auth/schemas';
 import { api } from '@/lib/api';
 import { errorMessageKey, parseApiError } from '@/lib/errors';
 import type { User } from '@/lib/types';
-import { authStore } from '@/store/auth';
+import { authStore, useAuthStore } from '@/store/auth';
 import { useOnboardingStore } from '@/store/onboarding';
 import { MIN_TOUCH, usePalette } from '@/theme/theme';
 
 export default function CompleteProfileScreen() {
   const { t } = useTranslation();
   const p = usePalette();
+  const knownName = useAuthStore((s) => s.user?.first_name ?? '');
   const [submitError, setSubmitError] = useState<string | null>(null);
   // Optional first vehicle: an empty plate means "skip".
   const [plate, setPlate] = useState('');
@@ -31,7 +32,7 @@ export default function CompleteProfileScreen() {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<ProfileForm>({ resolver: zodResolver(profileSchema), defaultValues: { firstName: '' } });
+  } = useForm<ProfileForm>({ resolver: zodResolver(profileSchema), defaultValues: { firstName: knownName } });
 
   // The name is saved first (PATCH /me), then the optional first vehicle (POST /vehicles).
   const onSubmit = async ({ firstName }: ProfileForm) => {

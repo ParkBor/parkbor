@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 
-import { attributionFor, resolveMapStyles, type MapStyles } from '@/features/map/mapStyle';
+import { resolveMapConfig, type MapConfigResult } from '@/features/map/mapStyle';
 import { validateApiUrl, validateBotName, validateWsUrl } from '@/lib/urlPolicy';
 
 function extraString(name: 'apiUrl' | 'wsUrl' | 'telegramBot'): string {
@@ -26,27 +26,29 @@ export function getTelegramBot(): string {
   return validateBotName(extraString('telegramBot'));
 }
 
+/** Like getTelegramBot, but a missing / malformed setting yields '' (no bot URL is then trusted) instead of crashing at import. */
+export function getTelegramBotOrEmpty(): string {
+  try {
+    return getTelegramBot();
+  } catch {
+    return '';
+  }
+}
+
 function optionalExtraString(name: 'mapStyleUrl' | 'mapStyleUrlDark' | 'mapAttribution'): string | undefined {
   const value: unknown = Constants.expoConfig?.extra?.[name];
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
-export interface MapConfig {
-  styles: MapStyles;
-  /** Credit line per style (OpenStreetMap + whatever the tile provider requires). */
-  attribution: { light: string; dark: string };
-}
-
 /**
  * Map style URLs from `extra.mapStyleUrl` / `extra.mapStyleUrlDark` (EXPO_PUBLIC_MAP_STYLE_URL[_DARK]); the default
- * is OpenFreeMap (no key). A malformed URL throws at startup rather than loading something unexpected.
+ * is OpenFreeMap (no key). A malformed URL does not crash the app: the result says so and the map shows its failure panel.
  */
-export function getMapConfig(): MapConfig {
-  const styles = resolveMapStyles({
+export function getMapConfig(): MapConfigResult {
+  return resolveMapConfig({
     light: optionalExtraString('mapStyleUrl'),
     dark: optionalExtraString('mapStyleUrlDark'),
+    extra: optionalExtraString('mapAttribution'),
     isDev: __DEV__,
   });
-  const extra = optionalExtraString('mapAttribution');
-  return { styles, attribution: { light: attributionFor(styles.light, extra), dark: attributionFor(styles.dark, extra) } };
 }

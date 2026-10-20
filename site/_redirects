@@ -1,0 +1,2 @@
+# Booking deep-link helper: any /b/<id> serves the same page (status 200 = rewrite, not redirect).
+/b/*  /b/index.html  200

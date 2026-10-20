@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /b/
+
+Sitemap: https://parkbor.uz/sitemap.xml

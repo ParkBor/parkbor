@@ -1,0 +1,13 @@
+{
+  // ParkBor official site (static files in ./site) on Cloudflare Workers Static Assets.
+  // `/b/<booking id>` is answered by worker/index.js (the _redirects "200 rewrite" is not supported here).
+  "name": "parkbor",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./site",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/b/*"]
+  }
+}

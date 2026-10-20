@@ -1,2 +1,1 @@
-# Booking deep-link helper: any /b/<id> serves the same page (status 200 = rewrite, not redirect).
-/b/*  /b/index.html  200
+# Intentionally empty. /b/<id> is served by worker/index.js (Workers Static Assets does not support 200 rewrites).

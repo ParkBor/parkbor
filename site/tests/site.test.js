@@ -127,7 +127,10 @@ test('sitemap lists every content page with alternates; not b/404', () => {
 test('deployment files', () => {
   const h = read(path.join(ROOT, '_headers'));
   assert.ok(h.includes("script-src 'self'") && h.includes("frame-ancestors 'none'") && h.includes('X-Frame-Options: DENY'));
-  assert.ok(read(path.join(ROOT, '_redirects')).includes('/b/*  /b/index.html  200'));
+  // Workers Static Assets has no 200 rewrites: a rule here would break the deploy; worker/index.js does it.
+  assert.ok(!/^\s*\/b\//m.test(read(path.join(ROOT, '_redirects'))));
+  const cfg = read(path.join(ROOT, '..', 'wrangler.jsonc'));
+  assert.ok(cfg.includes('"directory": "./site"') && cfg.includes('"run_worker_first": ["/b/*"]'));
   assert.ok(read(path.join(ROOT, 'robots.txt')).includes('Sitemap: https://parkbor.uz/sitemap.xml'));
   const s = read(path.join(ROOT, '.well-known/security.txt'));
   assert.ok(s.includes('mailto:parkbooor@gmail.com') && s.includes('Expires: 2027-10-20'));

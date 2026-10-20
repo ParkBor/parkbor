@@ -25,9 +25,9 @@ const content = htmlFiles.filter((f) => !SPECIAL.has(rel(f)));
 const LANG_OF = (r) => (r.startsWith('ru/') ? 'ru' : r.startsWith('en/') ? 'en' : 'uz');
 const urlOf = (r) => ORIGIN + '/' + r.replace(/index\.html$/, '');
 
-test('expected page set exists (3 languages x 4 pages + b + 404)', () => {
-  assert.strictEqual(content.length, 12);
-  assert.ok(htmlFiles.length === 14);
+test('expected page set exists (3 languages x 5 pages + b + 404)', () => {
+  assert.strictEqual(content.length, 15);
+  assert.ok(htmlFiles.length === 17);
 });
 
 for (const f of htmlFiles) {
@@ -66,6 +66,7 @@ for (const f of htmlFiles) {
   test(`${r}: only allowlisted external and contact links`, () => {
     const allowed = new Set([
       'https://crm.parkbor.uz', 'https://t.me/parkborbot', 'https://t.me/habibullo_2313',
+      'https://expo.dev/accounts/parkbor/projects/parkbor/builds/d276f3f4-a9be-42a3-a93d-9b060e6b9c2a',
       'mailto:parkbooor@gmail.com', 'tel:+998937252313', 'tel:+998944984548',
     ]);
     for (const m of html.matchAll(/\shref="((?:https?:|mailto:|tel:)[^"]*)"/g)) {
@@ -105,6 +106,26 @@ test('home pages contain all contact links', () => {
       assert.ok(html.includes(`href="${v}"`), `${r} ${v}`);
     }
     for (const id of ['how', 'benefits', 'drivers', 'faq', 'contact']) assert.ok(html.includes(`id="${id}"`), id);
+  }
+});
+
+test('download button on home + footer opens in new tab safely', () => {
+  const re = /<a [^>]*href="https:\/\/expo\.dev\/[^"]+"[^>]*target="_blank" rel="noopener noreferrer">/g;
+  for (const r of ['index.html', 'ru/index.html', 'en/index.html']) {
+    assert.ok((read(path.join(ROOT, r)).match(re) || []).length >= 2, r + ' needs hero and footer download links');
+  }
+  for (const f of htmlFiles) for (const m of read(f).matchAll(/<a [^>]*href="https:\/\/expo\.dev[^>]*>/g)) {
+    assert.ok(m[0].includes('target="_blank"') && m[0].includes('rel="noopener noreferrer"'), m[0]);
+  }
+});
+
+test('guide pages: 3 languages, ordered steps, both parts, links in nav/footer', () => {
+  for (const [r, base] of [['guide', ''], ['ru/guide', '/ru'], ['en/guide', '/en']]) {
+    const html = read(path.join(ROOT, r, 'index.html'));
+    assert.strictEqual((html.match(/<ol class="guide">/g) || []).length, 2);
+    assert.ok((html.match(/<li><h3>/g) || []).length >= 17);
+    assert.ok(html.includes('crm.parkbor.uz') && html.includes('@userinfobot'));
+    assert.ok(read(path.join(ROOT, base ? base.slice(1) : '', 'index.html')).includes(`href="${base}/guide/"`));
   }
 });
 

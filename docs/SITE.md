@@ -13,6 +13,7 @@ site/
   _headers, _redirects                              Cloudflare Pages sozlamalari (CSP, kesh, /b/* qayta yozish)
   .well-known/security.txt                          aloqa parkbooor@gmail.com, amal qilish 2027-10-20
   favicon.svg, favicon.png, apple-touch-icon.png
+  guide/, ru/guide/, en/guide/                       qo‘llanma
   assets/site.css, site.js, parkbor-logo.png, parkbor-mark.png, og-image.png
   tools/build.mjs, tools/i18n/{uz,ru,en}.mjs        HTML generatori (faqat dasturchi uchun)
   tests/                                            node --test
@@ -61,6 +62,34 @@ Imzo barmoq izi kerak, shuning uchun hozir yaratilmagan. Keyin:
   So‘ng ilovada `app.config.ts` da `https://parkbor.uz/b/` uchun `intentFilters` (`autoVerify: true`) kerak.
 - **iOS** (`site/.well-known/apple-app-site-association`, kengaytmasiz, `Content-Type: application/json`): `{"applinks":{"details":[{"appIDs":["<TEAMID>.uz.parkbor.app"],"components":[{"/":"/b/*"}]}]}}`; `associatedDomains: ["applinks:parkbor.uz"]`. `_headers` ga shu fayl uchun `Content-Type: application/json` qo‘shing.
 - Ikkala fayl uchun `/.well-known/*` allaqachon qisqa keshlangan; yo‘naltirish bo‘lmasligi kerak.
+
+## Android yuklab olish tugmasi
+
+Bosh sahifa (haydovchilar bloki), footer va qo‘llanma sahifasida “Android ilovasini yuklab olish” tugmasi bor. Havola **bitta konstanta**: `site/tools/build.mjs` ichidagi `ANDROID_BUILD_URL`. O‘zgartirgach `node site/tools/build.mjs` va `cd site && node --test`. Havola tashqi (`target="_blank" rel="noopener noreferrer"`), testlar faqat shu `expo.dev` manzilini ruxsat etilgan deb qabul qiladi (`tests/site.test.js` dagi ro‘yxatda ham yangilang).
+
+**Muhim:** EAS build havolalari vaqt o‘tgach eskiradi (muddati tugaydi). Yangi build chiqqanda konstantani yangilang. Doimiy havola uchun APK ni o‘zimiz joylashtirish (masalan alohida xotira/hosting) yoki Google Play kerak.
+
+## Qo‘llanma (`/guide/`, `/ru/guide/`, `/en/guide/`)
+
+Matnlar `site/tools/i18n/guide.mjs` da (A. haydovchi 10 qadam, B. egasi 7 qadam, muammolar). Sitemap, nav va footerga qo‘shilgan.
+
+### Skrinshotlar
+
+Haqiqiy skrinshotlar hali yo‘q. Generator `site/assets/guide/<nom>.webp` (yoki `.png`) faylini **faqat mavjud bo‘lsa** `<figure class="shot"><img width height loading="lazy">` sifatida qo‘shadi; yo‘q bo‘lsa hech narsa chiqmaydi. Fayl nomlari:
+
+- Haydovchi: `01-install`, `02-language`, `03-bot-start`, `04-share-phone`, `05-code`, `06-name`, `07-vehicle`, `08-map`, `09-booking`, `10-qr`
+- CRM: `crm-01-login`, `crm-02-add-lot`, `crm-03-slots`, `crm-04-approve`
+
+Skrinshotlarni (shu nomlar bilan, png/jpg) biror papkaga tashlang va:
+
+```
+pip install pillow
+python site/tools/optimize-shots.py <papka>      # eni <=360 px, metadata olib tashlanadi, webp -> site/assets/guide/
+node site/tools/build.mjs
+cd site && node --test
+```
+
+Alt matni `guide.mjs` dagi har qadamning 4-elementi (3 tilda). Rasm qo‘shilgach `build.mjs` dagi `V` ni oshiring.
 
 ## Rang kontrasti (WCAG AA, 4.5:1)
 

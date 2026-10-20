@@ -1,18 +1,21 @@
 // Dev-only generator: `node site/tools/build.mjs` writes the static HTML pages and sitemap.xml.
 // Cloudflare Pages does NOT run it; the generated files are committed. Text lives in tools/i18n/*.mjs.
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import uz from './i18n/uz.mjs';
 import ru from './i18n/ru.mjs';
 import en from './i18n/en.mjs';
+import { GUIDE, DL } from './i18n/guide.mjs';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ORIGIN = 'https://parkbor.uz';
 const V = '1'; // bump when assets/* change (cache busting; /assets/* is cached for a year)
 const UPDATED = '2026-10-20';
 const LANGS = [uz, ru, en];
-const PAGES = ['', 'privacy', 'terms', 'delete-account']; // '' = home
+// EAS build links expire: replace this ONE constant whenever a new build is published (see docs/SITE.md).
+const ANDROID_BUILD_URL = 'https://expo.dev/accounts/parkbor/projects/parkbor/builds/d276f3f4-a9be-42a3-a93d-9b060e6b9c2a';
+const PAGES = ['', 'guide', 'privacy', 'terms', 'delete-account']; // '' = home
 const PHONES = [['+998 93 725 23 13', '+998937252313'], ['+998 94 498 45 48', '+998944984548']];
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -62,7 +65,7 @@ const jsonLd = () => `<script type="application/ld+json">${JSON.stringify({
 
 function header(l, slug) {
   const nav = [['how', '#how'], ['benefits', '#benefits'], ['drivers', '#drivers'], ['faq', '#faq'], ['contact', '#contact']]
-    .map(([k, h]) => `<a href="${l.base}/${h}">${l.nav[k]}</a>`).join('');
+    .map(([k, h]) => `<a href="${l.base}/${h}">${l.nav[k]}</a>`).join('') + `<a href="${l.base}/guide/">${GUIDE[l.code].nav}</a>`;
   const langs = LANGS.map((x) => x.code === l.code
     ? `<span aria-current="page" lang="${x.code}">${x.label}</span>`
     : `<a href="${path(x, slug)}" hreflang="${x.code}" lang="${x.code}">${x.label}</a>`).join('');
@@ -79,6 +82,8 @@ function footer(l) {
   const f = l.footer;
   return `<footer class="site-footer"><div class="wrap">
 <ul>
+<li><a href="${l.base}/guide/">${GUIDE[l.code].nav}</a></li>
+<li><a href="${ANDROID_BUILD_URL}" target="_blank" rel="noopener noreferrer">${DL[l.code].btn}</a></li>
 <li><a href="${l.base}/privacy/">${f.privacy}</a></li>
 <li><a href="${l.base}/terms/">${f.terms}</a></li>
 <li><a href="${l.base}/delete-account/">${f.del}</a></li>
@@ -123,6 +128,8 @@ function home(l) {
 <section id="benefits" class="alt"><div class="wrap"><h2>${h.benefits.h}</h2><p class="muted">${h.benefits.intro}</p>${cards(h.benefits.items)}</div></section>
 <section id="drivers"><div class="wrap"><h2>${dr.h}</h2><p>${dr.p}</p>
 <ul class="checks">${dr.points.map((p) => `<li>${p}</li>`).join('')}</ul>
+<div class="actions"><a class="btn" href="${ANDROID_BUILD_URL}" target="_blank" rel="noopener noreferrer">${DL[l.code].btn}</a></div>
+<p class="muted small">${DL[l.code].note} <a href="${l.base}/guide/">${GUIDE[l.code].nav}</a></p>
 <div class="actions"><span class="btn" aria-disabled="true">App Store: ${dr.soon}</span><span class="btn" aria-disabled="true">Google Play: ${dr.soon}</span><a class="btn ghost" href="https://t.me/parkborbot" rel="noopener">${dr.bot}</a></div>
 <p class="muted small">${dr.botNote}</p></div></section>
 <section id="faq" class="alt"><div class="wrap"><h2>${h.faq.h}</h2>
@@ -134,6 +141,49 @@ ${faq}
 ${PHONES.map(([label, num]) => `<a class="btn ghost" href="tel:${num}">${label}</a>`).join('\n')}
 <a class="btn ghost" href="mailto:parkbooor@gmail.com">${h.contact.email}</a>
 </div></div></section>`;
+}
+
+// A screenshot slot renders only if assets/guide/<name>.webp|png exists at generation time.
+function shot(name, alt) {
+  for (const ext of ['webp', 'png']) {
+    if (existsSync(join(SITE, 'assets', 'guide', `${name}.${ext}`))) {
+      const file = `assets/guide/${name}.${ext}`;
+      const dim = readDims(join(SITE, file));
+      return `<figure class="shot"><img src="/${file}?v=${V}" width="${dim[0]}" height="${dim[1]}" alt="${esc(alt)}" loading="lazy"></figure>`;
+    }
+  }
+  return '';
+}
+
+// Width/height from the file header (PNG IHDR or WebP VP8/VP8L/VP8X); falls back to 360x780.
+function readDims(file) {
+  const b = readFileSync(file);
+  if (b.toString('ascii', 1, 4) === 'PNG') return [b.readUInt32BE(16), b.readUInt32BE(20)];
+  if (b.toString('ascii', 0, 4) === 'RIFF') {
+    const t = b.toString('ascii', 12, 16);
+    if (t === 'VP8X') return [1 + b.readUIntLE(24, 3), 1 + b.readUIntLE(27, 3)];
+    if (t === 'VP8L') { const v = b.readUInt32LE(21); return [(v & 0x3fff) + 1, ((v >> 14) & 0x3fff) + 1]; }
+    if (t === 'VP8 ') return [b.readUInt16LE(26) & 0x3fff, b.readUInt16LE(28) & 0x3fff];
+  }
+  return [360, 780];
+}
+
+function guide(l) {
+  const g = GUIDE[l.code];
+  const part = (p) => `<h2>${p.h}</h2>
+<ol class="guide">${p.steps.map(([t, d, img, alt]) =>
+    `<li><h3>${t}</h3><p>${sub(l, d)}</p>${[].concat(img || []).map((n) => shot(n, alt || t)).join('')}</li>`).join('')}</ol>`;
+  const tr = g.trouble.items.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('');
+  return `<article class="wrap doc guide-doc">
+<h1>${g.h1}</h1>
+<p class="lead">${g.intro}</p>
+<p><a class="btn" href="${ANDROID_BUILD_URL}" target="_blank" rel="noopener noreferrer">${DL[l.code].btn}</a></p>
+<p class="muted small">${DL[l.code].note}</p>
+${part(g.driver)}
+${part(g.owner)}
+<h2>${g.trouble.h}</h2>
+${tr}
+</article>`;
 }
 
 function legal(l, key) {
@@ -150,9 +200,9 @@ ${secs}
 const sitemapEntries = [];
 for (const l of LANGS) {
   PAGES.forEach((slug) => {
-    const key = { '': 'home', privacy: 'privacy', terms: 'terms', 'delete-account': 'del' }[slug];
-    const d = key === 'home' ? l.home : l[key];
-    const body = key === 'home' ? home(l) : legal(l, key);
+    const key = { '': 'home', guide: 'guide', privacy: 'privacy', terms: 'terms', 'delete-account': 'del' }[slug];
+    const d = key === 'home' ? l.home : key === 'guide' ? GUIDE[l.code] : l[key];
+    const body = key === 'home' ? home(l) : key === 'guide' ? guide(l) : legal(l, key);
     write(join(l.base.slice(1), slug, 'index.html'), page(l, slug, { title: d.title, desc: d.desc }, body));
     sitemapEntries.push(slug);
   });

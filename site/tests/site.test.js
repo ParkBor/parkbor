@@ -123,7 +123,7 @@ test('guide pages: 3 languages, ordered steps, both parts, links in nav/footer',
   for (const [r, base] of [['guide', ''], ['ru/guide', '/ru'], ['en/guide', '/en']]) {
     const html = read(path.join(ROOT, r, 'index.html'));
     assert.strictEqual((html.match(/<ol class="guide">/g) || []).length, 2);
-    assert.ok((html.match(/<li><h3>/g) || []).length >= 17);
+    assert.strictEqual((html.match(/<li><h3>/g) || []).length, 8);
     assert.ok(html.includes('crm.parkbor.uz') && html.includes('@userinfobot'));
     assert.ok(read(path.join(ROOT, base ? base.slice(1) : '', 'index.html')).includes(`href="${base}/guide/"`));
   }
@@ -134,8 +134,10 @@ test('guide: every step has a figure resolving to an existing file, caption in 3
   for (const [r, suf] of Object.entries(suffix)) {
     const html = read(path.join(ROOT, r, 'index.html'));
     const steps = html.split('<li><h3>').slice(1);
-    assert.strictEqual(steps.length, 17, r);
-    for (const st of steps) {
+    assert.strictEqual(steps.length, 8, r);
+    assert.strictEqual((html.match(/<figure /g) || []).length, 8, r + ' figures');
+    assert.ok(html.includes('class="closing"'), r + ' closing line');
+    for (const st of steps.filter((x) => !x.includes('<div class="shots') === false)) {
       assert.ok(/<figure class="shot[^"]*"><img src="\/assets\/guide\/[^"]+" width="\d+" height="\d+" alt="[^"]+" loading="lazy"><figcaption>/.test(st), r + ': step without figure');
     }
     assert.ok(html.includes(suf), r + ' caption suffix');
@@ -145,7 +147,7 @@ test('guide: every step has a figure resolving to an existing file, caption in 3
 test('guide SVG illustrations are safe, well-formed, small', () => {
   const dir = path.join(ROOT, 'assets', 'guide');
   const svgs = fs.readdirSync(dir).filter((f) => f.endsWith('.svg'));
-  assert.strictEqual(svgs.length, 60);
+  assert.strictEqual(svgs.length, 24);
   for (const f of svgs) {
     const x = read(path.join(dir, f));
     assert.ok(x.length < 12000, f + ' size');
@@ -156,7 +158,7 @@ test('guide SVG illustrations are safe, well-formed, small', () => {
       assert.strictEqual((x.match(new RegExp(`<${t}[\\s>]`, 'g')) || []).length, (x.match(new RegExp(`</${t}>`, 'g')) || []).length, f + ' ' + t);
     }
   }
-  for (const n of ['01-install', '10-qr', 'crm-04-approve']) for (const l of ['uz', 'ru', 'en']) assert.ok(svgs.includes(`${n}.${l}.svg`));
+  for (const n of ['01-install', '02-language', '03-bot-start', '04-share-phone', '05-code', '06-name', 'crm-00-userinfo', 'crm-01-login']) for (const l of ['uz', 'ru', 'en']) assert.ok(svgs.includes(`${n}.${l}.svg`));
 });
 
 test('legal pages carry operator placeholder and date', () => {

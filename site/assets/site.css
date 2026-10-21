@@ -133,6 +133,7 @@ ol.guide { counter-reset: g; list-style: none; padding: 0; }
 ol.guide > li { counter-increment: g; position: relative; padding: 0 0 20px 52px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
 ol.guide > li::before { content: counter(g); position: absolute; left: 0; top: 0; width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; font-weight: 700; }
 ol.guide h3 { margin-bottom: .2em; }
+.closing { font-weight: 600; margin-top: 1em; }
 .shots { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
 .shot { margin: 0; width: min(100%, 260px); }
 .shot img { display: block; width: 100%; height: auto; border: 1px solid var(--border); border-radius: 12px; background: #fff; }

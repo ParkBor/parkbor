@@ -179,10 +179,10 @@ function guide(l) {
   const step = ([t, d, names]) => {
     const figs = names.map((n) => shot(n, l));
     const wide = figs.some((f) => f.wide) || figs.length > 1 ? ' wide-shots' : '';
-    return `<li><h3>${t}</h3><p>${sub(l, d)}</p><div class="shots${wide}">${figs.map((f) => f.html).join('')}</div></li>`;
+    return `<li><h3>${t}</h3><p>${sub(l, d)}</p>${figs.length ? `<div class="shots${wide}">${figs.map((f) => f.html).join('')}</div>` : ''}</li>`;
   };
   const part = (p) => `<h2>${p.h}</h2>
-<ol class="guide">${p.steps.map(step).join('')}</ol>`;
+<ol class="guide">${p.steps.map(step).join('')}</ol>${p.closing ? `<p class="closing">${p.closing}</p>` : ''}`;
   const tr = g.trouble.items.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('');
   return `<article class="wrap doc guide-doc">
 <h1>${g.h1}</h1>

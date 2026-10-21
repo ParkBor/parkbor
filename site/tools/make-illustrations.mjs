@@ -58,24 +58,6 @@ const skel = (x, y, w, h = 9) => rect(x, y, w, h, '#dfe6f0', h / 2);
 const ring = (x, y, w, h, r = 10) => `<rect x="${num(x - 3)}" y="${num(y - 3)}" width="${num(w + 6)}" height="${num(h + 6)}" rx="${r + 3}" fill="none" stroke="${GREEN}" stroke-width="3"/>`;
 const callout = (n, x, y) => `<circle cx="${x}" cy="${y}" r="12" fill="${GREEN}"/><text x="${x}" y="${y + 5}" font-size="14" font-weight="700" fill="${INK}" text-anchor="middle">${n}</text>`;
 const mark = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${BLUE}"/><text x="${cx}" y="${num(cy + r * 0.38)}" font-size="${num(r * 1.1)}" font-weight="700" fill="#fff" text-anchor="middle">P</text>`;
-const pin = (x, y, c = BLUE) => `<g transform="translate(${x} ${y})"><path d="M0 0C-9-12-12-19-12-24a12 12 0 1 1 24 0C12-19 9-12 0 0z" fill="${c}"/><circle cy="-24" r="5" fill="#fff"/></g>`;
-
-// QR-LIKE pattern (decorative, NOT a real, scannable QR code)
-function qrLike(x, y, size) {
-  const n = 19, c = size / n; let seed = 7, d = '';
-  const finder = (i, j) => (i < 7 && j < 7) || (i < 7 && j >= n - 7) || (i >= n - 7 && j < 7);
-  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
-    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    if (finder(i, j)) continue;
-    if ((seed >> 8) % 2) d += `M${num(x + j * c)} ${num(y + i * c)}h${num(c)}v${num(c)}h${num(-c)}z`;
-  }
-  let out = `<path d="${d}" fill="${INK}"/>`;
-  for (const [fi, fj] of [[0, 0], [0, n - 7], [n - 7, 0]]) {
-    const fx = x + fj * c, fy = y + fi * c;
-    out += rect(fx, fy, 7 * c, 7 * c, INK) + rect(fx + c, fy + c, 5 * c, 5 * c, '#fff') + rect(fx + 2 * c, fy + 2 * c, 3 * c, 3 * c, INK);
-  }
-  return out;
-}
 
 // ---- frames ----
 function svgDoc(w, h, title, desc, body) {
@@ -91,19 +73,12 @@ ${rect(0, 0, 360, 640, '#1b2433', 38)}${rect(8, 8, 344, 624, bg, 30)}
 <g clip-path="url(#s)">${inner}</g>
 <text x="30" y="32" font-size="12" font-weight="700" fill="${INK}">9:41</text>${rect(300, 22, 24, 11, INK, 3)}<circle cx="180" cy="20" r="4" fill="#1b2433"/>`;
 }
-function browser(inner, sidebar = null) {
-  let side = '';
-  if (sidebar) {
-    side = rect(0, 36, 150, 364, '#fff') + rect(150, 36, 1, 364, LINE) + mark(24, 62, 11) +
-      `<text x="42" y="67" font-size="12" font-weight="700" fill="${INK}">${esc(sidebar.title)}</text>` +
-      sidebar.items.map((it, i) => (it.active ? rect(8, 84 + i * 30, 134, 26, '#e3eefb', 6) : '') +
-        `<text x="18" y="${102 + i * 30}" font-size="12" font-weight="${it.active ? 700 : 400}" fill="${it.active ? BLUE : INK}">${esc(it.label)}</text>`).join('');
-  }
+function browser(inner) {
   return `<clipPath id="b"><rect x="0" y="0" width="640" height="400" rx="12"/></clipPath>
 <g clip-path="url(#b)">${rect(0, 0, 640, 400, SURF)}${rect(0, 0, 640, 36, '#e3e9f2')}
 <circle cx="18" cy="18" r="5" fill="#c9d4e3"/><circle cx="36" cy="18" r="5" fill="#c9d4e3"/><circle cx="54" cy="18" r="5" fill="#c9d4e3"/>
 ${rect(120, 8, 260, 20, '#fff', 10)}<text x="132" y="22" font-size="11" fill="${MUTED}">crm.parkbor.uz</text>
-${side}${inner}</g>${rect(0.5, 0.5, 639, 399, 'none', 12, LINE)}`;
+${inner}</g>${rect(0.5, 0.5, 639, 399, 'none', 12, LINE)}`;
 }
 const bar = (title, s = 22) => T(24, 52, title, { s, w: 700, max: 300 });
 
@@ -169,68 +144,6 @@ const screens = {
   '06-name: phone': (L, M) => phone(bar(M.profile.title) + T(24, 98, M.profile.subtitle, { s: 14, f: MUTED, max: 310 }) +
     field(24, 150, 312, M.profile.firstName, 'Ali') + ring(24, 167, 312, 44, 8) + callout(1, 346, 164) +
     btn(24, 240, 312, 48, M.profile.save) + ring(24, 240, 312, 48) + callout(2, 346, 238)),
-  '07-vehicle: phone': (L, M) => {
-    const V = M.vehicles, c = chips(0, 0, [V.type_CAR, V.type_TRUCK, V.type_EV], 0);
-    return phone(bar(V.addTitle) + field(24, 110, 312, V.plate, V.platePlaceholder, { ph: true }) + ring(24, 127, 312, 44, 8) + callout(1, 346, 124) +
-      T(24, 184, V.plateHint, { s: 11, f: MUTED, max: 312 }) + T(24, 236, V.type, { s: 11, f: MUTED }) + `<g transform="translate(24 254)">${c.svg}</g>` +
-      btn(24, 320, 312, 48, V.save) + callout(2, 346, 318));
-  },
-  '08-map: phone': (L, M) => {
-    const m = M.map;
-    const roads = '<path d="M0 120L360 200M60 40L140 400M220 40L300 400M0 300L360 260" stroke="#fff" stroke-width="9" fill="none"/>';
-    return phone(rect(0, 36, 360, 380, '#e4eee0') + '<path d="M250 60Q340 90 330 170Q290 150 250 120z" fill="#cfe3f5"/>' + roads +
-      pin(90, 170) + pin(240, 250) + pin(160, 330) + pin(280, 330) + pin(120, 100, GREENTXT) + callout(1, 150, 80) +
-      rect(0, 380, 360, 252, '#fff', 24) + rect(150, 390, 60, 5, LINE, 3) +
-      T(24, 406, m.sheetTitle, { s: 16, w: 700, max: 220 }) + T(24, 430, tpl(m.sheetFound, { count: 3 }), { s: 11, f: MUTED, max: 300 }) +
-      rect(16, 454, 328, 150, SURF, 14, LINE) + skel(30, 470, 160, 11) + T(30, 494, tpl(m.freeOfTotal, { free: 12, total: 40 }), { s: 13, w: 600, max: 190 }) +
-      rect(252, 468, 78, 24, '#dcf3e2', 12) + `<text x="291" y="485" font-size="11" font-weight="700" fill="${GREENTXT}" text-anchor="middle">${esc(m.open)}</text>` +
-      ghost(30, 540, 140, 40, m.route, 13) + btn(180, 540, 150, 40, m.details, { s: 13 }) + ring(180, 540, 150, 40) + callout(2, 338, 538));
-  },
-  '09-booking: phone': (L, M) => {
-    const f = M.booking.form, c = chips(0, 0, [M.map.slot.STANDARD, M.map.slot.EV], 0);
-    return phone(bar(f.title) + T(24, 100, f.slotType, { s: 11, f: MUTED }) + `<g transform="translate(24 118)">${c.svg}</g>` + ring(24, 118, c.w, 30, 15) + callout(1, num(34 + c.w), 114) +
-      T(24, 170, f.day + ' / ' + f.start, { s: 11, f: MUTED, max: 312 }) + rect(24, 188, 312, 44, '#fff', 8, LINE) +
-      T(36, 200, tpl(f.period, { day: f.today, from: '10:00', to: '12:00' }), { s: 14, max: 290 }) + ring(24, 188, 312, 44, 8) + callout(2, 346, 186) +
-      T(24, 250, f.vehicle, { s: 11, f: MUTED }) + `<g transform="translate(24 268)">${chip(0, 0, M.vehicles.platePlaceholder, true).svg}</g>` +
-      T(24, 324, f.total, { s: 13, w: 700 }) + skel(240, 328, 96, 12) +
-      btn(24, 360, 312, 50, f.submit) + ring(24, 360, 312, 50) + callout(3, 346, 358) + T(24, 424, f.holdNote, { s: 11, f: MUTED, max: 312 }));
-  },
-  '10-qr: phone': (L, M) => {
-    const d = M.booking.detail;
-    return phone(bar(d.title) + rect(24, 96, 150, 26, '#dcf3e2', 13) + `<text x="99" y="114" font-size="12" font-weight="700" fill="${GREENTXT}" text-anchor="middle">${esc(M.booking.status.CONFIRMED)}</text>` +
-      rect(60, 128, 240, 240, '#fff', 16, LINE) + qrLike(90, 158, 180) + ring(60, 128, 240, 240, 16) + callout(1, 306, 126) +
-      T(24, 388, d.slot, { s: 11, f: MUTED }) + skel(24, 408, 200) + T(24, 430, d.time, { s: 11, f: MUTED }) + skel(24, 450, 160) +
-      ghost(24, 490, 150, 42, d.navigate, 12) + ghost(186, 490, 150, 42, d.cancel, 13));
-  },
-  '11-permissions: phone': (L, M) => {
-    const p = M.permissions;
-    const row = (y, t, txt) => rect(24, y, 312, 136, SURF, 14, LINE) + T(40, y + 14, t, { s: 15, w: 700, max: 280 }) + T(40, y + 38, txt, { s: 12, f: MUTED, max: 280 }) + btn(40, y + 90, 120, 34, p.allow, { s: 13 });
-    return phone(bar(p.title) + T(24, 96, p.subtitle, { s: 13, f: MUTED, max: 312 }) +
-      row(150, p.locationTitle, p.locationText) + ring(40, 240, 120, 34) + callout(1, 168, 238) +
-      row(310, p.notificationsTitle, p.notificationsText) + ring(40, 400, 120, 34) + callout(2, 168, 398) +
-      ghost(24, 470, 312, 44, p.later, 14));
-  },
-  '12-bookings: phone': (L, M) => {
-    const b = M.booking.list, tabs = M.tabs;
-    const c = chips(0, 0, [b.active, b.upcoming, b.history], 0);
-    return phone(bar(b.title) + `<g transform="translate(24 96)">${c.svg}</g>` +
-      rect(24, 144, 312, 190, SURF, 14, LINE) + skel(40, 162, 170, 11) + skel(40, 184, 120) + rect(40, 206, 120, 24, '#dcf3e2', 12) +
-      `<text x="100" y="223" font-size="11" font-weight="700" fill="${GREENTXT}" text-anchor="middle">${esc(M.booking.status.CONFIRMED)}</text>` +
-      rect(220, 158, 90, 90, '#fff', 8, LINE) + qrLike(230, 168, 70) +
-      ghost(40, 270, 280, 42, M.booking.detail.cancel, 14) + ring(40, 270, 280, 42) + callout(1, 330, 268) +
-      rect(0, 576, 360, 56, '#fff') + rect(0, 576, 360, 1, LINE) +
-      [tabs.map, tabs.bookings, tabs.profile].map((t, i) => `<text x="${60 + i * 120}" y="610" font-size="12" font-weight="${i === 1 ? 700 : 400}" fill="${i === 1 ? BLUE : MUTED}" text-anchor="middle">${esc(t)}</text>`).join(''));
-  },
-  '13-profile: phone': (L, M) => {
-    const p = M.profile, tabs = M.tabs;
-    const row = (y, label, hint) => rect(24, y, 312, 54, SURF, 12, LINE) + T(40, y + 9, label, { s: 14, w: 600, max: 250 }) + T(40, y + 31, hint, { s: 11, f: MUTED, max: 270 });
-    return phone(bar(tabs.profile) +
-      row(96, p.editName, 'Ali') + row(160, p.language, tpl(p.languageCurrent, { language: M.languages[L] })) + ring(24, 160, 312, 54, 12) + callout(1, 346, 158) +
-      row(224, M.vehicles.title, M.vehicles.menuHint) + row(288, M.operator.join.link, M.operator.join.linkHint) + row(352, M.common.logout, '') +
-      row(416, p.deleteTitle, p.deleteHint) + ring(24, 416, 312, 54, 12) + callout(2, 346, 414) +
-      rect(0, 576, 360, 56, '#fff') + rect(0, 576, 360, 1, LINE) +
-      [tabs.map, tabs.bookings, tabs.profile].map((t, i) => `<text x="${60 + i * 120}" y="610" font-size="12" font-weight="${i === 2 ? 700 : 400}" fill="${i === 2 ? BLUE : MUTED}" text-anchor="middle">${esc(t)}</text>`).join(''));
-  },
   'crm-00-userinfo: phone': (L, M, B, C) => {
     const u = bubble(0, 110, '/start', { right: true, w: 90 });
     const b = bubble(10, 110 + u.h + 10, 'Id: 123456789', { w: 200, s: 14 });
@@ -240,54 +153,7 @@ const screens = {
   'crm-01-login: browser': (L, M, B, C) => browser(rect(170, 80, 300, 250, '#fff', 16, LINE) + mark(320, 128, 24) +
     T(320, 166, C.app.title, { s: 20, w: 700, a: 'middle' }) + T(320, 196, C.auth.subtitle, { s: 12, f: MUTED, a: 'middle', max: 250 }) +
     btn(220, 250, 200, 44, 'Telegram') + ring(220, 250, 200, 44) + callout(1, 430, 248)),
-  'crm-02-add-lot: browser': (L, M, B, C) => {
-    const p = C.parkings;
-    return browser(T(170, 52, p.new, { s: 18, w: 700 }) +
-      field(170, 90, 210, p.name, '', { h: 34 }) + field(170, 148, 210, p.owner, '123456789', { h: 34 }) + ring(170, 165, 210, 34, 8) + callout(2, 380, 160) +
-      field(170, 206, 210, p.address, '', { h: 34 }) + field(170, 264, 100, p.openTime, '08:00', { h: 34 }) + field(280, 264, 100, p.closeTime, '22:00', { h: 34 }) +
-      rect(396, 90, 224, 160, '#e4eee0', 10, LINE) + '<path d="M396 150L620 190M470 90L500 250" stroke="#fff" stroke-width="7" fill="none"/>' + pin(520, 190) +
-      ring(396, 90, 224, 160, 10) + callout(1, 612, 94) + T(396, 258, p.mapHint, { s: 11, f: MUTED, max: 224 }) +
-      btn(170, 336, 130, 38, C.common.create, { s: 13 }), crmSide(C, 0));
-  },
-  'crm-03-slots: browser': (L, M, B, C) => {
-    const s = C.slots;
-    return browser(T(170, 52, s.bulkTitle, { s: 18, w: 700 }) +
-      field(170, 90, 200, s.zone, 'A', { h: 34 }) + field(390, 90, 220, s.prefix, 'A', { h: 34 }) +
-      field(170, 150, 200, s.start, '1', { h: 34 }) + field(390, 150, 220, s.end, '20', { h: 34 }) + ring(170, 167, 440, 34, 8) + callout(1, 622, 164) +
-      btn(170, 224, 170, 38, s.bulkSubmit, { s: 13 }) + ring(170, 224, 170, 38) + callout(2, 352, 222) +
-      rect(170, 286, 440, 36, '#dcf3e2', 8) + T(184, 295, tpl(s.bulkDone, { count: 20 }), { s: 13, w: 600, f: GREENTXT, max: 410 }),
-    crmSide(C, 1));
-  },
-  'crm-04-approve: browser': (L, M, B, C) => {
-    const p = C.parkings;
-    const row = (y, st, act) => rect(170, y, 440, 40, '#fff', 6, LINE) + skel(184, y + 15, 110) + `<text x="330" y="${y + 25}" font-size="12" fill="${INK}">${esc(st)}</text>` + act;
-    return browser(T(170, 52, p.title, { s: 18, w: 700 }) +
-      T(184, 90, p.name, { s: 11, f: MUTED }) + T(330, 90, p.status, { s: 11, f: MUTED }) +
-      row(110, p.statuses.PENDING_REVIEW, btn(500, 116, 100, 28, p.approve, { s: 12 })) + ring(500, 116, 100, 28, 8) + callout(1, 610, 112) +
-      row(156, p.statuses.ACTIVE, '') + row(202, p.statuses.ACTIVE, '') +
-      rect(300, 252, 300, 100, '#fff', 12, LINE) + T(316, 266, C.moderation.confirm.approve, { s: 14, w: 600, max: 270 }) +
-      ghost(316, 306, 110, 32, C.common.cancel, 12) + btn(436, 306, 150, 32, p.approve, { s: 12 }) + callout(2, 596, 304), crmSide(C, 0));
-  },
-  'crm-05-invite: browser': (L, M, B, C) => {
-    const o = C.operators;
-    return browser(T(170, 52, o.title, { s: 18, w: 700 }) +
-      chip(170, 88, o.tabOperators, false).svg + chip(170 + chip(170, 88, o.tabOperators).w + 8, 88, o.tabInvites, true).svg +
-      btn(170, 140, 220, 38, o.createInvite, { s: 13 }) + ring(170, 140, 220, 38) + callout(1, 402, 138) +
-      rect(170, 200, 440, 160, '#fff', 12, LINE) + T(186, 214, o.codeTitle, { s: 14, w: 700 }) +
-      T(186, 244, 'K7QF-3MZD-W4XN-P2RT-6HBY-J5', { s: 17, w: 700, f: BLUE, max: 410 }) + ring(186, 240, 300, 26, 6) + callout(2, 494, 238) +
-      T(186, 282, o.codeOnce, { s: 11, f: MUTED, max: 410 }) + ghost(186, 320, 200, 28, o.codeClose, 11), crmSide(C, 4));
-  },
-  'crm-06-reports: browser': (L, M, B, C) => {
-    const rows = [0, 1, 2, 3].map((i) => rect(170, 120 + i * 44, 440, 36, '#fff', 6, LINE) + skel(184, 135 + i * 44, 90) + skel(310, 135 + i * 44, 70) + skel(420, 135 + i * 44, 50)).join('');
-    return browser(T(170, 52, C.nav.bookings, { s: 18, w: 700 }) + btn(430, 44, 180, 32, C.export.button, { s: 12 }) + ring(430, 44, 180, 32) + callout(2, 620, 42) + rows + ring(8, 174, 134, 26, 6) + callout(1, 146, 172), crmSide(C, 3));
-  },
 };
-
-function crmSide(C, active) {
-  const n = C.nav, keys = [n.parkings, n.zonesSlots, n.tariffs, n.bookings, n.operators, n.payments, n.refunds];
-  // Reorder so highlighted index maps to a stable label list.
-  return { title: C.app.title, items: keys.map((label, i) => ({ label, active: i === active })) };
-}
 
 const altFor = (name, lang) => ALT[lang][name] ?? name;
 

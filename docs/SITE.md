@@ -71,11 +71,11 @@ Bosh sahifa (haydovchilar bloki), footer va qo‘llanma sahifasida “Android il
 
 ## Qo‘llanma (`/guide/`, `/ru/guide/`, `/en/guide/`)
 
-Matnlar `site/tools/i18n/guide.mjs` da (A. haydovchi 10 qadam, B. egasi 7 qadam, muammolar). Sitemap, nav va footerga qo‘shilgan.
+Qo‘llanma ataylab QISQA va faqat ro‘yxatdan o‘tishga bag‘ishlangan: A. haydovchi 5 qadam (o‘rnatish, til, Telegram orqali kirish, kod, ism) + yakuniy jumla, B. egasi 3 qadam (Telegram ID yuborish, CRM ga kirish, qolgani CRM ichida), muammolar bloki (kod kelmasa, Telegram ma’lumotlari yaroqsiz, DNS). Qolganini foydalanuvchi ilovaning o‘zida o‘rganadi. Matnlar `site/tools/i18n/guide.mjs` da. Sitemap, nav va footerga qo‘shilgan.
 
 ### Rasmlar (sxematik illyustratsiyalar va haqiqiy skrinshotlar)
 
-Qo‘llanmadagi har bir qadamda rasm bor. Hozir bular **haqiqiy skrinshot emas**, balki sxematik SVG illyustratsiyalar (sarlavha ostida “Namunaviy ko‘rinish / Схематичное изображение / Schematic illustration”). Ularni `node site/tools/make-illustrations.mjs` yaratadi (60 ta: 20 nom x 3 til, `site/assets/guide/<nom>.<til>.svg`). Matnlar ilova manbalaridan o‘qiladi (`mobile/src/i18n/*.json`, `admin/src/i18n`, `backend/apps/telegram_bot/messages.py`), shuning uchun tugma nomlari o‘zgarsa skriptni qayta ishga tushiring:
+Qo‘llanmadagi har bir qadamda rasm bor. Hozir bular **haqiqiy skrinshot emas**, balki sxematik SVG illyustratsiyalar (sarlavha ostida “Namunaviy ko‘rinish / Схематичное изображение / Schematic illustration”). Ularni `node site/tools/make-illustrations.mjs` yaratadi (24 ta: 8 nom x 3 til, `site/assets/guide/<nom>.<til>.svg`). Matnlar ilova manbalaridan o‘qiladi (`mobile/src/i18n/*.json`, `admin/src/i18n`, `backend/apps/telegram_bot/messages.py`), shuning uchun tugma nomlari o‘zgarsa skriptni qayta ishga tushiring:
 
 ```
 node site/tools/make-illustrations.mjs
@@ -83,7 +83,7 @@ node site/tools/build.mjs
 cd site && node --test
 ```
 
-Nomlar: `01-install`, `02-language`, `03-bot-start`, `04-share-phone`, `05-code`, `06-name`, `07-vehicle`, `08-map`, `09-booking`, `10-qr`, `11-permissions`, `12-bookings`, `13-profile`, `crm-00-userinfo`, `crm-01-login`, `crm-02-add-lot`, `crm-03-slots`, `crm-04-approve`, `crm-05-invite`, `crm-06-reports`. SVG da skriptlar, `foreignObject`, tashqi havolalar yo‘q; QR faqat bezak (skanerlanmaydi).
+Nomlar: `01-install`, `02-language`, `03-bot-start`, `04-share-phone`, `05-code`, `06-name`, `crm-00-userinfo`, `crm-01-login`. SVG da skriptlar, `foreignObject`, tashqi havolalar yo‘q; QR faqat bezak (skanerlanmaydi).
 
 **Haqiqiy skrinshot ustuvor:** `site/assets/guide/<nom>.webp` (yoki `.png`) mavjud bo‘lsa generator uni (tilga bog‘liq bo‘lmagan holda, sarlavhasiz “schematic” qo‘shimchasi bilan emas) SVG o‘rniga qo‘yadi. Konvertatsiya:
 
